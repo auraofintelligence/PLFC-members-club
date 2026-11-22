@@ -1,12 +1,3 @@
-const FALLBACK_MEETING = {
-  title: 'Informal catch-up with Point Lookout Hotel',
-  startsAt: '2026-11-22T00:00:00.000Z',
-  endsAt: '2026-11-22T01:00:00.000Z',
-  location: 'Point Lookout Hotel, Point Lookout, Queensland',
-  durationConfirmed: false,
-  calendarUrl: '/calendar/hotel-meeting-2026-11-22.ics',
-};
-
 const HELP = {
   google: 'https://support.google.com/calendar/answer/37118?hl=en',
   outlook: 'https://support.microsoft.com/en-us/outlook/import-or-subscribe-to-a-calendar-in-outlook-com-or-outlook-on-the-web',
@@ -27,11 +18,12 @@ function pickEvent(events, requestedUrl) {
   const exact = list.find((event) => {
     try { return new URL(event.calendarUrl, window.location.href).pathname === requestedUrl.pathname; } catch { return false; }
   });
-  const source = exact || list[0] || FALLBACK_MEETING;
+  const source = exact || (requestedUrl.pathname === '/calendar.ics' ? list[0] : null);
+  if(!source)return null;
   const start = Date.parse(source.startsAt);
-  if (!Number.isFinite(start)) return { ...FALLBACK_MEETING };
+  if (!Number.isFinite(start)) return null;
   const end = Date.parse(source.endsAt);
-  return { ...FALLBACK_MEETING, ...source, endsAt: Number.isFinite(end) && end > start ? new Date(end).toISOString() : new Date(start + 3_600_000).toISOString() };
+  return { ...source, endsAt: Number.isFinite(end) && end > start ? new Date(end).toISOString() : new Date(start + 3_600_000).toISOString() };
 }
 
 function meetingFile(event) {
@@ -39,7 +31,7 @@ function meetingFile(event) {
     const url = new URL(event.calendarUrl, window.location.href);
     if (url.origin === window.location.origin && /\.ics$/i.test(url.pathname)) return url.pathname + url.search;
   } catch { /* Use the club's known meeting file if a source URL is invalid. */ }
-  return FALLBACK_MEETING.calendarUrl;
+  return '/calendar.ics';
 }
 
 function chooser(event) {
@@ -104,7 +96,7 @@ function chooser(event) {
     </details>
 
     <details class="calendar-copy-details"><summary>Copy the meeting details instead</summary><div><p>Use these details to add the meeting yourself or keep a note.</p><label for="calendar-meeting-details">Meeting details<textarea id="calendar-meeting-details" readonly rows="7">${escape(details)}</textarea></label><button type="button" class="button outline" data-calendar-copy>Copy meeting details</button><p role="status" data-calendar-copy-status></p></div></details>
-    <p class="calendar-demo-note"><strong>Demo:</strong> the club website is still being built. These choices help you save Sunday’s meeting in your own calendar. The full club calendar and automatic updates are still being developed.</p>
+    <p class="calendar-demo-note"><strong>Demo:</strong> the club website is still being built. These choices help you save this date in your own calendar. Automatic updates are still being developed.</p>
   </div>`;
 }
 
@@ -127,9 +119,8 @@ export function setupCalendarHelp(showDialog, getEvents = () => []) {
       try {
         const url = new URL(anchor.href, window.location.href);
         if (/^https?:$/.test(url.protocol) && /\.ics$/i.test(url.pathname)) {
-          event.preventDefault();
-          showDialog('Add the meeting to your calendar', chooser(pickEvent(getEvents(), url)));
-          return;
+          const selected=pickEvent(getEvents(),url);
+          if(selected){event.preventDefault();showDialog('Add the meeting to your calendar', chooser(selected));return;}
         }
       } catch { /* Unrelated or invalid links retain their normal behaviour. */ }
     }

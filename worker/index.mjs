@@ -47,7 +47,6 @@ import {retireOfficerDemo} from './demo-officers.mjs';
 import {showcase} from './showcase.mjs';
 export {OfficerDemoRoom} from './demo-officers.mjs';
 
-const MEETING_ID = EVENTS[0].id;
 const MAX_BODY_BYTES = 32768;
 const jwksByIssuer = new Map();
 const securityHeaders = {
@@ -204,7 +203,8 @@ function meetingRecord(row,meta) {
 async function meeting(request, env, identity) {
   requireRole(identity, ['committee']);
   const storage=requireDb(env),db=storage.withSession?storage.withSession('first-primary'):storage;
-  const id=new URL(request.url).searchParams.get('id') || MEETING_ID;
+  const id=new URL(request.url).searchParams.get('id');
+  if(!id)throw new HttpError(400,'Choose a meeting first.','invalid_meeting');
   const info=await db.prepare(`SELECT r.id,r.title,r.date,r.time,r.location,m.released_at AS releasedAt,m.body AS releasedText,
     coalesce(json_extract(a.formal_json,'$.kind'),r.agenda_kind) AS kind,
     coalesce(json_extract(a.formal_json,'$.quorumStatus'),'unchecked') AS quorumStatus,

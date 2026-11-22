@@ -33,7 +33,7 @@ test('members see public dates and explicitly published event copy, without comm
   for(const path of [nov,file])await json('expired',path,undefined,403);
   await json('member',notice,undefined,403);
   const initial=await json('member',nov);
-  assert.ok(initial.events.some(e=>e.source==='public'&&e.id==='hotel-meeting-2026-11-22'&&e.time==='10:00'));
+  assert.ok(initial.events.every(e=>e.id!=='hotel-meeting-2026-11-22'));
   assert.ok(initial.events.every(e=>e.id!==id));
   assert.deepEqual(await json('secretary',notice),{notice:{id,title:'',date:'',time:'',place:'',details:'',published:false,version:0},canPublish:true});
   await json('member',file,undefined,404);

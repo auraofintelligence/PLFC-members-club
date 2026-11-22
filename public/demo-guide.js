@@ -9,7 +9,7 @@ const PAGES = [
     next: 'Start with What’s on to find the next get-together.',
     limit: 'This is a club demo. Applying sends a private record to the committee. Online payments and automatic partner connections still need approval.',
     target: '.next-meeting',
-    steps: ['Find Sunday’s informal catch-up with the hotel and read how the club plans local meets and small days with other clubs.', 'Choose What’s on to see the meeting details and calendar options.', 'Open Finnius’s page tour whenever you want a hand.'],
+    steps: ['Find the club calendar and read how the club plans local meets and small days with other clubs.', 'Choose What’s on to see confirmed dates when they are available.', 'Open Finnius’s page tour whenever you want a hand.'],
     result: 'You will know where the club dates, fishing tools, member home and committee workspace live.',
   },
   {
@@ -27,12 +27,12 @@ const PAGES = [
     result: 'You can find a grant that suits the project and check its terms at the source.',
   },
   {
-    key: 'events', name: 'Put the meeting in your calendar',
-    next: 'Choose Add this meeting to my calendar, then pick the calendar you use.',
-    limit: 'Sunday’s hotel catch-up has a date and an estimated finish time. Local fishing meets and small invitationals are ideas below it until dates are agreed.',
+    key: 'events', name: 'Find club dates',
+    next: 'Look here for confirmed dates and calendar options.',
+    limit: 'Local fishing meets and small invitationals are ideas until dates are agreed.',
     target: '#events-list',
-    steps: ['Check Sunday 22 November 2026, 10 am, at Point Lookout Hotel.', 'Choose Add this meeting to my calendar and select the calendar option you normally use.', 'Review the details in your calendar before saving. A downloaded calendar file still needs to be opened or imported.'],
-    result: 'The meeting can appear in your own calendar. This demo does not send invitations or reminders for the club.',
+    steps: ['Check for confirmed club dates.', 'Read the plans for local fishing meets and small invitationals.', 'When a date is confirmed, use its calendar option and check the details before saving.'],
+    result: 'You know where to find club dates and local plans.',
   },
   {
     key: 'fishing', name: 'Plan a fishing day',

@@ -57,12 +57,10 @@ async function verifiedCatchDatabase(t) {
   return db;
 }
 
-test('calendar represents the one-off Sunday meeting at 10 am Brisbane time', () => {
-  assert.equal(EVENTS.length, 1);
-  assert.equal(EVENTS[0].startsAt, '2026-11-22T00:00:00.000Z');
+test('calendar has no unconfirmed club dates', () => {
+  assert.equal(EVENTS.length, 0);
   const calendar = makeCalendar();
-  assert.match(calendar, /DTSTART:20261122T000000Z\r\n/);
-  assert.match(calendar, /UID:hotel-meeting-2026-11-22@pointlookoutfishingclub.com/);
+  assert.doesNotMatch(calendar, /BEGIN:VEVENT/);
   assert.doesNotMatch(calendar, /RRULE/);
   assert.equal(calendar.replace(/\r\n/g, '').includes('\n'), false);
 });
@@ -77,11 +75,8 @@ test('ICS escaping blocks extra properties and folding preserves UTF-8 text', ()
 
 test('local meets lead the programme and only scheduled events enter the calendar', async () => {
   const response = await handleRequest(req('/calendar.ics'));
-  assert.equal(response.status, 200);
-  assert.match(response.headers.get('content-type'), /text\/calendar/);
-  const calendar = (await response.text()).replace(/\r\n /g, '');
-  assert.equal(calendar.match(/BEGIN:VEVENT/g)?.length, 1);
-  assert.match(calendar, /The finish time is an estimate\./);
+  assert.equal(response.status, 404);
+  const calendar = makeCalendar();
   assert.equal((await handleRequest(req('/calendar/missing.ics'))).status, 404);
   const club = await (await handleRequest(req('/api/club'))).json();
   assert.deepEqual(club.programme.map(({ id, status }) => [id, status]), [
@@ -189,21 +184,21 @@ test('writes reject cross-origin requests, oversized forms and invalid catch fie
 test('meeting updates detect stale drafts and only successful saves create audit records', async t => {
   const DB = database(t);
   const env = { ...envBase, DB };
-  const initial = await (await handleRequest(req('/api/meeting', { email: 'committee@example.test' }), env)).json();
+  const initial = await (await handleRequest(req('/api/meeting?id=hotel-meeting-2026-11-22', { email: 'committee@example.test' }), env)).json();
   assert.equal(initial.meeting.version, 0);
   assert.equal(initial.meeting.notes, '');
   const payload = { notes: 'A private draft', actions: [{ id: 'hotel-chat', text: 'Prepare the meeting', owner: 'Secretary', dueDate: '2026-11-22', done: false }], version: 0 };
-  const invalidVersion = await handleRequest(req('/api/meeting', { email: 'committee@example.test', method: 'PUT', body: { ...payload, version: 4 } }), env);
+  const invalidVersion = await handleRequest(req('/api/meeting?id=hotel-meeting-2026-11-22', { email: 'committee@example.test', method: 'PUT', body: { ...payload, version: 4 } }), env);
   assert.equal(invalidVersion.status, 409);
-  const first = await handleRequest(req('/api/meeting', { email: 'committee@example.test', method: 'PUT', body: payload }), env);
+  const first = await handleRequest(req('/api/meeting?id=hotel-meeting-2026-11-22', { email: 'committee@example.test', method: 'PUT', body: payload }), env);
   assert.equal(first.status, 200);
   assert.equal((await first.json()).meeting.version, 1);
-  const stale = await handleRequest(req('/api/meeting', { email: 'committee@example.test', method: 'PUT', body: payload }), env);
+  const stale = await handleRequest(req('/api/meeting?id=hotel-meeting-2026-11-22', { email: 'committee@example.test', method: 'PUT', body: payload }), env);
   assert.equal(stale.status, 409);
-  const second = await handleRequest(req('/api/meeting', { email: 'committee@example.test', method: 'PUT', body: { ...payload, notes: 'Updated private draft', version: 1 } }), env);
+  const second = await handleRequest(req('/api/meeting?id=hotel-meeting-2026-11-22', { email: 'committee@example.test', method: 'PUT', body: { ...payload, notes: 'Updated private draft', version: 1 } }), env);
   assert.equal(second.status, 200);
   assert.equal((await second.json()).meeting.version, 2);
-  const stored = await (await handleRequest(req('/api/meeting', { email: 'committee@example.test' }), env)).json();
+  const stored = await (await handleRequest(req('/api/meeting?id=hotel-meeting-2026-11-22', { email: 'committee@example.test' }), env)).json();
   assert.equal(stored.meeting.notes, 'Updated private draft');
   const audit = await (await handleRequest(req('/api/audit', { email: 'committee@example.test' }), env)).json();
   assert.equal(audit.audit.length, 2);

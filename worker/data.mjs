@@ -5,18 +5,7 @@ export const CLUB = {
   timezone: 'Australia/Brisbane',
 };
 
-export const EVENTS = [{
-  id: 'hotel-meeting-2026-11-22',
-  title: 'Informal catch-up with Point Lookout Hotel',
-  startsAt: '2026-11-22T00:00:00.000Z',
-  endsAt: '2026-11-22T01:00:00.000Z',
-  location: 'Point Lookout Hotel, Point Lookout, Queensland',
-  description: 'The club and the hotel are meeting to talk about local fishing days, the school holiday period and where help would be useful.',
-  type: 'meeting',
-  format: 'informal',
-  durationConfirmed: false,
-  calendarUrl: '/calendar/hotel-meeting-2026-11-22.ics',
-}];
+export const EVENTS = [];
 
 const largerCompetition = {
   title: 'An occasional bigger competition',

@@ -17,7 +17,7 @@ export function setupConnectionGuides(showDialog) {
     calendar: {
       title: 'A calendar everyone can follow',
       short: 'Keep agreed dates in one place, with reminders people choose to receive.',
-      now: 'People can add Sunday’s meeting to their calendar. After the committee approves its minutes, each dated job has a calendar reminder file with a one-day alert. People choose whether to import it. Later changes need to be updated in that copy.',
+      now: 'People can add a confirmed club date to their calendar when one is available. After the committee approves its minutes, each dated job has a calendar reminder file with a one-day alert. People choose whether to import it. Later changes need to be updated in that copy.',
       choices: [
         'Download a calendar date: simple and no connected account needed.',
         'Subscribe to a club calendar: approved event changes update in people’s calendar apps when those apps refresh.',

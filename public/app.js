@@ -39,11 +39,11 @@ import {setupAgmJobs} from './agm-jobs.js';
 import {setupAgendaPrint} from './agenda-print.js';
 import {showSchoolHolidays} from './school-holidays.js';
 import {setupRecording} from './recording.js?v=20261120b';
-import {setupConnectionGuides} from './connections.js?v=20261121-club-funding';
+import {setupConnectionGuides} from './connections.js?v=20261123-dates';
 import {setupFishGuide,renderGuideRoute} from './fish-guide.js?v=20261121-phone';
 import {enterFishingBoard,setupFishingBoard} from './fishing-board.js?v=20261121-phone';
-import {setupCalendarHelp} from './calendar-help.js?v=20261121-agendas';
-import {setupDemoGuide} from './demo-guide.js?v=20261121-grant-wishes';
+import {setupCalendarHelp} from './calendar-help.js?v=20261123-dates';
+import {setupDemoGuide} from './demo-guide.js?v=20261123-dates';
 import {parseLocationHash,normaliseGuideLinks} from './page-routing.js?v=20261121-clubhouse-menu';
 const $=selector=>document.querySelector(selector);
 $('#footer-nav').prepend(...Array.from($('#main-nav').querySelectorAll('a'),link=>link.cloneNode(true)));
@@ -57,7 +57,7 @@ function toast(message){$('#toast').textContent=message;$('#toast').hidden=false
 function modal(title,body){$('#dialog-content').innerHTML='<span class="eyebrow">POINT LOOKOUT FISHING CLUB</span><h2 id="dialog-title">'+esc(title)+'</h2>'+body;normaliseGuideLinks($('#dialog-content'));$('#info-dialog').showModal()}
 function download(name,text,type='text/plain'){const link=document.createElement('a'),url=URL.createObjectURL(new Blob([text],{type}));link.href=url;link.download=name;link.click();setTimeout(()=>URL.revokeObjectURL(url),1000)}
 async function api(path,options={}){const result=await fetch(path,{...options,headers:{...(options.body?{'Content-Type':'application/json'}:{}),...options.headers}});let value;try{value=await result.json()}catch{throw Error('The club connection is unavailable. Please try again.')}if(!result.ok){const error=Error(typeof value.error==='string'?value.error:value.error?.message??value.message??'Please try again.');error.status=result.status;throw error}return value}
-const previewBody='<p><strong>Clubhouse demonstration.</strong> Anyone can browse the club shop, read the constitution, check the fishing guide and find Sunday’s hotel catch-up. Paid members have a private space for conversations, journals and minutes.</p><p>Shop enquiries, pickup requests and membership applications go to the club. Officers sign in with their own accounts. The treasurer confirms prices and can open online payment for each product. The committee is still reviewing the wider rollout.</p>';
+const previewBody='<p><strong>Clubhouse demonstration.</strong> Anyone can browse the club shop, read the constitution, check the fishing guide and see club dates as they are confirmed. Paid members have a private space for conversations, journals and minutes.</p><p>Shop enquiries, pickup requests and membership applications go to the club. Officers sign in with their own accounts. The treasurer confirms prices and can open online payment for each product. The committee is still reviewing the wider rollout.</p>';
 $('#preview-info').onclick=$('#footer-preview-info').onclick=()=>modal('A first look at our next chapter.',previewBody);
 $('#joining-info').onclick=()=>modal('How membership works','<ol><li>Read the constitution and send the club your membership application.</li><li>The committee checks your application and confirms the fee. The Treasurer verifies the membership payment. Returning members with an approved welcome-back offer can accept a complimentary year.</li><li>Open your private invitation and choose a club password.</li><li>Find your membership pack status, birthday choices and club messages under My membership &amp; benefits.</li></ol><a href="/constitution.pdf" target="_blank" rel="noopener">Read the constitution</a>');
 
