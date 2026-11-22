@@ -46,7 +46,7 @@ import {setupCalendarHelp} from './calendar-help.js?v=20261121-agendas';
 import {setupDemoGuide} from './demo-guide.js?v=20261121-grant-wishes';
 import {parseLocationHash,normaliseGuideLinks} from './page-routing.js?v=20261121-clubhouse-menu';
 const $=selector=>document.querySelector(selector);
-$('#footer-nav').replaceChildren(...Array.from($('#main-nav').querySelectorAll('a'),link=>link.cloneNode(true)));
+$('#footer-nav').prepend(...Array.from($('#main-nav').querySelectorAll('a'),link=>link.cloneNode(true)));
 const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const today=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'Australia/Brisbane',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
 const time=value=>value?new Intl.DateTimeFormat('en-AU',{timeZone:'Australia/Brisbane',hour:'numeric',minute:'2-digit',hour12:true}).format(new Date(value)):'No event this day';
