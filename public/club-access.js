@@ -118,10 +118,11 @@ export function setupClubAccess({api,esc}) {
     } catch(error) {output.textContent=error.message;}
   }
   function setupAccounts() {
-    accounts.hidden=!session?.canManageStock;
+    accounts.hidden=!session?.canManageStock || Boolean(session.showcase);
     if (accounts.hidden || accounts.hasChildNodes()) return;
     const seats=Object.entries(officers).map(([login,title])=>'<option value="office-'+login+'">'+title+'</option>').join('');
     accounts.innerHTML='<summary>Manage club access</summary>'+
+      (session.administrator&&!session.showcase?'<section class="panel" id="showcase-invitations"><h3>Demonstrations for other clubs</h3><p>Create a separate view-only login for each club. They see example records, including example minutes.</p><form class="stack-form"><label>Club keyword<input name="keyword" required minlength="2" maxlength="31" pattern="[A-Za-z0-9][A-Za-z0-9-]{1,30}" placeholder="e.g. island-anglers"></label><button class="button outline" type="submit">Create demo invitation</button></form><p role="status"></p><div data-link></div></section>':'')+
       '<section class="pending-invitations" aria-labelledby="pending-invites-title"><div class="pending-title"><h3 id="pending-invites-title">Pending invitations</h3><button type="button" class="text-link" data-refresh-invites>Refresh list</button></div><p data-pending-status role="status"></p><ul data-pending-rows></ul></section><h3>Invite someone new</h3>'+
       '<form class="stack-form"><label>Give access as<select name="role"><option value="member">Paid member</option>'+(session.administrator?'<optgroup label="Named committee offices">'+seats+'</optgroup><option value="committee">Other committee login</option><option value="treasurer">Other treasurer login</option>':'')+'</select></label>'+
       '<label>Username for the invitation<input name="login" minlength="3" maxlength="80" autocomplete="off" required></label>'+
@@ -138,7 +139,19 @@ export function setupClubAccess({api,esc}) {
       status.textContent='Give this link privately to '+result.login+'. It works once and expires in 24 hours.';
       if(!data.reset)await pending.list();
     }
-    const form=accounts.querySelector('form'),loginField=form.elements.login;
+    const showcaseSection=accounts.querySelector('#showcase-invitations');
+    if(showcaseSection) showcaseSection.querySelector('form').onsubmit=async event=>{
+      event.preventDefault();const form=event.currentTarget,button=form.querySelector('button'),status=showcaseSection.querySelector('[role=status]'),output=showcaseSection.querySelector('[data-link]');
+      button.disabled=true;output.replaceChildren();status.textContent='Creating the invitation…';
+      try{const result=await post('/api/showcase/invite',{keyword:form.elements.keyword.value});
+        const link=location.origin+'/showcase.html#invite='+encodeURIComponent(result.token);
+        const label=document.createElement('label');label.textContent='Private invitation for '+result.login;
+        const input=document.createElement('input');input.readOnly=true;input.value=link;label.append(input);
+        const copy=document.createElement('button');copy.type='button';copy.className='button outline small';copy.textContent='Copy invitation';copy.onclick=async()=>{try{await navigator.clipboard.writeText(link);status.textContent='Copied. Send it privately to the person you invited.';}catch{input.select();status.textContent='Copy the selected link.';}};
+        output.append(label,copy);status.textContent='This one-use link expires in seven days. Copy it before leaving this page.';
+      }catch(error){status.textContent=error.message;}finally{button.disabled=false;}
+    };
+    const form=accounts.querySelector(':scope > form'),loginField=form.elements.login;
     let customLogin='';
     function chooseOffice() {
       const choice=form.elements.role.value, seat=choice.startsWith('office-')?choice.slice(7):'';
@@ -197,6 +210,11 @@ export function setupClubAccess({api,esc}) {
   return {
     setSession(value) {
       session=value;helpInbox.setSession(value);
+      if(value.showcase){
+        let notice=document.getElementById('showcase-notice');
+        if(!notice){notice=document.createElement('div');notice.id='showcase-notice';notice.className='preview-bar';notice.setAttribute('role','status');document.body.prepend(notice);}
+        notice.textContent='VIEW-ONLY SHOWCASE · You are viewing example records. Changes are disabled.';
+      }
       document.body.toggleAttribute('data-club-member',allowed('members'));
       document.body.toggleAttribute('data-club-committee',allowed('committee'));
       document.body.toggleAttribute('data-role-treasurer',allowed('stock'));

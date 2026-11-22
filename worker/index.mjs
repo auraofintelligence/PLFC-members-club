@@ -44,6 +44,7 @@ import {officerTodosEndpoint} from './officer-todos.mjs';
 import {newslettersEndpoint} from './newsletters.mjs';
 import {lifecycleEndpoint,runMemberCycle} from './member-lifecycle.mjs';
 import {retireOfficerDemo} from './demo-officers.mjs';
+import {showcase} from './showcase.mjs';
 export {OfficerDemoRoom} from './demo-officers.mjs';
 
 const MEETING_ID = EVENTS[0].id;
@@ -280,7 +281,8 @@ async function audit(request, env, identity) {
 }
 
 export function handleRequest(request, env = {}) {
-  return retireOfficerDemo(request,env,serveClub);
+  return showcase(request,env,(req,settings)=>retireOfficerDemo(req,settings,serveClub),{json,bodyJson,HttpError})
+    .catch(error=>error instanceof HttpError?json({error:error.message,code:error.code},error.status):json({error:'The demonstration service is temporarily unavailable.',code:'service_unavailable'},500));
 }
 
 async function serveClub(request, env) {

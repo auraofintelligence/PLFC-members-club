@@ -13,6 +13,10 @@
     "database_name": "plfc-clubhouse",
     "database_id": "5fbb019c-8268-4c1f-98f7-06d7858b7599",
     "migrations_dir": "drizzle"
+  },{
+    "binding": "SHOWCASE_DB",
+    "database_name": "plfc-clubhouse-showcase",
+    "database_id": "38f916c7-4222-4d9d-a650-e9d1f5d6100b"
   }],
   "build": { "command": "node scripts/build.mjs" },
   "assets": {

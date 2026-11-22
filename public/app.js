@@ -1,4 +1,4 @@
-import {setupClubAccess} from './club-access.js?v=20261121-welcome-back';
+import {setupClubAccess} from './club-access.js?v=20261123-showcase';
 import {setupFinniusMotion} from './finnius-motion.js';
 import {setupSocialLinks} from './social-channels.js';
 import {setupSocialPlanner} from './social-planner.js?v=20261121-club-funding';
