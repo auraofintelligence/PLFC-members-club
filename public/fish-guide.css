@@ -1,0 +1,217 @@
+.fish-guide{--guide-sand:#f3eddf;--guide-blue:#e6f1f1;--guide-coral:#f6e5da}
+.guide-hero{display:grid;grid-template-columns:1.5fr 1fr;gap:45px;align-items:center;padding:15px 0 45px}
+.guide-hero .page-title{font-size:clamp(2.6rem,4.7vw,4.2rem);line-height:1.08;margin:18px 0 25px;letter-spacing:-.055em}
+.guide-hero .page-intro{margin-bottom:24px;max-width:660px;font-size:1.08rem}
+.guide-hero-tags{display:flex;gap:9px;flex-wrap:wrap}.guide-hero-tags span{font-size:.78rem;background:#e6efe8;border:1px solid #d7e3d9;border-radius:30px;padding:7px 12px}
+.guide-hero-art{position:relative;background:linear-gradient(155deg,#d5e9e1,#eef4e9);border-radius:47% 47% 20% 20%;padding:80px 25px 40px;min-height:315px;overflow:hidden}
+.guide-hero-art svg{width:100%;height:auto;position:relative;transform:rotate(-8deg);filter:drop-shadow(0 14px 14px #496e5c13)}
+.guide-hero-sun{position:absolute;right:50px;top:35px;width:68px;height:68px;background:#f2d58d;border-radius:50%;box-shadow:0 0 0 20px #f2d58d25}
+.guide-hero-caption{display:block;font-size:.76rem;text-align:center;color:#41665f;margin-top:22px}
+.guide-jump-nav{display:flex;gap:0;flex-wrap:wrap;border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:9px 0;margin-bottom:50px}
+.guide-jump-nav button{color:var(--ink);padding:13px 17px;background:transparent;font-size:.87rem;border-radius:6px;line-height:1.3}.guide-jump-nav button:hover{background:#e6efe8}
+.guide-chapter{margin-top:68px;scroll-margin-top:85px}.guide-chapter-title{display:flex;gap:19px;align-items:flex-start;margin-bottom:28px}.guide-chapter-title h2{font-size:clamp(1.9rem,3.1vw,2.8rem);margin:7px 0 12px;letter-spacing:-.045em;line-height:1.13}.guide-chapter-title p{color:var(--muted);max-width:760px;font-size:1rem}
+.guide-chapter-number{display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;width:44px;height:44px;border:1px solid #b9d1c6;border-radius:50%;color:#658b7c;font-size:.78rem;margin-top:3px}
+.guide-trip-form{display:grid;grid-template-columns:1fr 1.1fr 1.3fr auto;gap:16px;padding:25px;background:#e7efe7;border-radius:14px 14px 0 0;align-items:end}.guide-trip-form .button{white-space:nowrap;padding:13px 18px;min-height:49px;font-size:.89rem}
+.guide-trip-result{background:#fff;border:1px solid var(--line);border-top:0;border-radius:0 0 14px 14px;padding:30px}
+.guide-brief-heading h3{font-size:1.7rem;margin:9px 0 12px;letter-spacing:-.035em}.guide-brief-heading>p{color:var(--muted);font-size:.95rem}
+.guide-brief-columns{display:grid;grid-template-columns:1fr 1fr;gap:35px;margin-top:25px}.guide-brief-columns h4{font-size:.92rem;margin-bottom:12px}.guide-brief-columns ul{padding-left:20px;margin:0}.guide-brief-columns li{font-size:.88rem;line-height:1.7;color:#4d6962;padding-left:3px;margin-bottom:11px}
+.guide-check-list{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:25px}.guide-rule-check{display:flex;flex-direction:column;gap:7px;border:1px solid #dce7df;border-radius:8px;padding:17px 18px;text-decoration:none;background:#f7f9f5}.guide-rule-check strong{font-size:.89rem;line-height:1.45}.guide-rule-check>span{font-size:.81rem;line-height:1.6;color:var(--muted)}.guide-rule-check:hover{border-color:#6e9c88}.guide-rule-check.closure,.guide-rule-check.review{background:#fff1e5;border-color:#e1b18c;grid-column:1/-1}.guide-rule-check.closure strong,.guide-rule-check.review strong{color:#8b4d24}.guide-rule-check.planning{background:#edf3f5}
+.guide-validity{font-size:.75rem;line-height:1.65;color:var(--muted);margin:20px 0 0}
+.guide-filters{display:grid;grid-template-columns:1.3fr 1fr auto;align-items:end;gap:22px;margin-bottom:24px}.guide-filters>p{font-size:.81rem;color:var(--muted);padding-bottom:14px;white-space:nowrap}
+.guide-species-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:20px;align-items:start}.guide-species-card{border:1px solid var(--line);border-radius:13px;background:#fff;overflow:hidden;transition:border-color .18s}.guide-species-card:hover{border-color:#aac4b7}.guide-fish-art{padding:15px 12px 5px;background:linear-gradient(130deg,#edf3ec,#f8f9f3);border-bottom:1px solid #e7eee6}.guide-fish-art svg{width:100%;height:108px;display:block}.guide-species-copy{padding:20px}.guide-fish-habitat{color:#799083;font-size:.68rem;text-transform:uppercase;letter-spacing:.06em;font-weight:700;margin:0 0 10px}.guide-species-copy h3{font-size:1.23rem;letter-spacing:-.035em;line-height:1.2;margin:0 0 12px}.guide-species-copy>p:not(.guide-fish-habitat){font-size:.82rem;color:var(--muted);line-height:1.6;min-height:42px}.guide-species-card details{margin-top:20px;border-top:1px solid var(--line);padding-top:14px}.guide-species-card summary{font-size:.78rem;font-weight:700;cursor:pointer;line-height:1.5}.guide-species-detail{padding-top:18px}.guide-species-detail h4{font-size:.8rem;margin:17px 0 7px}.guide-species-detail p{font-size:.8rem;color:var(--muted);line-height:1.7}.guide-tip-label,.guide-rule-label{font-size:.65rem;letter-spacing:.075em;font-weight:750;color:#688779;line-height:1.5;display:inline-block}.guide-rule-label{color:#8f684b}.guide-small-links{display:flex;flex-wrap:wrap;gap:11px;margin-top:15px}.guide-small-links a{font-size:.75rem;text-underline-offset:3px;line-height:1.5}
+.guide-art-note{font-size:.75rem;color:var(--muted);margin:20px 0 0;line-height:1.7}.guide-no-results{grid-column:1/-1;border:1px dashed #b6cabd;border-radius:12px;padding:35px;text-align:center}.guide-no-results h3{font-size:1.3rem;margin-bottom:12px}.guide-no-results p{color:var(--muted);margin-bottom:20px}
+.guide-checked{display:flex;gap:12px;flex-wrap:wrap;align-items:center;padding:16px 20px;background:#eaf1e7;border-radius:8px;margin-bottom:24px;font-size:.8rem}.guide-checked>span:last-child{color:var(--muted)}.guide-checked-dot{width:7px;height:7px;border-radius:50%;background:#63987b;flex-shrink:0}
+.guide-closure-grid{display:grid;grid-template-columns:1fr 1fr;gap:22px;margin-bottom:22px}.guide-closure-card{padding:28px 30px;background:#f8eddf;border:1px solid #ecdbc7;border-radius:12px}.guide-closure-card h3{font-size:1.4rem;margin:13px 0 15px;letter-spacing:-.035em}.guide-closure-date{font-size:1.65rem;font-weight:700;letter-spacing:-.04em;line-height:1.4;color:#8d633e;margin-bottom:17px}.guide-closure-card>p:not(.guide-closure-date){font-size:.9rem;color:#7d7160;line-height:1.7;margin-bottom:20px}.guide-closure-card>a{font-size:.82rem;text-underline-offset:4px}
+.guide-rules-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}.guide-source-card{padding:27px;background:#fff;border:1px solid var(--line);border-radius:12px}.guide-source-index{display:inline-flex;width:31px;height:31px;align-items:center;justify-content:center;border-radius:50%;background:#e6f0e9;color:#60816e;font-size:.75rem}.guide-source-card h3{font-size:1.3rem;margin:18px 0 12px;letter-spacing:-.035em}.guide-source-card p{font-size:.86rem;color:var(--muted);line-height:1.75;margin-bottom:20px}.guide-source-card a{display:block;font-size:.8rem;margin-top:13px;text-underline-offset:4px}
+.guide-conditions-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}.guide-condition-card{border:1px solid var(--line);background:#f5f8f2;border-radius:12px;padding:20px 25px 25px;overflow:hidden}.guide-condition-art{display:block;width:145px;aspect-ratio:1;background-image:url('/assets/fishing-condition-icons.webp');background-size:300% 200%;background-repeat:no-repeat;margin:-5px auto 5px}.guide-condition-card h3{font-size:1.22rem;letter-spacing:-.025em;margin-bottom:11px}.guide-condition-card p{font-size:.86rem;color:var(--muted);line-height:1.75}.guide-bait-panel{display:grid;grid-template-columns:1fr 1fr;gap:40px;background:#e7efea;border-radius:12px;padding:30px;margin-top:24px}.guide-bait-panel h3{font-size:1.45rem;margin:10px 0 15px;letter-spacing:-.035em}.guide-bait-panel p{font-size:.89rem;line-height:1.8;color:var(--muted)}.guide-bait-panel>div:last-child{border-left:1px solid #c8dbcd;padding-left:35px}.guide-bait-panel .guide-rule-label{margin-bottom:13px}.guide-bait-panel a{font-size:.81rem;margin-top:20px;display:inline-block;text-underline-offset:4px}
+.guide-care-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:30px;background:#e5eee5;border-radius:14px 14px 0 0;padding:34px}.guide-care-grid article+article{border-left:1px solid #c4d7c8;padding-left:30px}.guide-care-word{font-size:2.45rem;color:#709b85;letter-spacing:-.055em;font-family:Georgia,serif;font-style:italic;display:inline-block;margin-bottom:20px}.guide-care-grid h3{font-size:1.1rem;margin-bottom:14px}.guide-care-grid p{font-size:.88rem;color:#567467;line-height:1.8}.guide-care-footer{display:flex;justify-content:space-between;align-items:center;gap:30px;border-top:1px solid #cdded0;border-radius:0 0 14px 14px;padding:24px 34px;background:#e5eee5}.guide-care-footer p{font-size:.85rem;color:#567467;max-width:660px;line-height:1.7}.guide-care-footer>a{font-size:.8rem;text-underline-offset:4px;max-width:200px;flex-shrink:0}
+.guide-family-details{border:1px solid var(--line);padding:23px 28px;border-radius:10px;margin-top:22px;background:#fff}.guide-family-details summary{font-size:.94rem;font-weight:650;cursor:pointer}.guide-family-details>div{max-width:850px;padding-top:18px}.guide-family-details p{font-size:.89rem;line-height:1.8;color:var(--muted);margin-bottom:14px}.guide-family-details p:last-child{margin-bottom:0}
+.guide-safety-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}.guide-safety-card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:28px}.guide-safety-mark{font-size:.72rem;letter-spacing:.08em;color:#759787}.guide-safety-card h3{font-size:1.4rem;margin:12px 0 16px;letter-spacing:-.035em}.guide-safety-card p{font-size:.86rem;line-height:1.8;color:var(--muted)}.guide-safety-card details{margin:20px 0}.guide-safety-card summary{font-size:.8rem;font-weight:700;cursor:pointer;line-height:1.6}.guide-safety-card details p{padding-top:14px;font-size:.82rem}.guide-safety-card>a{font-size:.78rem;text-underline-offset:4px}
+.guide-reporting{display:grid;grid-template-columns:1.3fr 1fr;gap:50px;padding:35px;background:#073f42;border-radius:14px;margin-top:25px;color:#f1f4eb}.guide-reporting .eyebrow{color:#acd0bf}.guide-reporting h3{font-size:1.75rem;letter-spacing:-.04em;margin:12px 0 18px;line-height:1.15}.guide-reporting p{font-size:.9rem;line-height:1.8;color:#bed3c9}.guide-reporting details{margin-top:20px}.guide-reporting summary{font-size:.85rem;font-weight:650;cursor:pointer}.guide-reporting details p{padding-top:15px;font-size:.83rem}.guide-report-actions{border-left:1px solid #36716c;padding-left:40px;display:flex;align-items:flex-start;flex-direction:column;justify-content:center}.guide-report-actions .guide-rule-label{color:#e5b18d}.guide-report-phone{display:block;font-size:2.35rem;letter-spacing:-.045em;margin:13px 0 20px;color:#f4e1b6;text-decoration:none;font-weight:700;white-space:nowrap}.guide-report-actions .button{background:#eef1de;color:#144744;font-size:.86rem;margin-bottom:20px}.guide-report-actions p{font-size:.8rem}.guide-report-actions p a{color:#e9eee0;text-underline-offset:3px}.guide-bottom-note{display:flex;gap:20px;margin-top:30px;padding:20px 0;border-top:1px solid var(--line);font-size:.76rem;color:var(--muted);line-height:1.7}.guide-bottom-note>strong{white-space:nowrap;color:#47675c}
+@media(max-width:1150px){.guide-species-grid{grid-template-columns:repeat(2,1fr)}.guide-trip-form{grid-template-columns:1fr 1fr}.guide-trip-form .button{min-height:49px}.guide-fish-art svg{height:125px}.guide-species-copy>p:not(.guide-fish-habitat){min-height:0}.guide-rules-grid,.guide-conditions-grid,.guide-safety-grid{gap:15px}.guide-source-card,.guide-safety-card{padding:23px}.guide-hero{gap:25px}}
+@media(max-width:800px){.guide-hero{grid-template-columns:1fr}.guide-hero-art{display:none}.guide-hero{padding:0 0 30px}.guide-hero .page-title{font-size:3.3rem}.guide-jump-nav{margin-bottom:30px}.guide-jump-nav button{padding:11px 13px;font-size:.82rem}.guide-chapter{margin-top:48px}.guide-rules-grid,.guide-safety-grid{grid-template-columns:1fr}.guide-conditions-grid{grid-template-columns:repeat(2,1fr)}.guide-bait-panel{gap:25px;padding:25px}.guide-bait-panel>div:last-child{padding-left:25px}.guide-care-grid{gap:22px;padding:28px}.guide-care-grid article+article{padding-left:22px}.guide-care-word{font-size:2.1rem}.guide-reporting{gap:30px;padding:28px}.guide-report-actions{padding-left:28px}.guide-report-phone{font-size:1.8rem}.guide-report-actions .button{font-size:.78rem;padding:12px}.guide-chapter-title .eyebrow{font-size:.66rem}.guide-brief-columns{gap:25px}.guide-filters{gap:14px}}
+@media(max-width:560px){.guide-hero .page-title{font-size:2.8rem}.guide-hero .page-intro{font-size:1rem}.guide-hero-tags{gap:7px}.guide-hero-tags span{font-size:.7rem;padding:6px 9px}.guide-jump-nav{display:grid;grid-template-columns:1fr 1fr;padding:8px 0;gap:2px}.guide-jump-nav button{text-align:left;padding:11px 10px}.guide-chapter-title{gap:13px;margin-bottom:22px}.guide-chapter-title h2{font-size:1.95rem}.guide-chapter-title p{font-size:.9rem}.guide-chapter-number{width:34px;height:34px;font-size:.7rem}.guide-trip-form{grid-template-columns:1fr;padding:20px;gap:18px}.guide-trip-result{padding:23px 20px}.guide-brief-heading h3{font-size:1.4rem}.guide-brief-columns{grid-template-columns:1fr;gap:20px}.guide-check-list{grid-template-columns:1fr}.guide-filters{grid-template-columns:1fr;gap:17px}.guide-filters>p{padding:0}.guide-species-grid{grid-template-columns:1fr;gap:18px}.guide-species-card{display:grid;grid-template-columns:100px 1fr}.guide-fish-art{padding:20px 4px;border-bottom:0;display:flex;align-items:flex-start}.guide-fish-art svg{height:90px;width:100%;margin-top:20px}.guide-species-copy{padding:21px 19px 21px 16px}.guide-species-copy h3{font-size:1.25rem}.guide-fish-habitat{font-size:.62rem}.guide-species-copy>p:not(.guide-fish-habitat){font-size:.84rem}.guide-species-card details{margin-top:15px}.guide-species-card summary{font-size:.79rem}.guide-species-detail p{font-size:.83rem}.guide-checked{gap:8px;padding:16px;font-size:.75rem}.guide-checked>span:last-child{flex-basis:100%;padding-left:15px}.guide-closure-grid{grid-template-columns:1fr;gap:16px}.guide-closure-card{padding:24px}.guide-closure-date{font-size:1.5rem}.guide-conditions-grid{gap:12px}.guide-condition-card{padding:10px 15px 20px}.guide-condition-art{width:118px;max-width:100%;margin:0 auto 7px}.guide-condition-card h3{font-size:1.07rem}.guide-condition-card p{font-size:.8rem}.guide-bait-panel{grid-template-columns:1fr;padding:24px}.guide-bait-panel>div:last-child{border-left:0;border-top:1px solid #c8dbcd;padding:22px 0 0}.guide-care-grid{grid-template-columns:1fr;padding:25px;gap:23px}.guide-care-grid article+article{border-left:0;border-top:1px solid #c4d7c8;padding:24px 0 0}.guide-care-word{margin-bottom:12px}.guide-care-footer{align-items:start;flex-direction:column;gap:18px;padding:23px 25px}.guide-care-footer>a{max-width:none}.guide-family-details{padding:22px}.guide-reporting{grid-template-columns:1fr;padding:26px;gap:26px}.guide-report-actions{border-left:0;border-top:1px solid #36716c;padding:25px 0 0}.guide-report-phone{font-size:2.1rem}.guide-report-actions .button{font-size:.86rem}.guide-bottom-note{display:block}.guide-bottom-note strong{display:block;margin-bottom:10px}}
+@media(prefers-reduced-motion:reduce){.guide-species-card{transition:none}}
+.guide-photo-practice { scroll-margin-top: 7rem; }
+.guide-photo-practice label, .guide-photo-practice input { display: block; margin-block: .75rem; }
+.guide-photo-practice .guide-practice-preview { width: auto; max-width: 100%; max-height: 32rem; margin-block: 1rem; }
+.guide-photo-practice .guide-practice-preview:not([hidden]) { display: block; }
+.guide-photo-practice [hidden] { display: none; }
+.guide-photo-practice h3 { margin-block: 1.25rem .5rem; }
+.guide-photo-practice ul { padding-left: 1.4rem; line-height: 1.65; margin-bottom: 1rem; }
+.guide-photo-practice input:focus-visible { outline: 2px solid var(--teal); outline-offset: 3px; }
+
+.field-guide-hero { padding-block: .5rem 1.5rem; }
+.field-guide-hero .page-title { margin: .5rem 0 .8rem; }
+.field-guide-hero p { max-width: 46rem; margin-bottom: 0; color: var(--muted); }
+#guide-fish { margin-top: 1.5rem; }
+.fish-guide .guide-species-grid {
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 19.5rem), 1fr));
+  gap: 1.25rem;
+}
+.field-card { border: 1px solid var(--line); border-radius: 14px; background: #fff; overflow: hidden; }
+.field-photo { margin: 0; background: #e9eee7; }
+.field-photo > img { display: block; width: 100%; height: auto; aspect-ratio: 1.8; object-fit: contain; }
+.field-photo figcaption { padding: .35rem .8rem; color: #40524c; font-size: .68rem; line-height: 1.4; }
+.field-photo a { text-underline-offset: .12em; }
+.field-card-copy { padding: 1.2rem; }
+.field-card-copy h3 { margin: 0 0 .25rem; font-size: 1.4rem; line-height: 1.15; }
+.field-spot { margin: 0; font-size: .87rem; color: var(--muted); }
+.field-baits { display: flex; flex-wrap: wrap; gap: .65rem; margin-block: 1rem; }
+.field-bait { display: grid; grid-template-rows: auto 1fr; gap: .18rem; flex: 1; text-align: center; margin: 0; }
+.field-bait img { width: 100%; height: 4.5rem; object-fit: contain; background: #faf9f5; border-radius: 6px; }
+.field-bait figcaption { font-size: .81rem; font-weight: 650; }
+.field-card details { border-top: 1px solid var(--line); padding-top: .75rem; }
+.field-card summary { padding-block: .3rem; font-size: .88rem; cursor: pointer; font-weight: 650; }
+.field-card details p { margin: .75rem 0; line-height: 1.6; color: var(--muted); font-size: .86rem; }
+.field-card details strong { display: block; color: var(--ink); }
+.field-card details .text-link { font-size: inherit; padding: 0; }
+.field-rule-links { display: flex; flex-wrap: wrap; gap: .8rem; margin-top: .75rem; font-size: .8rem; text-underline-offset: .18em; }
+.field-rig { display: grid; grid-template-columns: minmax(0, .85fr) minmax(0, 1.15fr); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; background: white; }
+.field-rig-image { display: grid; place-items: center; background: #f8f7f2; padding: 1rem; }
+.field-rig-image img { width: 100%; max-height: 18rem; object-fit: contain; }
+.field-rig-instructions { padding: clamp(1.2rem, 3vw, 2.5rem); }
+.field-rig-count { margin: 0 0 .6rem; color: var(--teal); font-weight: 700; }
+.field-rig-instructions h3 { font-size: 1.55rem; margin-bottom: .6rem; }
+.field-rig-detail { min-height: 4.5em; }
+.field-rig-controls { display: flex; flex-wrap: wrap; align-items: center; gap: .75rem; margin: 1rem 0; }
+.field-rig-controls button:disabled { opacity: .45; cursor: default; }
+.field-rig-resources { display: grid; gap: .5rem; font-size: .85rem; }
+.field-date { display: flex; align-items: baseline; flex-wrap: wrap; gap: .6rem; margin: 0 0 1rem; font-size: .88rem; }
+.field-date .text-link { font-size: inherit; }
+.field-photo .field-credit { padding: 0; border: none; }
+.field-photo .field-credit summary { font-size: .72rem; padding-block: .25rem; }
+.field-credit div { padding: .4rem 0; }
+.fish-setup { padding-block: .75rem; border-top: 1px solid var(--line); }
+.fish-setup summary { width: fit-content; padding-block: .3rem; font-weight: 700; cursor: pointer; color: var(--teal); }
+.fish-setup-content { max-width: 42rem; }
+.fish-setup-content h4 { margin: 1rem 0 .6rem; font-size: 1rem; }
+.fish-setup-content figure { margin: 0 0 1rem; }
+.fish-setup-content img { width: 100%; max-height: 13rem; object-fit: contain; background: #f8f7f2; border-radius: 6px; }
+.fish-setup-content figcaption, .fish-setup-content dd, .fish-setup-content p { font-size: .88rem; line-height: 1.55; }
+.fish-setup-content figcaption { margin-top: .4rem; }
+.fish-setup-content dt { font-weight: 650; font-size: .82rem; margin-block: .7rem .2rem; }
+.fish-setup-content dd { margin: 0; }
+.field-sources { font-size: .8rem; line-height: 1.65; }
+.field-closure { padding: .8rem; margin: .8rem 0; border-radius: 7px; background: #fff1e5; color: #593e2c; font-size: .83rem; line-height: 1.6; }
+.field-closure > strong { display: block; }
+@media (max-width: 600px) {
+  .field-rig { grid-template-columns: 1fr; }
+  .field-rig-image img { max-height: 12rem; }
+}
+.field-chapter-picker { display: none; }
+@media (max-width: 640px) {
+  .fish-guide .guide-jump-nav { display: none; }
+  .fish-guide .field-chapter-picker { display: block; margin: 0 0 1rem; font-weight: 650; }
+  .field-chapter-picker select { margin-top: .3rem; }
+}
+.fish-guide.page-content { padding-top: clamp(1.25rem, 3vw, 2.6rem); }
+.fish-guide .guide-chapter { margin-top: 1rem; }
+.fish-guide [hidden] { display: none !important; }
+.guide-directory-grid, .guide-topic-list { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: .85rem; }
+.guide-directory-grid > a, .guide-topic-list > a {
+  border: 1px solid var(--line); border-radius: 10px; overflow: hidden;
+  text-decoration: none; color: var(--ink); background: white;
+}
+.guide-directory-grid > a { display: grid; grid-template-columns: minmax(72px,.72fr) 1.6fr; align-items: stretch; }
+.guide-directory-grid img { width: 100%; height: 100%; min-height: 106px; object-fit: cover; background: #e4ece3; }
+.guide-directory-grid > a > span { padding: 1rem .85rem; align-self: center; }
+.guide-directory-grid strong, .guide-directory-grid small { display: block; }
+.guide-directory-grid strong { font-size: 1.13rem; line-height: 1.2; }
+.guide-directory-grid small { margin-top: .4rem; color: var(--muted); font-size: .83rem; line-height: 1.4; }
+.guide-topic-list { grid-template-columns: repeat(2,minmax(0,1fr)); max-width: 56rem; }
+.guide-topic-list > a { padding: 1rem; font-weight: 650; border-left: 4px solid #87ad9e; }
+.guide-directory-grid a:hover, .guide-topic-list a:hover { border-color: var(--teal); background: #f2f7f2; }
+.guide-breadcrumb, .guide-end-navigation { display: flex; flex-wrap: wrap; align-items: center; gap: .7rem; font-size: .91rem; font-weight: 650; }
+.guide-breadcrumb { margin-bottom: 1.1rem; }
+.guide-end-navigation { border-top: 1px solid var(--line); padding-top: 1rem; margin-top: 1.75rem; }
+.guide-breadcrumb a, .guide-end-navigation a { padding: .45rem 0; text-underline-offset: .2em; }
+.guide-wildlife-shortcut { display: flex; justify-content: space-between; align-items: center; gap: 1rem; padding: .85rem 1rem; margin-bottom: 1.25rem; background: #eef3e9; border: 1px solid #ccdbc9; border-radius: 9px; }
+.guide-wildlife-shortcut strong, .guide-wildlife-shortcut span { display: block; }
+.guide-wildlife-shortcut span { font-size: .85rem; color: var(--muted); }
+.guide-wildlife-shortcut > div:last-child { display: flex; gap: .4rem 1rem; flex-wrap: wrap; }
+.guide-wildlife-shortcut a { font-size: .87rem; text-underline-offset: .17em; font-weight: 650; }
+.guide-rescue-label { display: flex; align-items: center; gap: .7rem; }
+.guide-rescue-label img { width: 46px; height: 46px; object-fit: contain; flex: none; }
+.guide-wildlife-shortcut button { padding: .25rem 0; color: var(--ink); background: transparent; text-decoration: underline; text-underline-offset: .17em; font-size: .87rem; font-weight: 650; }
+.guide-wildlife-shortcut > div:last-child { align-items: center; }
+.guide-wildlife-shortcut a {
+  display: inline-flex; align-items: center; min-height: 44px; padding: .5rem .8rem;
+  color: white; background: var(--teal); border-radius: 6px; text-decoration: none;
+}
+.guide-wildlife-shortcut a:hover { background: var(--deep); }
+.field-more > summary { display: block; padding: 0; list-style: none; border: 0; }
+.field-more > summary::-webkit-details-marker { display: none; }
+.field-more > summary:focus-visible { outline: 3px solid var(--teal); outline-offset: -3px; }
+.field-card-select { margin: 0; font-size: inherit; }
+.field-card-select .field-photo, .field-card-label, .field-card-label strong, .field-card-label span { display: block; }
+.field-card-label { padding: .75rem 1rem; }
+.field-card-label strong { font-size: 1.18rem; }
+.field-card-label .field-spot { margin-top: .25rem; color: var(--muted); font-size: .82rem; font-weight: 450; }
+.field-card-label .field-open-label, .field-card-label .field-close-label { color: var(--teal); font-weight: 650; font-size: .81rem; margin-top: .45rem; text-decoration: underline; text-underline-offset: .17em; }
+.field-card-label .field-card-flag { color: #8a4b24; margin-top: .4rem; font-size: .78rem; }
+.field-more:not([open]) .field-close-label, .field-more[open] .field-open-label { display: none; }
+.field-more[open] { grid-column: 1 / -1; max-width: 58rem; border-color: #98b7ab; }
+.field-more[open] > summary { background: #f0f5ef; }
+.field-more[open] .field-card-select { display: flex; align-items: center; }
+.field-more[open] .field-photo { width: min(42%, 16rem); }
+.field-more[open] .field-card-copy { padding-top: .75rem; }
+.field-more .field-detail-credit { font-size: .73rem; color: var(--muted); }
+.field-more .field-baits { max-width: 18rem; }
+@media (max-width: 640px) {
+  .fish-guide .guide-species-grid { grid-template-columns: repeat(2,minmax(0, 1fr)); gap: .55rem; }
+  .field-card-label { padding: .6rem; }
+  .field-card-label strong { font-size: 1.02rem; }
+  .field-card-label .field-spot { display: none; }
+  .field-more[open] .field-spot { display: block; }
+}
+.guide-index-credit { margin-top: 1rem; color: var(--muted); font-size: .75rem; }
+.guide-index-credit summary { padding: .4rem 0; width: fit-content; cursor: pointer; }
+.guide-index-credit p { max-width: 62rem; margin: .4rem 0 0; }
+.guide-related { padding-block: .75rem; line-height: 1.6; }
+#guide-brag-mat .guide-photo-practice > summary { display: none; }
+#guide-brag-mat .guide-photo-practice > div { padding-top: 0; }
+#guide-rights-topic .water-rights-report { padding: 1.5rem; border-radius: 12px; background: #e6eee7; color: var(--ink); }
+#guide-rights-topic .water-rights-report h4, #guide-rights-topic .water-rights-sources a { color: var(--ink); }
+#guide-rights-topic .water-rights-report details { margin-block: .8rem; }
+#guide-rights-topic .water-rights-report summary { cursor: pointer; font-weight: 650; }
+#guide-rights-topic .water-rights-sources { display: flex; gap: 1rem; flex-wrap: wrap; }
+#guide-crabbing .water-crab-card { max-width: 55rem; display: grid; grid-template-columns: minmax(200px, .75fr) minmax(0, 1.25fr); }
+#guide-crabbing .water-gear-image { height: 100%; }
+@media (max-width: 860px) {
+  .guide-directory-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
+}
+@media (max-width: 600px) {
+  .guide-directory-grid { gap: .6rem; }
+  .guide-directory-grid > a { grid-template-columns: 1fr; grid-template-rows: 62px 1fr; }
+  .guide-directory-grid img { height: 62px; min-height: 0; }
+  .guide-directory-grid > a > span { padding: .65rem; align-self: start; }
+  .guide-directory-grid strong { font-size: 1rem; }
+  .guide-directory-grid small { font-size: .75rem; margin-top: .25rem; }
+  .guide-wildlife-shortcut { display: block; }
+  .guide-wildlife-shortcut > div:last-child { margin-top: .45rem; }
+  .guide-topic-list, #guide-crabbing .water-crab-card { grid-template-columns: 1fr; }
+  #guide-crabbing .water-gear-image { height: 160px; }
+  .guide-topic-list { gap: .5rem; }
+}
+.field-id-card .field-photo img { object-fit: contain; background: #edf3ef; }
+.field-species-tag { display:block; color:#4c655d; font-size:.8rem; font-weight:600; margin-top:.3rem; }
+.field-id-external { padding:1.15rem; }
+.field-id-external h3 { margin:.4rem 0; }
+.field-id-external a { color:var(--teal); text-underline-offset:.18em; }
+#guide-fish-pages { margin-top:1.4rem; display:flex; flex-wrap:wrap; gap:.7rem; }
+#guide-fish-pages[hidden] { display:none; }
+
+.fish-quick-picks{display:flex;flex-wrap:wrap;gap:.45rem;margin:1rem 0}
+.fish-quick-picks button{border:1px solid #adc3b7;border-radius:2rem;background:white;color:#064d4d;min-height:44px;padding:.4rem .85rem;font:inherit;font-size:.86rem;cursor:pointer}
+.fish-quick-picks button[aria-pressed=true]{color:white;background:#095e60;border-color:#095e60}
+.field-family-heading,.field-place-note{grid-column:1/-1}
+.field-family-heading{margin:1rem 0 .1rem;font-size:1.25rem;line-height:1.3}
+.field-family-heading small{display:block;font-size:.85rem;font-weight:450;color:var(--muted);margin-top:.15rem}
+.field-place-note{padding:.9rem 1rem;background:#e5f1e6;border-left:.3rem solid #427953;line-height:1.5}
+.field-tail-mark{font-size:.84rem;font-weight:550;line-height:1.4;margin-top:.35rem}
+.field-tail{margin:.6rem 0;max-width:28rem}.field-tail img{width:100%;max-height:12rem;object-fit:contain;background:#eef3ef}
+.field-tail figcaption{font-size:.85rem;line-height:1.5}.field-tail details{font-size:.78rem}
+
+.bait-shore{margin:1.3rem 0}.bait-shore .guide-species-grid{margin:.9rem 0;align-items:start}
+.bait-id-card>summary{cursor:pointer}.bait-shore .field-place-note{margin:1rem 0}

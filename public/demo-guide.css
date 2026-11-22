@@ -1,0 +1,61 @@
+.demo-page-coach{display:flex;align-items:center;justify-content:space-between;gap:22px;margin:0 0 30px;padding:20px 24px;border:1px solid #b8d1c8;border-left:4px solid #147275;border-radius:10px;background:#f0f7f3;color:#153d3e;font-size:1rem;line-height:1.5}.demo-home-coach{max-width:1208px;margin:24px auto;padding:20px 24px}.demo-coach-copy{max-width:760px}.demo-coach-copy>strong{display:block;color:#07575a;font-size:.875rem}.demo-coach-copy p{margin:4px 0 7px;font-size:1rem;font-weight:600}.demo-coach-copy>span{display:block;font-size:.875rem;color:#48625a}.demo-coach-actions{display:flex;flex-direction:column;align-items:stretch;gap:8px;flex-shrink:0}.demo-coach-actions button,.demo-tour-buttons button{min-height:44px;padding:10px 16px;border:1px solid #0c6466;border-radius:7px;background:#0c6466;color:#fff;font:600 .875rem/1.45 'DM Sans',sans-serif;cursor:pointer}.demo-coach-actions button.demo-coach-secondary{background:transparent;color:#07575a}.demo-guide-helper{position:fixed;right:22px;bottom:22px;z-index:80;min-height:48px;min-width:116px;padding:12px 20px;border:2px solid #fff;border-radius:28px;background:#07575a;color:#fff;box-shadow:0 4px 22px #153d3e35;font:700 1rem/1.4 'DM Sans',sans-serif;cursor:pointer}.demo-guide-helper:focus-visible,.demo-page-coach button:focus-visible,.demo-tour-buttons button:focus-visible{outline:3px solid #de7b49;outline-offset:4px}.demo-tour-progress{font-size:.875rem;color:#48625a;font-weight:700;margin:0 0 16px}.demo-tour ol{padding-left:24px;margin:0 0 18px}.demo-tour li{padding:0 0 12px 3px;font-size:1rem;line-height:1.6}.demo-tour-result{padding:15px;background:#eef5ef;border-radius:7px;font-size:1rem;line-height:1.6}.demo-tour-limit{font-size:.875rem;line-height:1.6;color:#704531!important;padding:0 0 8px}.demo-tour-buttons{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:20px}.demo-tour-buttons button{background:transparent;color:#07575a}.demo-tour-buttons button.demo-tour-try{background:#07575a;color:#fff;margin-right:auto}.demo-tour-buttons button:disabled{opacity:.45;cursor:default}.demo-tour-footnote{font-size:.875rem;line-height:1.5;margin:15px 0 0!important;color:#48625a!important}.demo-page-coach button:hover,.demo-tour-buttons button:hover,.demo-guide-helper:hover{filter:brightness(.94)}
+@media(max-width:800px){.demo-page-coach{align-items:flex-start;flex-direction:column;gap:14px;padding:18px}.demo-home-coach{margin:18px 20px}.demo-coach-actions{flex-direction:row;flex-wrap:wrap}.demo-coach-actions button{flex:1 1 auto}.demo-guide-helper{right:14px;bottom:14px;font-size:.875rem;min-height:46px;padding:10px 16px}.demo-tour-buttons button.demo-tour-try{flex:1 0 100%;margin:0}.demo-tour-buttons button{flex:1}.demo-coach-copy p{font-size:1rem}.demo-page-coach span,.demo-tour-limit,.demo-tour-footnote{font-size:.875rem}}
+.floating-page-tools{
+  position:fixed;
+  right:max(22px,env(safe-area-inset-right));
+  bottom:max(22px,env(safe-area-inset-bottom));
+  z-index:80;
+  display:grid;
+  justify-items:stretch;
+  gap:8px;
+}
+.floating-page-tools .demo-guide-helper{position:static}
+.back-to-top{
+  min-height:44px;
+  padding:8px 15px;
+  border:1px solid #497772;
+  border-radius:24px;
+  color:#0b5050;
+  background:#fff;
+  box-shadow:0 2px 10px #153d3e24;
+  font:700 .9rem/1.4 'DM Sans',sans-serif;
+  cursor:pointer;
+}
+.back-to-top[hidden]{display:none}
+.back-to-top:hover{background:#edf5ef}
+.back-to-top:focus-visible{outline:3px solid #be531b;outline-offset:3px}
+@media(max-width:800px){
+  .floating-page-tools{right:max(14px,env(safe-area-inset-right));bottom:max(14px,env(safe-area-inset-bottom))}
+  .footer{padding-bottom:calc(112px + env(safe-area-inset-bottom))}
+}
+
+@media screen and (max-width:620px){
+  html{scroll-padding-bottom:calc(64px + env(safe-area-inset-bottom,0px))}
+  .floating-page-tools{
+    left:0;right:0;bottom:0;display:flex;justify-content:flex-end;align-items:center;gap:.65rem;
+    background:#f8faf7;border-top:1px solid #c9d8cf;
+    padding:5px max(12px,env(safe-area-inset-right)) max(5px,env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left))
+  }
+  .floating-page-tools button{position:static;box-shadow:none;min-height:44px;padding:5px 14px;line-height:1.3}
+  .floating-page-tools .demo-guide-helper{min-width:0}
+  .floating-page-tools .back-to-top{background:transparent;border-color:transparent}
+  .footer{padding-bottom:calc(76px + env(safe-area-inset-bottom,0px))}
+}
+.floating-page-tools .demo-guide-helper{display:inline-flex;gap:.4rem;align-items:center;justify-content:center;padding:.15rem .9rem .15rem .25rem;line-height:1.15}
+plfc-page-tour {display:inline-flex;max-width:100%}
+.guide-breadcrumb plfc-page-tour {margin-inline-start:auto}
+.finnius-inline-tour {display:inline-flex;align-items:center;gap:.35rem;min-height:44px;max-width:100%;border:0;border-radius:.45rem;background:transparent;color:#07575a;padding:0 .4rem 0 0;font:700 .88rem/1.3 'DM Sans',sans-serif;text-align:start;cursor:pointer}
+.finnius-inline-tour img {display:block;width:42px;height:42px;object-fit:contain}
+.finnius-inline-tour span {text-decoration:underline;text-underline-offset:.2em}
+.finnius-inline-tour:hover {background:#eef5ef}
+.finnius-inline-tour:focus-visible {outline:3px solid #be531b;outline-offset:2px}
+@media(max-width:460px){.guide-breadcrumb plfc-page-tour {margin-inline-start:0}}
+@media print{plfc-page-tour {display:none}}
+.demo-guide-helper img{width:42px;height:42px;object-fit:contain}
+.finnius-tour-intro{display:grid;grid-template-columns:minmax(68px,90px) minmax(0,1fr);align-items:start;gap:1rem}
+.finnius-tour .demo-tour-progress{margin:0 0 .55rem;color:#07575a}
+.finnius-tour ol{padding-left:1.1rem;margin:0}.finnius-tour li{padding-bottom:.6rem}
+.finnius-tour-links{display:grid;gap:.4rem;margin:1rem 0 .3rem}
+.finnius-tour-links :is(a,button){display:block;width:100%;padding:.65rem .9rem;background:#eef5ef;border:1px solid #cadbd0;border-radius:.55rem;color:#064e51;text-align:left;text-decoration:underline;font:inherit;font-weight:700;cursor:pointer;min-height:44px}
+.finnius-tour .demo-tour-buttons{margin:.8rem 0 0}
+@media(max-width:620px){.demo-guide-helper img{width:36px;height:36px}.finnius-tour-intro{grid-template-columns:67px minmax(0,1fr);gap:.65rem}.finnius-tour li{line-height:1.45}}

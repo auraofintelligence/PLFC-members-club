@@ -1,0 +1,35 @@
+.crab-how { margin: 0 0 1.5rem; }
+.crab-lead { max-width: 62ch; font-size: 1.12rem; }
+.crab-bug-link { margin: .65rem 0 0; }
+.crab-bug-link a { display: grid; gap: .2rem; padding: .85rem 1rem; border: 1px solid #bad0c4; border-radius: .75rem; color: #124b4b; text-decoration: none; background:white; }
+.crab-bug-link a strong { text-decoration: underline; text-underline-offset: .2em; }
+.crab-bug-link a span { font-size:.9rem; }
+.guide-first-aid { display:inline-flex; align-items:center; min-height:44px; padding:.55rem .95rem; margin:.15rem 0 .65rem; border:1px solid #b7806a; background:#fff4eb; color:#823a23; font-weight:700; border-radius:.55rem; text-underline-offset:.2em; }
+.crab-methods { display: grid; align-items: start; grid-template-columns: repeat(2,minmax(0,1fr)); gap: .8rem; }
+.crab-method { border: 1px solid #bad0c4; border-radius: .9rem; background: #fff; overflow: hidden; }
+.crab-method > summary {
+  display: grid; grid-template-columns: minmax(4rem,24%) minmax(0,1fr) auto;
+  gap: .75rem; align-items: center; padding: .8rem; cursor: pointer; color: #124544; list-style: none;
+}
+.crab-method > summary::-webkit-details-marker { display: none; }
+.crab-method > summary:focus-visible { outline: 3px solid #07575a; outline-offset: -3px; }
+.crab-method > summary img { width: 100%; height: auto; aspect-ratio: 1.28; object-fit: contain; border-radius: .4rem; background: #eef4ee; }
+.crab-method > summary strong,.crab-method > summary small { display: block; }
+.crab-method > summary strong { font-size: 1.08rem; }
+.crab-method > summary small { font-size: .9rem; line-height: 1.4; margin-top: .18rem; }
+.crab-chevron { font-size: 1.2rem; font-weight: 700; }
+.crab-method[open] > summary { grid-template-columns: minmax(0,1fr) auto; }
+.crab-method[open] > summary img { grid-column: 1 / -1; height: clamp(9rem,22vw,14rem); }
+.crab-method[open] .crab-chevron { transform: rotate(180deg); }
+.crab-method-body { border-top: 1px solid #d6e1d9; padding: .9rem 1rem; }
+.crab-method-body ol { padding-inline-start: 1.5rem; margin: 0; }
+.crab-method-body li { padding: 0 0 .5rem .15rem; }
+.crab-method-body li::marker { font-weight: 700; color: #07575a; }
+.crab-method-body li p { margin: .15rem 0 .4rem; }
+.crab-method-body > p { margin: .4rem 0 0; }
+.crab-outing { margin-top: 1rem; padding: 1rem; border-radius: .85rem; background: #edf3ed; }
+.crab-outing h3 { margin: 0 0 .4rem; }
+.crab-outing p { max-width: 75ch; margin: .35rem 0 .6rem; }
+.crab-outing div { display: flex; flex-wrap: wrap; gap: .55rem 1.1rem; }
+.crab-outing a,.crab-method-body a { font-weight: 650; text-underline-offset: .16em; }
+@media (max-width: 52rem) { .crab-methods { grid-template-columns: minmax(0,1fr); } }

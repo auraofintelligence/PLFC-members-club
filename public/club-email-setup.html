@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en-AU">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Connect the club email | Point Lookout Fishing Club</title>
+  <link rel="stylesheet" href="/styles.css"><link rel="stylesheet" href="/clubhouse-nav.css">
+</head>
+<body><main class="policy-page">
+  <a href="/#committee/notices">Back to committee notices</a>
+  <header><p>PLFC clubhouse demo · Webmaster guide</p><h1>Connect the club email</h1></header>
+  <p>The club’s sending address is <strong>pointlookoutfc@gmail.com</strong>. Members and officers choose their own delivery address in their clubhouse profile. Only the person responsible for the club mailbox needs to complete this setup.</p>
+  <h2>Connect Gmail</h2>
+  <ol>
+    <li>Open the club’s Google Cloud project, enable the Gmail API and set up the Google Auth Platform audience and consent screen. For a trial, add the club Gmail address as a test user. For regular delivery, complete the applicable production setup. Google testing grants for sending mail expire after seven days. <a href="https://console.cloud.google.com/apis/library/gmail.googleapis.com">Open Gmail API setup</a>. <a href="https://developers.google.com/identity/protocols/oauth2#expiration">Google’s token expiry guide</a>.</li>
+    <li>Create a web application OAuth client. Add <code>https://developers.google.com/oauthplayground</code> as an authorised redirect URI. Keep the client ID and client secret with the Webmaster. <a href="https://console.cloud.google.com/auth/clients">Open Google OAuth clients</a>.</li>
+    <li>In Google’s OAuth Playground settings, select <strong>Use your own OAuth credentials</strong>, enter that client ID and secret, and choose offline access. In Step 1 enter <code>openid https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/gmail.send</code>. Select <strong>Authorize APIs</strong>, choose the club Gmail account and approve. Step 2 gives you a refresh token when you exchange the authorisation code. <a href="https://developers.google.com/oauthplayground/">Open Google OAuth Playground</a>.</li>
+    <li>In Cloudflare, open <strong>Workers &amp; Pages</strong>, then <strong>plfc-clubhouse</strong>, then <strong>Settings</strong> and <strong>Variables and Secrets</strong>. Add the three values as secrets named <code>NOTICE_GMAIL_CLIENT_ID</code>, <code>NOTICE_GMAIL_CLIENT_SECRET</code> and <code>NOTICE_GMAIL_REFRESH_TOKEN</code>. Deploy the settings. <a href="https://developers.cloudflare.com/workers/configuration/secrets/">Cloudflare’s secret settings guide</a>.</li>
+    <li>Return to your profile. Choose an email option, save and enter the six digits sent to your own address. This checks the club mailbox and your delivery address together. <a href="/#members/profile">Open my profile</a>.</li>
+  </ol>
+  <details><summary>When the club starts using its own email domain</summary>
+    <p>The Webmaster can verify the club’s new sending domain with Resend, set <code>NOTICE_EMAIL_FROM</code> and <code>RESEND_API_KEY</code> in Cloudflare and retire the Gmail credentials when switching. Members keep their own email choices. <a href="https://resend.com/docs/dashboard/domains/introduction">Verify a sending domain</a>.</p>
+  </details>
+</main></body></html>

@@ -1,0 +1,7 @@
+.finnius-tour-motion{display:grid;justify-items:center;align-content:center;max-width:7rem;min-width:0}
+.finnius-tour-stage{width:100%;max-width:6.5rem;aspect-ratio:220/210;display:grid;place-items:end center}
+.finnius-tour-stage img,.finnius-tour-stage canvas{width:100%;height:auto;grid-area:1/1;display:block;object-fit:contain}
+.finnius-tour-stage [hidden],.finnius-tour-motion [hidden]{display:none}
+.finnius-tour-toggle{appearance:none;min-height:44px;min-width:44px;padding:.15rem .3rem;border:0;background:none;color:inherit;font:inherit;font-size:.77rem;font-weight:650;text-decoration:underline;text-underline-offset:.2em;cursor:pointer}
+.finnius-tour-toggle:focus-visible{outline:2px solid currentColor;outline-offset:2px}
+.finnius-story .finnius-motion-status:empty{min-height:0;margin:0}

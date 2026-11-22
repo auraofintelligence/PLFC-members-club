@@ -1,0 +1,27 @@
+[data-member-pane="journal"] .panel {min-width:0}
+#catch-form, .journal-edit {max-width:44rem}
+#catch-form .field-pair {grid-template-columns:repeat(2,minmax(0,1fr))}
+#catch-form :is(input,textarea), .journal-media input {box-sizing:border-box;min-width:0;max-width:100%}
+.journal-media {min-width:0;margin:.6rem 0;padding:.8rem 1rem;border:1px solid var(--line);border-radius:.65rem}
+.journal-media legend {font-weight:700;padding:0 .3rem}
+.journal-media small {display:block;color:#36575b;margin:.35rem 0}
+.journal-media input[type=file] {display:block;width:100%;padding:.55rem;font:inherit}
+.journal-media [role=status]:empty {display:none}
+.journal-media p:first-of-type {margin-top:.25rem}
+.journal-actions {display:flex;gap:.35rem .9rem;flex-wrap:wrap;align-items:center}
+.journal-actions .text-link,.journal-media>.text-link {min-height:44px}
+.journal-catch-photo {display:block;max-width:100%;max-height:26rem;width:auto;height:auto;object-fit:contain;border-radius:.6rem;margin:.6rem 0}
+.journal-story {white-space:pre-wrap;overflow-wrap:anywhere}
+.journal-edit {margin-top:.7rem}
+#journal-earlier {margin:1rem 0}
+@media(max-width:620px){#catch-form .field-pair{grid-template-columns:minmax(0,1fr)}.journal-media {padding:.65rem}.journal-media input[type=file]{font-size:1rem}}
+.coast-view .coast-palette { display:flex; flex-wrap:wrap; gap:.35rem; padding:.5rem 0; margin:.35rem 0 0; border:0; }
+.coast-palette legend { margin:0; padding:0; font-weight:700; }
+.coast-palette button { display:inline-flex; align-items:center; padding:.22rem .5rem; min-height:44px; font:600 .88rem/1.1 inherit; font-family:inherit; color:#184547; background:#fff; border:1px solid #98b0a7; border-radius:.55rem; }
+.coast-palette button[aria-pressed="true"] { border:2px solid #006568; padding:calc(.22rem - 1px) calc(.5rem - 1px); background:#dceee6; color:#06484b; }
+.coast-palette canvas { width:29px; height:26px; }
+.coast-view .coast-palette + .coast-legend { display:none; }
+.coast-view .coast-legend canvas { width:28px; height:25px; }
+.net-pin-list [data-edit-pin-style] { display:flex; flex-wrap:wrap; align-items:end; gap:.5rem; margin:.55rem 0; }
+.net-pin-list [data-edit-pin-style] label { display:grid; gap:.2rem; }
+.net-pin-list [data-edit-pin-style] select { width:auto; max-width:100%; min-height:44px; }

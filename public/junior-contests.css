@@ -1,0 +1,25 @@
+#family-junior-desk,#junior-results,#junior-review {min-width:0;max-width:58rem}
+.junior-panel,.junior-results {box-sizing:border-box;background:white;border:1px solid var(--line);border-radius:.8rem;margin:1rem 0;padding:.85rem 1.1rem;overflow-wrap:anywhere}
+.junior-panel>summary {font-weight:750;color:var(--teal);font-size:1.12rem;cursor:pointer;padding:.35rem 0}
+.junior-panel-body {padding-top:.65rem}
+.junior-panel-body>p,.junior-results>p {max-width:58ch;margin:.45rem 0 1rem}
+.junior-panel h3,.junior-results h2 {margin:.65rem 0}
+.junior-form {display:grid;gap:.75rem;max-width:40rem;margin:.8rem 0}
+.junior-form small {font-size:.9rem;color:#3e5958}
+.junior-form label:not(.junior-choice),.junior-year label {display:grid;min-width:0;gap:.35rem;font-weight:650}
+.junior-form :is(input,select),.junior-year input {box-sizing:border-box;min-width:0;max-width:100%}
+.junior-choice {display:flex;flex-direction:row;align-items:flex-start;gap:.65rem;min-height:44px;font-weight:500}
+.junior-choice input {flex:none;width:1.25rem;height:1.25rem;margin:.15rem 0 0}
+.junior-form>button {justify-self:start}
+.junior-actions,.junior-year {display:flex;gap:.4rem .9rem;align-items:end;flex-wrap:wrap}
+.junior-actions .text-link,.junior-item>.text-link {min-height:44px}
+.junior-year {margin:.75rem 0}
+.junior-year input {max-width:8rem}
+.junior-pair {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1rem}
+.junior-item,.junior-result {margin:.75rem 0;padding:.7rem .8rem;border:1px solid var(--line);border-radius:.6rem}
+.junior-item>summary,.junior-withdraw>summary {cursor:pointer;font-weight:650;color:var(--teal)}
+.junior-item>p,.junior-result p,.junior-withdraw p {margin:.5rem 0}
+.junior-result img,.junior-preview {display:block;width:auto;height:auto;max-width:min(100%,34rem);max-height:22rem;object-fit:contain;border-radius:.6rem;margin:.5rem 0}
+.junior-result h4 {margin:0}
+.junior-withdraw {margin-top:.6rem}
+@media(max-width:620px){.junior-panel,.junior-results{padding:.8rem}.junior-pair{grid-template-columns:minmax(0,1fr)}.junior-form input[type=file]{font-size:1rem}}

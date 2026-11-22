@@ -1,0 +1,74 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import {readdirSync,readFileSync} from 'node:fs';
+import {createHash,randomBytes,randomUUID} from 'node:crypto';
+import {database} from './d1-fixture.mjs';
+import {handleRequest} from '../worker/index.mjs';
+
+test('a guardian controls multiple junior entries, private evidence and separate members-only result and photo permissions',async t=>{
+  const files=readdirSync(new URL('../drizzle/',import.meta.url)).filter(s=>s.endsWith('.sql')).sort();
+  const db=database(t,files),cookies={},env={DB:db,PRIVATE_AUTH_KEY:'family-test-key'},writes=[];
+  for(const [user,role] of [['guardian','member'],['other','member'],['junior','member'],['officer','committee']]){
+    const token=randomBytes(32).toString('hex');cookies[user]='__Host-plfc_session='+token;
+    writes.push(db.prepare("INSERT INTO club_accounts(id,login,role,salt,verifier,created_at,paid_through) VALUES(?,?,?,'salt','verifier',1,'2099-12-01')").bind(user,user,role),
+      db.prepare('INSERT INTO club_sessions VALUES(?,?,4102444800)').bind(createHash('sha256').update(token).digest('hex'),user));
+    if(role==='member')writes.push(db.prepare("INSERT INTO member_age_checks VALUES(?,?,0,1,'today','officer')").bind(user,user==='junior'?'under16':'16+'));
+    if(['guardian','other'].includes(user))writes.push(db.prepare("INSERT INTO member_terms_acceptance SELECT ?,terms_version,1,1,'today' FROM member_safeguard_policy").bind(user));
+  }
+  const comp=randomUUID(),draft=randomUUID();
+  for(const [id,published] of [[comp,1],[draft,0]])writes.push(db.prepare("INSERT INTO honours_competitions(id,season,title,published,target_species) VALUES(?,2024,'Club junior day',?,'[\"sand-whiting\"]')").bind(id,published));
+  await db.batch(writes);
+  const member='/api/member/juniors',desk='/api/committee/juniors',period='?year=2024';
+  const req=(who,path,data)=>handleRequest(new Request('https://club.test'+path,{method:data?'POST':'GET',headers:{Origin:'https://club.test',Cookie:cookies[who]||'','Content-Type':'application/json'},body:data?JSON.stringify(data):undefined}),env);
+  const call=async(who,path,data,status=200)=>{const res=await req(who,path,data),body=await res.json();assert.equal(res.status,status,JSON.stringify(body));return body;};
+  const child=(nickname)=>({action:'child',id:randomUUID(),nickname,adultGuardian:true});
+  const a=child('Little Whiting'),b=child('Pip'),other=child('Test cod');
+  await call('guest',member,null,401);await call('junior',member,a,403);await call('other',desk,null,403);
+  await call('guardian',member,{...a,adultGuardian:false},400);await call('guardian',member,a);await call('guardian',member,a);
+  await call('guardian',member,b);await call('other',member,other);
+  assert.deepEqual((await call('guardian',member+period)).children.map(c=>c.nickname),['Little Whiting','Pip']);
+  const image=readFileSync(new URL('../public/assets/fish/sand-flathead.jpg',import.meta.url)).toString('base64');
+  const entry=(childId,resultConsent,photoConsent)=>({action:'enter',id:randomUUID(),childId,competitionId:comp,species:'sand-whiting',cm:'28.5',date:'2024-06-10',adultGuardian:true,under16AtEvent:true,resultConsent,photoConsent,photo:'data:image/jpeg;base64,'+image});
+  const main=entry(a.id,true,true),silent=entry(b.id,false,false),textOnly={...entry(b.id,true,false),nicknameConsent:true};
+  await call('other',member,main,409);await call('guardian',member,{...main,under16AtEvent:false},400);
+  await call('guardian',member,{...main,species:'snapper'},409);await call('guardian',member,{...main,date:'2023-06-10'},409);
+  await call('guardian',member,{...main,competitionId:draft},409);await call('guardian',member,{...main,resultConsent:false},400);
+  await call('guardian',member,main);await call('guardian',member,main);await call('guardian',member,silent);await call('guardian',member,textOnly);
+  assert.equal((await call('other',member+period)).results.length,0);
+  const volunteer='/api/committee/juniors/'+main.id+'/photo',published='/api/member/juniors/'+main.id+'/photo',own='/api/member/juniors/'+main.id+'/evidence';
+  assert.equal((await req('guardian',own)).status,200);assert.equal((await req('other',own)).status,404);assert.equal((await req('other',published)).status,404);
+  const privatePhoto=await req('officer',volunteer);assert.equal(privatePhoto.status,200);assert.match(privatePhoto.headers.get('Cache-Control'),/private, no-store/);
+  const confirm=(id,photoChecked)=>({action:'review',id,version:1,decision:'verified',guardianChecked:true,catchChecked:true,photoChecked});
+  await call('guardian',desk,confirm(main.id,true),403);
+  await call('officer',desk,{...confirm(main.id,true),guardianChecked:false},400);
+  await call('officer',desk,confirm(main.id,false),409);
+  await call('officer',desk,confirm(main.id,true));await call('officer',desk,confirm(silent.id,false));await call('officer',desk,confirm(textOnly.id,false));
+  const result=await call('junior',member+period);
+  assert.equal(result.results.find(r=>r.id===main.id).nickname,'Junior angler');assert.equal(result.results.find(r=>r.id===textOnly.id).nickname,'Pip');
+  await call('guardian',member,{action:'unshareNickname',id:textOnly.id,version:2});
+  assert.equal((await call('other',member+period)).results.find(r=>r.id===textOnly.id).nickname,'Junior angler');
+  assert.equal(result.results.length,2);assert.equal(result.results.filter(r=>r.photoUrl).length,1);
+  assert.doesNotMatch(JSON.stringify(result.results),/guardian|childId|reviewed|under16/);
+  assert.equal((await req('other',published)).status,200);
+  let error;try{await db.prepare("UPDATE honours_competitions SET target_species='[\"snapper\"]' WHERE id=?").bind(comp).run();}catch(e){error=e;}
+  assert.match(error.message,/junior_entries_require_targets/);
+  await call('other',member,{action:'unsharePhoto',id:main.id,version:2},409);
+  await call('guardian',member,{action:'unsharePhoto',id:main.id,version:2});
+  assert.equal((await req('other',published)).status,404);assert.equal((await call('other',member+period)).results.length,2);
+  await call('guardian',member,{action:'withdraw',id:main.id,version:3});
+  assert.equal((await call('other',member+period)).results.length,1);assert.equal((await req('officer',volunteer)).status,404);
+  await db.prepare("UPDATE member_terms_acceptance SET accepted=0,version=2 WHERE account_id='guardian'").run();
+  assert.equal((await call('other',member+period)).results.length,0);
+  await db.prepare("UPDATE member_terms_acceptance SET accepted=1,version=3 WHERE account_id='guardian'").run();
+  assert.equal((await call('other',member+period)).results.length,0);
+  const repeat=entry(a.id,true,true);await call('guardian',member,repeat);await call('officer',desk,confirm(repeat.id,true));
+  await db.prepare("UPDATE club_accounts SET paid_through='2023-01-01' WHERE id='guardian'").run();
+  assert.equal((await call('guardian',member+period)).canEnter,false);assert.equal((await call('guardian',member+period)).results.length,0);
+  const manifest=await call('guardian','/api/member/export');
+  const group=manifest.groups.find(g=>g.id==='juniors');assert.equal(group.total,4);
+  const exported=await call('guardian','/api/member/export/juniors?after=0&through='+group.through);
+  assert.equal(exported.rows.length,3);assert.equal(Buffer.from(exported.rows.find(r=>r.id===main.id).photo,'base64').compare(Buffer.from(await (await req('guardian',own)).arrayBuffer())),0);
+  assert.equal((await req('junior',published)).status,404);
+  await db.prepare("UPDATE club_accounts SET paid_through='2099-12-01' WHERE id='guardian'").run();
+  assert.equal((await call('other',member+period)).results.length,0);
+});

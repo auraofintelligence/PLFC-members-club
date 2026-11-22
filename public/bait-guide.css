@@ -1,0 +1,44 @@
+.bait-intro { max-width:60ch; margin:.5rem 0 1.3rem; font-size:1.1rem; }
+.bait-directory { margin-block:1.1rem 1.5rem; }
+.bait-directory > a { grid-template-columns:1fr; grid-template-rows:8rem 1fr; }
+.bait-directory img { height:8rem; min-height:0; }
+.bait-directory a:is([href$="/beachworms"],[href$="/yabbies"],[href$="/bait-nets"]) img { object-fit:contain; background:#edf3ec; }
+.bait-directory a > span { align-self:start; }
+.bay-bait-layout { display:grid; grid-template-columns:minmax(0,.95fr) minmax(0,1.05fr); align-items:start; gap:clamp(1rem,3vw,2rem); }
+.bay-bait-photo,.pipi-film { margin:0 0 1.2rem; max-width:38rem; overflow:hidden; background:#e8efe9; border-radius:.85rem; }
+.bay-bait-photo img { display:block; width:100%; max-height:30rem; object-fit:contain; }
+.bay-bait-photo figcaption,.pipi-film figcaption { padding:.8rem 1rem; font-size:.93rem; }
+.bay-bait-photo summary,.bait-check summary { cursor:pointer; font-weight:700; }
+.bay-bait-photo details { margin-top:.45rem; }
+.bay-bait-steps { margin:0; padding-left:2rem; }
+.bay-bait-steps li { padding:0 0 .8rem .35rem; }
+.bay-bait-steps li::marker { font-size:1.15rem; font-weight:700; color:var(--teal); }
+.bay-bait-steps li p { margin:.2rem 0; }
+.bait-check { padding:1rem 1.2rem; margin:1.15rem 0; background:#eff4ef; border:1px solid #c8dbd1; border-radius:.85rem; }
+.bait-check h3,.bait-check p { margin:.25rem 0 .7rem; }
+.bait-check div,.bait-actions { display:flex; align-items:baseline; flex-wrap:wrap; gap:.6rem 1rem; }
+.bait-actions { margin:.6rem 0 1.2rem; }
+.bait-check a,.bait-actions a { text-underline-offset:.16em; font-weight:650; }
+.pipi-film { display:grid; grid-template-columns:minmax(0,10rem) minmax(0,1fr); align-items:center; }
+.pipi-film video { display:block; width:100%; background:#273b3b; aspect-ratio:9/16; }
+.pipi-film strong { display:block; }
+@media(max-width:44rem) {
+  .bay-bait-layout { grid-template-columns:1fr; gap:.4rem; }
+  .bait-directory > a { grid-template-rows:6.25rem 1fr; }
+  .bait-directory img { height:6.25rem; min-height:0; }
+  .pipi-film { grid-template-columns:minmax(5rem,42%) minmax(0,1fr); }
+}
+
+.pipi-choices {display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,15rem),1fr));gap:.7rem;margin:1rem 0 1.4rem}
+.pipi-choices a {display:grid;gap:.2rem;padding:.9rem 1rem;border:1px solid #b3cbc2;border-radius:.65rem;background:#eef5ee;color:#174f50;text-decoration:none}
+.pipi-choices a:focus-visible,.pipi-choices a:hover{background:#e1eee4}
+.pipi-choices span,.pipi-prep-picture figcaption{font-size:.94rem}
+.pipi-prep-picture{max-width:38rem;margin:.8rem 0;background:#edf3ec;border-radius:.75rem;overflow:hidden}
+.pipi-prep-picture img{display:block;width:100%;height:clamp(12rem,30vw,21rem);object-fit:contain}
+.pipi-prep-picture figcaption{padding:.65rem 1rem}
+.pipi-kit{max-width:65ch}
+.pipi-steps{padding-left:2.1rem;max-width:67ch}
+.pipi-steps li{padding:.3rem 0 .55rem .3rem}
+.pipi-steps li::marker{font-weight:700;color:#07575a}
+.pipi-steps h3{font-size:1.18rem;margin:0}
+.pipi-steps p{margin:.25rem 0}

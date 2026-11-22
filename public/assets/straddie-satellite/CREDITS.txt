@@ -1,0 +1,10 @@
+Minjerribah satellite map
+
+Includes material © Planet Labs Netherlands B.V., reproduced under licence from Planet and Geoplex, all rights reserved 2022.
+
+Source imagery: Queensland QSat statewide PlanetScope mosaic, July to September 2017. Cropped to fixed regional areas, projected to geographic coordinates and compressed to WebP for this club map. The satellite tiles are available under the same Creative Commons Attribution-ShareAlike licence as the source.
+
+Source and licence: https://spatial-img.information.qld.gov.au/arcgis/rest/services/Basemaps/LatestSatelliteWOS_AllUsers/ImageServer/info/iteminfo
+Imagery information: https://www.business.qld.gov.au/running-business/support-services/mapping-data-imagery/imagery/satellite
+
+In consideration of the State of Queensland permitting use of this data you acknowledge and agree that the State gives no warranty in relation to the data (including accuracy, reliability, completeness, currency or suitability) and accepts no liability (including without limitation, liability in negligence) for any loss, damage or costs (including consequential damage) relating to any use of the data.
