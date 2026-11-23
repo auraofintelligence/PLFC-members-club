@@ -269,7 +269,10 @@ export function setupAnnualCampaigns({mount,api,esc,isActive,onUse,reviewOnly=fa
       if(!isActive())return;
       version=row.version;settings=row.settings||defaultCampaignSettings();settings.monthOverrides??={};settings.weekOverrides??={};settings.dayOverrides??={};
       settings.postingTime??='auto';settings.timingSignals??=defaultCampaignSettings().timingSignals;
-      settings.milestones??=[];saved=JSON.stringify(settings);loaded=true;monthDraft=null;batchMonth='';
+      settings.milestones??=[];
+      for(const bucket of ['monthOverrides','weekOverrides','dayOverrides'])
+        for(const config of Object.values(settings[bucket]))config.postingTime??='auto';
+      saved=JSON.stringify(settings);loaded=true;monthDraft=null;batchMonth='';
       loadEdits();importMetrics();
       notice=reviewOnly?'Temporary preview settings loaded. No database or live club data is connected.':row.updatedAt?'Loaded saved settings from '+row.updatedAt.slice(0,10)+'.':'Default settings loaded; not yet shared.';
     }catch(e){notice='Could not load settings: '+e.message;}finally{busy=false;draw();}
@@ -281,7 +284,10 @@ export function setupAnnualCampaigns({mount,api,esc,isActive,onUse,reviewOnly=fa
       if(!isActive())return;
       version=row.version;settings=row.settings;settings.monthOverrides??={};settings.weekOverrides??={};
       settings.dayOverrides??={};settings.timingSignals??=defaultCampaignSettings().timingSignals;
-      settings.milestones??=[];saved=JSON.stringify(settings);
+      settings.milestones??=[];
+      for(const bucket of ['monthOverrides','weekOverrides','dayOverrides'])
+        for(const config of Object.values(settings[bucket]))config.postingTime??='auto';
+      saved=JSON.stringify(settings);
       notice=reviewOnly?'Trial settings updated in this browser tab only; refreshing will reset them. No posts were published.':'Shared settings saved. No posts were published.';
     }catch(e){notice=e.status===409?'Someone else edited these settings. Reload the saved version before retrying.':e.message;}finally{busy=false;draw();}
   }
