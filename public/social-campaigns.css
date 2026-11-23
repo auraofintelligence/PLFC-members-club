@@ -530,3 +530,28 @@
 .annual-month-bulk-body>.annual-actions{margin:.1rem 0 0}
 .annual-month-bulk-body>.annual-small{margin:0}
 @media(max-width:640px){.annual-batch>.annual-month-bulk-options>summary{padding:.85rem}.annual-month-bulk-body{padding:.75rem;gap:.7rem}}
+
+
+/* Per-day committee responsibility: visible in calendar, day preview and week. */
+.annual-day-signature{display:flex;flex-wrap:wrap;align-items:center;gap:.25rem .9rem;
+  background:#e9f5ef;border:1px solid #b5d9c6;border-radius:10px;
+  padding:.7rem .9rem;margin:.55rem .9rem;color:#195c4b}
+.annual-day-signature strong{font-weight:850;font-size:.87rem}
+.annual-day-signature span{font-size:.8rem;color:#426f61}
+.annual-day-signature small{flex-basis:100%;font-size:.73rem;color:#648072}
+.annual-day-unsigned{margin:.55rem .85rem!important;background:#fffaf0;border:1px dashed #e0d2b1;
+  border-radius:8px;padding:.55rem .8rem;font-size:.77rem;color:#856d3c}
+.annual-calendar-signed{display:block;margin:auto 0 0;padding-top:.25rem;line-height:1.25;text-align:left}
+.annual-owner-inline{display:block;max-width:100%;font-size:.63rem;font-weight:800;color:#075e50;
+  line-height:1.25;overflow-wrap:anywhere}
+.annual-calendar-signed .annual-owner-inline{font-size:.62rem}
+.annual-week-owner{margin:.45rem 0 0;padding:.4rem .55rem;background:#ecf8f1;
+  border-radius:8px;display:inline-flex;max-width:100%}
+.annual-week-owner .annual-owner-inline{font-size:.78rem}
+.annual-day-dialog>.annual-day-signature{margin:1rem 1.4rem}
+@media(max-width:640px){
+ .annual-calendar-signed .annual-owner-inline{font-size:.49rem}
+ .annual-day-dialog>.annual-day-signature{margin:.7rem 1rem}
+ .annual-day-signature{padding:.65rem;margin:.55rem 0}
+ .annual-week-owner .annual-owner-inline{font-size:.7rem}
+}
