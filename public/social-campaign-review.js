@@ -2,7 +2,7 @@
 const mount=document.querySelector('#social-planner-desk');
 async function startReview(){
   try{
-    const {setupAnnualCampaigns}=await import('./social-campaigns.js?v=20261124-itemised');
+    const {setupAnnualCampaigns}=await import('./social-campaigns.js?v=20261124-office-signatures');
     if(!mount)throw new Error('The workbench container is missing.');
     const dialog=document.querySelector('#trial-draft');
     const draftBody=document.querySelector('#trial-draft-body');
