@@ -7,7 +7,7 @@ const invalid=()=>{throw Error('invalid monthly campaign');};
 const monthly=(base,month)=>{const snapshot=copyMonthSettings(base);base.monthOverrides[month]=snapshot;return snapshot;};
 test('applied monthly batch changes only that month, keeping other holiday and weather patterns intact',()=>{
   const base=defaultCampaignSettings(),before=generateCampaignYear('2027-01',base),april=monthly(base,'2027-04');
-  april.videoShare=100;april.layers.weather.weekly=0;april.limits.weekday=0;
+  april.videoShare=100;april.layers.weather.weekly=0;april.limits.weekdayMin=1;april.limits.weekday=1;
   validateCampaignSettings(base,invalid);
   const changed=generateCampaignYear('2027-01',base);
   const apr=changed.posts.filter(p=>p.date.startsWith('2027-04'));
