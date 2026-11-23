@@ -183,7 +183,7 @@ export function setupAnnualCampaigns({mount,api,esc,isActive,onUse,reviewOnly=fa
     busy=true;
     try{const row=await api(endpoint,{cache:'no-store'});
       if(!isActive())return;
-      version=row.version;settings=row.settings||defaultCampaignSettings();saved=JSON.stringify(settings);loaded=true;monthDraft=null;batchMonth='';
+      version=row.version;settings=row.settings||defaultCampaignSettings();settings.monthOverrides??={};saved=JSON.stringify(settings);loaded=true;monthDraft=null;batchMonth='';
       notice=reviewOnly?'Temporary preview settings loaded. No database or live club data is connected.':row.updatedAt?'Loaded saved settings from '+row.updatedAt.slice(0,10)+'.':'Default settings loaded; not yet shared.';
     }catch(e){notice='Could not load settings: '+e.message;}finally{busy=false;draw();}
   }
@@ -250,6 +250,7 @@ export function setupAnnualCampaigns({mount,api,esc,isActive,onUse,reviewOnly=fa
       if(batchDirty&&!window.confirm('Discard unapplied changes to this month?')){draw();return;}
       selectedMonth=e.value;monthDraft=null;batchMonth='';
     }
+    if(!batchDirty && !settings.monthOverrides[selectedMonth]){monthDraft=null;batchMonth='';}
     notice=changed()?(reviewOnly?'Trial changes are unsaved. Keep them in this tab to try another layout.':'Unsaved changes. Select Save committee settings to share them.'):'Settings match the saved version.';
     draw();
   });
