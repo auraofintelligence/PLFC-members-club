@@ -9,7 +9,7 @@ test('Facebook Feed uses distinct organic and paid ad presets; 4:5 is not paid-o
   const paid=CREATIVE_PRESETS.find(p=>p.id==='facebook-feed-ad');
   assert.deepEqual([organic.width,organic.height,organic.ratio,organic.distribution],[1080,1350,'4:5','organic']);
   assert.deepEqual([paid.width,paid.height,paid.ratio,paid.distribution],[1440,1800,'4:5','paid']);
-  assert.ok(organic.note.includes('not a Facebook Feed requirement'));
+  assert.ok(organic.note.includes('not a mandatory'));
 });
 
 test('video-first ideas yield multiple platform exports but do not create extra posts',()=>{
