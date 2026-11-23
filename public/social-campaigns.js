@@ -23,7 +23,7 @@ export function setupAnnualCampaigns({mount,api,esc,isActive,onUse,reviewOnly=fa
   let lastPreview=null,monthDraft=null,batchMonth='',batchDirty=false;
   let planningScope='month',focusDay=brisbaneToday();
   let modalDay=null,modalView='day',modalPostId=null,topicFilter='all',visiblePosts=[],postEdits={};
-  let metrics=[],pendingReport=null,metricsPlatform='facebook',metricsNotice='';
+  let metrics=[],pendingReport=null,metricsPlatform='facebook',metricsNotice='',editingMilestone='';
   const metricsKey=()=> 'plfc-social-performance-v1:'+(reviewOnly?'review':'committee');
   const importMetrics=()=>{try{const data=JSON.parse(localStorage.getItem(metricsKey())||'[]');metrics=Array.isArray(data)?data.slice(0,15000):[];}catch{metrics=[];}};
   const storeMetrics=()=>{try{localStorage.setItem(metricsKey(),JSON.stringify(metrics));return true;}catch{return false;}};
@@ -225,7 +225,7 @@ export function setupAnnualCampaigns({mount,api,esc,isActive,onUse,reviewOnly=fa
       mapping:pendingReport?.mapping||{},platform:metricsPlatform,filename:pendingReport?.filename||'',
       notice:metricsNotice,posts:current,esc
     });
-    const signals=renderTimingPanel(settings,esc);
+    const signals=renderTimingPanel(settings,esc,editingMilestone);
     const popup=renderCalendarDialog({day:modalDay,view:modalView,postId:modalPostId,
       posts:visiblePosts,plan:lastPreview,esc,getEdit,reviewOnly});
     return '<section class="annual-root" data-annual-root aria-label="12-month social workbench">'+
@@ -239,7 +239,7 @@ export function setupAnnualCampaigns({mount,api,esc,isActive,onUse,reviewOnly=fa
     const pane=root();if(!pane)return;
     const states={};
     for(const cls of ['annual-planner','annual-batch-layer-options','annual-batch-platform-options',
-      'annual-default-settings','annual-year-overview','annual-master-library']){
+      'annual-default-settings','annual-year-overview','annual-master-library','annual-signals','annual-analytics']){
       states[cls]=pane.querySelector('.'+cls)?.open??(cls==='annual-planner');
     }
     const temp=document.createElement('div');temp.innerHTML=markup();
@@ -307,6 +307,19 @@ export function setupAnnualCampaigns({mount,api,esc,isActive,onUse,reviewOnly=fa
     notice='Exported '+rows.length+' posts for '+monthName(selectedMonth)+'. Times use Brisbane AEST.';
   }
 
+  mount.addEventListener('change',async event=>{
+    const file=event.target;
+    if(!file.hasAttribute('data-metric-file'))return;
+    const chosen=file.files?.[0];
+    if(!chosen)return;
+    try{
+      if(chosen.size>3_000_000)throw Error('Choose a CSV file smaller than 3 MB.');
+      const parsed=parseDelimited(await chosen.text());
+      pendingReport={...parsed,filename:chosen.name,mapping:suggestedMapping(parsed.headers)};
+      metricsNotice='Loaded '+parsed.rows.length+' report rows. Check the column mapping before importing.';
+    }catch(err){pendingReport=null;metricsNotice=err.message;}
+    draw();
+  });
   mount.addEventListener('input',event=>{
     const target=event.target;
     const key=target.hasAttribute('data-month-video')?'video':
@@ -343,6 +356,22 @@ export function setupAnnualCampaigns({mount,api,esc,isActive,onUse,reviewOnly=fa
       }
       batchDirty=true;notice='Previewing '+monthName(selectedMonth)+' adjustments. Choose Apply and save to keep this month.';
       draw();return;
+    }
+    if(e.hasAttribute('data-metric-platform')){metricsPlatform=e.value;draw();return;}
+    if(e.hasAttribute('data-metric-map')){
+      if(pendingReport)pendingReport.mapping[e.dataset.metricMap]=e.value;
+      draw();return;
+    }
+    if(e.hasAttribute('data-signal-enabled')){
+      settings.timingSignals[e.dataset.signalEnabled].enabled=e.checked;draw();return;
+    }
+    if(e.hasAttribute('data-signal-leads')){
+      const raw=e.value.trim(),values=raw?raw.split(',').map(x=>Number(x.trim())):[];
+      if(values.length>12||values.some(n=>!Number.isInteger(n)||n<1||n>365)||new Set(values).size!==values.length){
+        notice='Lead-in values must be unique numbers from 1 to 365, separated by commas.';draw();return;
+      }
+      settings.timingSignals[e.dataset.signalLeads].leadDays=values.sort((a,b)=>b-a);
+      notice='Timing signals updated. Save the timing patterns to keep them.';draw();return;
     }
     if(e.hasAttribute('data-scope-day')){
       if(batchDirty&&!window.confirm('Discard unapplied planning changes?')){draw();return;}
@@ -381,6 +410,71 @@ export function setupAnnualCampaigns({mount,api,esc,isActive,onUse,reviewOnly=fa
   });
   mount.addEventListener('click',event=>{
     const b=event.target.closest('button');if(!b||!b.closest('[data-annual-root]')||!isActive())return;
+    if(b.hasAttribute('data-signal-save')){void save();return;}
+    if(b.hasAttribute('data-milestone-cancel')){editingMilestone='';draw();return;}
+    if(b.hasAttribute('data-signal-edit')){
+      editingMilestone=b.dataset.signalEdit;draw();return;
+    }
+    if(b.hasAttribute('data-signal-remove')){
+      if(!window.confirm('Remove this timing milestone?'))return;
+      settings.milestones=settings.milestones.filter(x=>x.id!==b.dataset.signalRemove);
+      if(editingMilestone===b.dataset.signalRemove)editingMilestone='';
+      notice='Milestone removed. Save timing patterns to retain the change.';draw();return;
+    }
+    if(b.hasAttribute('data-milestone-add')){
+      const pane=root(),kind=pane.querySelector('[data-milestone-kind]')?.value;
+      const title=pane.querySelector('[data-milestone-title]')?.value.trim();
+      const date=pane.querySelector('[data-milestone-date]')?.value;
+      const sourceUrl=pane.querySelector('[data-milestone-source]')?.value.trim()||'';
+      const confirmed=Boolean(pane.querySelector('[data-milestone-confirm]')?.checked);
+      if(!['event','meeting','season_open','season_close'].includes(kind)||
+        !title||title.length<4||title.length>140||
+        !/^20\d\d-(0[1-9]|1[0-2])-([0-2]\d|3[01])$/.test(date||'')||
+        (sourceUrl&&!/^https:\/\/[^\s]+$/.test(sourceUrl))){
+        notice='Enter a title, valid date and optional HTTPS source link.';draw();return;
+      }
+      const id=editingMilestone||('m-'+crypto.randomUUID());
+      const item={id,kind,title,date,sourceUrl,confirmed};
+      settings.milestones=[...settings.milestones.filter(x=>x.id!==id),item];
+      editingMilestone='';notice='Saved milestone to the draft timing pattern. Select Save timing patterns to retain it.';draw();return;
+    }
+    if(b.hasAttribute('data-metric-import')){
+      if(!pendingReport){metricsNotice='Choose a CSV report first.';draw();return;}
+      if(!Object.values(pendingReport.mapping).some(Boolean)){metricsNotice='Map at least one column before importing.';draw();return;}
+      const importedAt=new Date().toISOString();
+      const records=pendingReport.rows.map(row=>({
+        ...metricFromRow(row,pendingReport.mapping,{platform:metricsPlatform,
+          filename:pendingReport.filename,importedAt}),
+        id:crypto.randomUUID()
+      }));
+      metrics.push(...records);
+      if(metrics.length>15000)metrics=metrics.slice(-15000);
+      metricsNotice=storeMetrics()?'Imported '+records.length+' rows locally. Match any unlinked records below.':
+        'Storage is full. Export or reduce your report; the imported rows are available for this visit only.';
+      pendingReport=null;draw();return;
+    }
+    if(b.hasAttribute('data-metric-link')){
+      const pane=root(),id=pane.querySelector('[data-metric-unlinked]')?.value;
+      const postId=pane.querySelector('[data-metric-link-post]')?.value;
+      const record=metrics.find(m=>m.id===id),target=lastPreview?.posts.find(p=>p.id===postId);
+      if(!record||!target){metricsNotice='Choose a report record and a planned post.';draw();return;}
+      record.postId=postId;
+      postEdits[postId]??={};
+      const ref={platform:record.platform,externalId:record.externalId,postUrl:record.postUrl};
+      const exists=(postEdits[postId].externalRefs||[]).some(x=>
+        x.platform===ref.platform&&x.externalId===ref.externalId&&x.postUrl===ref.postUrl);
+      if(!exists)postEdits[postId].externalRefs=[...(postEdits[postId].externalRefs||[]),ref];
+      persistEdits();storeMetrics();
+      metricsNotice='Linked a '+record.platform+' report row to '+target.date+'.';draw();return;
+    }
+    if(b.hasAttribute('data-analytics-export')){
+      if(!lastPreview)return;
+      const csv=planMetricsCSV(lastPreview.posts,postEdits,linkedMetrics());
+      const link=document.createElement('a'),url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
+      link.href=url;link.download='plfc-social-content-and-results-'+startMonth+'.csv';link.click();
+      setTimeout(()=>URL.revokeObjectURL(url),5000);
+      metricsNotice='Exported the year-long plan with any linked platform results.';return;
+    }
     if(b.hasAttribute('data-planning-scope')){
       const value=b.dataset.planningScope;
       if(!['day','week','month'].includes(value))return;
