@@ -5,11 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex,nofollow">
   <meta name="color-scheme" content="light">
-  <title>PLFC annual campaign planner | Isolated visual review</title>
+  <title>PLFC Social Studio | 365-day visual calendar</title>
   <link rel="icon" href="/assets/plfc-logo.png">
   <link rel="stylesheet" href="/styles.css">
   <link rel="stylesheet" href="/social-planner.css">
-  <link rel="stylesheet" href="/social-campaigns.css">
+  <link rel="stylesheet" href="/social-campaigns.css?v=20261123-visual-calendar">
   <style>
     .review-header{background:var(--deep);color:#fff;padding:1.5rem max(1rem,calc((100% - 1150px)/2))}
     .review-header h1{font-size:clamp(1.8rem,5vw,2.8rem);margin:.25rem 0}
@@ -24,20 +24,26 @@
     .review-dialog::backdrop{background:#092f3477}
     .review-dialog pre{white-space:pre-wrap;overflow-wrap:anywhere;background:var(--mint);padding:.8rem;border-radius:.3rem;max-height:45vh;overflow:auto;font:500 .85rem/1.6 monospace}
     .review-actions{display:flex;flex-wrap:wrap;gap:.7rem;margin-top:1rem}
+      .review-header{padding:1.05rem max(1rem,calc((100% - 1150px)/2))}
+    .review-header h1{font-size:clamp(1.8rem,4.3vw,2.65rem);margin:.12rem 0}
+    .review-header p{font-size:.93rem;line-height:1.5;margin:.2rem 0}
+    .review-flag{font-size:.65rem;padding:.12rem .5rem}
+    .review-main{padding-top:.8rem}
+    .review-notice{display:flex;gap:.45rem .7rem;flex-wrap:wrap;align-items:center;padding:.55rem .85rem;margin:0 0 .55rem;font-size:.84rem}
+    .review-notice span{color:#59786c}
+    @media(max-width:520px){.review-header{padding:1.1rem 1rem}.review-notice{align-items:start}}
   </style>
 </head>
 <body>
   <a class="skip" href="#main">Skip to planner</a>
   <header class="review-header">
-    <span class="review-flag">Development review · fictional suggestions</span>
-    <h1>PLFC annual social campaign planner</h1>
-    <p>Try pattern switches, posting density, audience targeting, NSW and Queensland school holidays, video ratios, platform exports and paid-ad creative suggestions.</p>
+    <span class="review-flag">PLFC · SOCIAL STUDIO</span>
+    <h1>Plan a month. Make it brilliant.</h1>
+    <p>365 days of fishing, community and island content. Click a date to explore the ideas.</p>
   </header>
   <main class="review-main" id="main">
     <div class="review-notice">
-      <strong>This is a safe visual rehearsal, not the live committee area.</strong>
-      <p>It runs the same calendar generator and settings controls as the committee planner, but keeps trial settings in temporary browser memory only. No member details, club database, social accounts, ads or real money are accessed. Refresh to reset.</p>
-      <p><a class="text-link" href="https://github.com/auraofintelligence/PLFC-members-club/tree/main" target="_blank" rel="noopener noreferrer">View current source on GitHub</a></p>
+      <strong>🎨 Creative playground</strong> <span>Explore without a login. Monthly settings are temporary; individual post edits stay in this browser. Nothing is published.</span>
     </div>
     <div id="social-planner-desk"><p role="status">Preparing the annual planner…</p></div>
   </main>
@@ -51,6 +57,6 @@
     </div>
   </dialog>
   <footer class="review-footer">PLFC · Point Lookout Fishing Club · Development preview for committee review only. Holiday dates and media formats must be rechecked before actual publication.</footer>
-  <script type="module" src="/social-campaign-review.js?v=20261123-csp-fix"></script>
+  <script type="module" src="/social-campaign-review.js?v=20261123-visual-calendar"></script>
 </body>
 </html>
