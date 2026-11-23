@@ -57,7 +57,7 @@ const dayBeforeHoliday = day => QLD_SCHOOL_HOLIDAYS.some(([a])=>iso(dayMs(a)-MS)
 const dayBeforeNSW = day => NSW_SCHOOL_HOLIDAYS_EASTERN.some(([a])=>iso(dayMs(a)-MS)===day);
 export const defaultCampaignSettings = () => ({
   monthOverrides:{},weekOverrides:{},dayOverrides:{},
-  videoShare:67, limits:{weekday:2,friday:3,weekend:4,holiday:5},
+  videoShare:67, postingTime:'auto', limits:{weekday:2,friday:3,weekend:4,holiday:5},
   delivery:{
     organic:['youtube','facebook','instagram','tiktok','noticeboard'],
     paid:['youtube','facebook','instagram','tiktok','noticeboard'],
@@ -75,7 +75,7 @@ export const scopeSettingsFor=(settings,scope,key)=>scope==='day'?
   scope==='week'?(settings.weekOverrides?.[key]||monthSettingsFor(settings,key)):
   monthSettingsFor(settings,key);
 export const copyMonthSettings=settings=>structuredClone({
-  videoShare:settings.videoShare,limits:settings.limits,delivery:settings.delivery,layers:settings.layers
+  videoShare:settings.videoShare,postingTime:settings.postingTime||'auto',limits:settings.limits,delivery:settings.delivery,layers:settings.layers
 });
 const capFor = (day,limits) => inHoliday(day)?limits.holiday:weekday(day)===5?limits.friday:[0,6].includes(weekday(day))?limits.weekend:limits.weekday;
 function basePost(layer,day,weekKey,index){
@@ -227,7 +227,14 @@ export function generateCampaignYear(startMonth,settings=defaultCampaignSettings
     p.aspectRatio=p.format.startsWith('30-second')?'9:16':p.format==='link'?'1.91:1':'4:5';
     p.size=p.format.startsWith('30-second')?'1080×1920':p.format==='link'?'1200×630':'1080×1350';
     p.durationSeconds=p.format.startsWith('30-second')?30:null;
-    p.suggestedTime=[0,6].includes(weekday(p.date))?'08:00':weekday(p.date)===5?'17:00':'18:00';
+    const anchor=settingsForDate(settings,p.date).postingTime||'auto';
+    const defaults=[0,6].includes(weekday(p.date))?'08:00':weekday(p.date)===5?'17:00':'18:00';
+    const start=anchor==='auto'?defaults:anchor;
+    const index=posts.filter(other=>other.date===p.date).indexOf(p);
+    const minute=Number(start.slice(0,2))*60+Number(start.slice(3))+index*105;
+    // Same-day scheduling only; individual posts can later be moved to any minute.
+    const minuteWithinDay=Math.min(1439,minute);
+    p.suggestedTime=String(Math.floor(minuteWithinDay/60)).padStart(2,'0')+':'+String(minuteWithinDay%60).padStart(2,'0');
     p.creativeVariants=creativeVariantsFor(p,settingsForDate(settings,p.date).delivery);
     p.destinations=[...new Set(p.creativeVariants.filter(v=>v.distribution==='organic').map(v=>v.platform))];
     // The existing social post editor supports only the four connected club channels.
