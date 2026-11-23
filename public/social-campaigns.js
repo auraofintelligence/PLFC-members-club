@@ -117,7 +117,7 @@ export function setupAnnualCampaigns({mount,api,esc,isActive,onUse,reviewOnly=fa
     monthDraft=null;batchMonth='';modalDay=null;modalPostId=null;modalView='day';
   };
   const root=()=>mount.querySelector('[data-annual-root]');
-  const changed=()=>JSON.stringify(settings)!==saved;
+  const changed=()=>JSON.stringify(settings)!==saved||Boolean(workingDayPlans&&JSON.stringify(workingDayPlans)!==JSON.stringify(settings.dayPlans));
   const limitChange=(limits,key,value)=>{
     const name=key.endsWith('Min')?key.slice(0,-3):key;
     if(!POSTING_DAY_TYPES.some(day=>day.id===name))return;
@@ -177,7 +177,7 @@ export function setupAnnualCampaigns({mount,api,esc,isActive,onUse,reviewOnly=fa
         const date=nextDay(monday,i),inside=dates.some(d=>d.date===date);
         const type=currentDayKind(date);
         const plan=inside?dayPlanFor(date):{items:[]};
-        return {date,type,items:plan.items,curated:Boolean(draftPlans()[date]),inside};
+        return {date,type,items:plan.items,patternId:plan.patternId||'',curated:Boolean(draftPlans()[date]),inside};
       })
     });
   }
@@ -500,7 +500,12 @@ export function setupAnnualCampaigns({mount,api,esc,isActive,onUse,reviewOnly=fa
   });
   mount.addEventListener('input',event=>{
     const target=event.target;
-    if(target.closest?.('[data-day-editor]')){dayFormTouched=true;return;}
+    if(target.closest?.('[data-day-editor]')){
+      dayFormTouched=true;
+      const region=root()?.querySelector('[data-annual-notice]');
+      if(region)region.textContent='Unsaved day edits. Select Save this day’s posts to share them.';
+      return;
+    }
     const key=target.hasAttribute('data-month-video')?'video':
       target.hasAttribute('data-month-limit')?target.dataset.monthLimit:
       target.hasAttribute('data-month-weekly')?'layer-'+target.dataset.monthWeekly:null;
@@ -753,6 +758,7 @@ export function setupAnnualCampaigns({mount,api,esc,isActive,onUse,reviewOnly=fa
       if(!lastPreview?.days.some(d=>d.date===date))return;
       const id=root()?.querySelector('[data-week-pattern="'+date+'"]')?.value;
       if(!id){notice='Choose a day pattern first.';draw();return;}
+      if(draftPlans()[date]&&!window.confirm('Replace the existing post list for '+date+'?'))return;
       if(applyDailyPattern(date,id)){notice='Pattern applied to '+date+'. Save the week to keep it.';draw();}
       return;
     }
