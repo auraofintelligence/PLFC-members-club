@@ -5,6 +5,13 @@ import {eventOpenOfficerJobs,eventJobCompletionWrites} from './fundraising-event
 const seats={president:'President',vicepresident:'Vice President',secretary:'Secretary',assistantsecretary:'Assistant Secretary',treasurer:'Treasurer'};
 const normalize = name=>String(name||'').toLowerCase().trim().replace(/^the\s+/,'').replace(/[\s-]+/g,'');
 const uuid=/^[a-f\d]{8}(?:-[a-f\d]{4}){3}-[a-f\d]{12}$/i;
+export const MONTHLY_SOCIAL_REVIEW={
+  source:'monthly-standard',office:'secretary',title:'Review monthly social media results',
+  details:'Open the PLFC Social Studio. Export available Facebook, Instagram, YouTube and TikTok results; import their CSV reports, match results to club posts, compare audience response with topics and posting times, export the joined content-and-performance report and record ideas for next month. If no platforms have results yet, record that and review the coming month’s content and lead-in timing.',
+  href:'#committee/social'
+};
+export const monthlyReviewId=month=>'secretary-social-review-'+month;
+const monthEnd=month=>new Date(Date.UTC(Number(month.slice(0,4)),Number(month.slice(5)),0)).toISOString().slice(0,10);
 function accountOffice(id,login,role) {
   return ['committee','treasurer'].includes(role) && Object.hasOwn(seats,login) ? login : 'other:'+id;
 }
@@ -15,7 +22,8 @@ function officeRights(identity) {
 }
 async function deskData(db,identity,today,rights,filter) {
   const {viewerOffice,canAssign}=rights;
-  const [accounts,manual,meeting,news,history,events]=await db.batch([
+  const month=today.slice(0,7),recurringId=monthlyReviewId(month);
+  const [accounts,manual,meeting,news,history,events,monthlyDone]=await db.batch([
     db.prepare("SELECT id,login,role FROM club_accounts WHERE disabled=0 AND role IN ('committee','treasurer','administrator') ORDER BY created_at,id"),
     db.prepare(`SELECT t.id,t.office,t.title,t.details,t.due_date AS dueDate,t.version,n.id AS noticeId
       FROM officer_todo_items t LEFT JOIN committee_notices n ON n.task_id=t.id
@@ -28,7 +36,8 @@ async function deskData(db,identity,today,rights,filter) {
     db.prepare(`SELECT title,office,recorded_by AS recorderId,recorder_name AS recordedBy,recorded_at AS recordedAt,source,paper FROM (
       SELECT l.*,row_number() OVER(PARTITION BY office ORDER BY recorded_at DESC,mutation DESC) AS rank
       FROM officer_todo_log l WHERE action='complete' AND (? OR office=?)) WHERE rank<=20 ORDER BY recorded_at DESC`).bind(+canAssign,viewerOffice),
-    db.prepare('SELECT * FROM ('+eventOpenOfficerJobs+') WHERE ? OR ownerId=?').bind(+canAssign,identity.id)
+    db.prepare('SELECT * FROM ('+eventOpenOfficerJobs+') WHERE ? OR ownerId=?').bind(+canAssign,identity.id),
+    db.prepare("SELECT 1 AS done FROM officer_todo_log WHERE action='complete' AND source='monthly-standard' AND task_id=? LIMIT 1").bind(recurringId)
   ]);
   const directory=new Map(Object.entries(seats).map(([key,label])=>[key,{key,label}]));
   const byId=new Map();
@@ -69,6 +78,10 @@ async function deskData(db,identity,today,rights,filter) {
       ownerText:ownerLabels.get(job.ownerId)||job.owner,sourceLabel:plan.title,href:'#committee/meetings',meetingId:plan.id,
       version:job.version,planVersion:plan.planVersion},{ownerId:job.ownerId,recordStatus:plan.recordStatus,quorumStatus:plan.quorumStatus});
   }
+  if(!monthlyDone.results.length){
+    put({...MONTHLY_SOCIAL_REVIEW,id:recurringId,version:0,dueDate:monthEnd(month),
+      sourceLabel:'Monthly standard · '+month});
+  }
   for(const e of news.results)put({id:e.month,source:'newsletter',office:'president',
     title:'Review the President’s message',details:e.title,sourceLabel:'Newsletter · '+e.month,href:'#committee/news',version:e.version});
   tasks.sort((a,b)=>(a.dueDate||'9999').localeCompare(b.dueDate||'9999') || a.title.localeCompare(b.title));
@@ -100,6 +113,28 @@ export async function officerTodosEndpoint(request,env,identity,helpers) {
   const mutation=crypto.randomUUID();
   let office,title,baseVersion,kind=source,meetingId='',paper=false;
   let writes;
+  if(source==='monthly-standard'){
+    if(action!=='complete'||id!==monthlyReviewId(today.slice(0,7))||b.version!==0||
+      typeof b.paper!=='boolean')fail(400,'Choose the current monthly social review job.');
+    const paper=b.paper;
+    if((paper&&!canAssign)||(!paper&&viewerOffice!=='secretary'))
+      fail(403,'Only the Secretary can complete this review, or a secretary can record the returned paper sheet.');
+    const task=view.tasks.find(t=>t.source==='monthly-standard'&&t.id===id);
+    if(!task)return json(view);
+    const logId=crypto.randomUUID();
+    const result=await db.batch([
+      db.prepare(`INSERT INTO officer_todo_log
+        (mutation,action,source,task_id,meeting_id,office,title,base_version,paper,recorded_by,recorder_name,recorded_at)
+        SELECT ?,'complete','monthly-standard',?,'','secretary',?,0,?,?,?,?
+        WHERE NOT EXISTS(SELECT 1 FROM officer_todo_log WHERE action='complete' AND source='monthly-standard' AND task_id=?)`)
+        .bind(logId,id,task.title,+paper,identity.id,identity.name||identity.id,stamp,id),
+      db.prepare('INSERT INTO audit_log SELECT ?,?,?,?,?,? WHERE EXISTS(SELECT 1 FROM officer_todo_log WHERE mutation=?)')
+        .bind(crypto.randomUUID(),identity.id,identity.accountRole||identity.role,
+          'officer_task_complete'+(paper?'_paper':''),'monthly-standard/'+id,stamp,logId)
+    ]);
+    if(!result[0].meta.changes)return json((await deskData(db,identity,today,rights,filter)).view);
+    return json((await deskData(db,identity,today,rights,filter)).view);
+  }
   if(action==='add') {
     if(!uuid.test(id)||typeof id!=='string')fail(400,'Open a new task first.');
     office=b.office;if(!canAssign && office!==viewerOffice)fail(403,'You can add tasks to your own list.');
