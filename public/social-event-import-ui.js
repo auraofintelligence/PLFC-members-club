@@ -3,6 +3,7 @@ const originName=id=>id?.startsWith('m-import-event-')?'Club event run sheet':
   id?.startsWith('m-import-meeting-')?'Committee meeting register':
   id?.startsWith('m-import-csv-')?'Annual CSV':'Manual event';
 const statusOf=(candidate,existing)=>{
+  if(candidate.inactive)return 'Closed run sheet · import to remove prior verification';
   if(!existing)return 'Not yet imported';
   if(candidate.title!==existing.title||candidate.date!==existing.date)return 'Source date/details changed · reconfirm before public promotion';
   return existing.confirmed?'Imported · date verified':'Imported · planning only';
@@ -14,7 +15,8 @@ export function renderCalendarImportPanel({candidates=[],selected=new Set(),veri
   const counts=imported.length+' imported planning '+(imported.length===1?'anchor':'anchors');
   const rows=candidates.length?'<div class="annual-calendar-import-list">'+candidates.map((item,i)=>{
     const previous=saved.get(item.id),status=statusOf(item,previous);
-    const verifiedReady=verified.has(item.id)&&(previous?.title===item.title&&previous?.date===item.date||!previous);
+    const verifiedReady=!item.inactive&&verified.has(item.id)&&
+      (previous?.title===item.title&&previous?.date===item.date||!previous);
     return '<article class="annual-calendar-import-event">'+
       '<label class="annual-calendar-import-select"><input type="checkbox" data-calendar-import-select="'+esc(item.id)+'"'+
         (selected.has(item.id)?' checked':'')+' aria-label="Include '+esc(item.title)+'"></label>'+
@@ -23,7 +25,9 @@ export function renderCalendarImportPanel({candidates=[],selected=new Set(),veri
       (item.description?'<small>'+esc(item.description)+'</small>':'')+
       '<small class="annual-import-existing">'+esc(status)+'</small>'+
       '<label class="annual-calendar-import-verified"><input type="checkbox" data-calendar-import-verify="'+esc(item.id)+'"'+
-        (verifiedReady?' checked':'')+'> Committee has verified this date and approved promotion planning</label>'+
+        (verifiedReady?' checked':'')+(item.inactive?' disabled':'')+'> '+
+        (item.inactive?'Run sheet is closed; cannot auto-confirm promotion':
+          'Committee has verified this date and approved promotion planning')+'</label>'+
       '</div></article>';
   }).join('')+'</div>':'<p class="annual-small">No dates loaded yet. Read the existing committee calendars or choose a CSV file.</p>';
   return '<details class="annual-calendar-import"><summary><span>📆 Import the committee annual events calendar</span>'+
