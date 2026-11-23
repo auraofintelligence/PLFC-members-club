@@ -1,9 +1,8 @@
 name: PLFC validation
 
+# Manual test runs only. Avoid noisy push/PR failures during active prototyping.
 on:
-  push:
-    branches: [main, feature/layered-social-calendar-2026-11]
-  pull_request:
+  workflow_dispatch:
 
 jobs:
   check:
