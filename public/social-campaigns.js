@@ -567,7 +567,8 @@ export function setupAnnualCampaigns({mount,api,esc,isActive,onUse,reviewOnly=fa
       root()?.querySelector('[data-annual-day-dialog]')?.close();
       modalDay=null;modalPostId=null;modalView='day';
       onUse({title:postLabel(post,edit),body:postBrief(post,edit)+(edit.notes?'\n\nWorking notes: '+edit.notes:'')+
-        '\n\nSuggested format: '+post.format+' ('+post.size+'). '+post.cta+'. Verify details before publishing.',
+        '\n\nSuggested format: '+post.format+' ('+post.size+'). '+post.cta+
+        '.\n[Planning note only: target '+postTime(post,edit)+' AEST (Australia/Brisbane). Remove this note before publishing.]',
         channels:post.channels,plannedDate:post.date,plannedTime:postTime(post,edit)});
     }
   });
