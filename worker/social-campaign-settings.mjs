@@ -12,7 +12,7 @@ function validAudience(values,allowed){
 export function validateCampaignSettings(value,fail){
   const bad=()=>fail('Check the campaign pattern settings and audience choices.');
   if(!value || typeof value!=='object'||Array.isArray(value)||
-    Object.keys(value).sort().join(',')!=='delivery,layers,limits,videoShare')bad();
+    Object.keys(value).sort().join(',')!=='delivery,layers,limits,monthOverrides,videoShare')bad();
   if(!Number.isInteger(value.videoShare)||value.videoShare<0||value.videoShare>100)bad();
   if(!value.delivery||Object.keys(value.delivery).sort().join(',')!=='organic,paid,paidPlanning'||
     typeof value.delivery.paidPlanning!=='boolean'||!validDestinations(value.delivery.organic)||
@@ -29,6 +29,14 @@ export function validateCampaignSettings(value,fail){
     if(!a||Object.keys(a).sort().join(',')!=='gender,membership,place'||
       !validAudience(a.membership,memberships)||!validAudience(a.gender,genders)||!validAudience(a.place,places))bad();
   }
+  const months=value.monthOverrides;
+  if(!months||typeof months!=='object'||Array.isArray(months)||Object.keys(months).length>24)bad();
+  for(const [month,override] of Object.entries(months)){
+    if(!/^20\d\d-(0[1-9]|1[0-2])$/.test(month)||!override||typeof override!=='object'||Array.isArray(override)||
+      Object.keys(override).sort().join(',')!=='delivery,layers,limits,videoShare')bad();
+    // Validate the independent monthly snapshot without allowing nested overrides.
+    validateCampaignSettings({...override,monthOverrides:{}},fail);
+  }
   return value;
 }
 export async function socialCampaignSettingsEndpoint(request,env,identity,{json,requireRole,requireDb,bodyJson,HttpError}){
@@ -40,7 +48,7 @@ export async function socialCampaignSettingsEndpoint(request,env,identity,{json,
   const toPublic=row=>row?{version:row.version,settings:JSON.parse(row.settings),updatedAt:row.updatedAt,updatedBy:row.updatedBy}:
     {version:0,settings:null,updatedAt:null,updatedBy:null};
   if(request.method==='GET')return json(toPublic(await query.first()));
-  const body=await bodyJson(request,16000);
+  const body=await bodyJson(request,125000);
   const invalid=message=>{throw new HttpError(400,message,'invalid_campaign_settings');};
   if(!body||Object.keys(body).sort().join(',')!=='settings,version'||!Number.isInteger(body.version)||body.version<0||body.version>2147483645)invalid('Reload the saved campaign settings.');
   const settings=validateCampaignSettings(body.settings,invalid);
