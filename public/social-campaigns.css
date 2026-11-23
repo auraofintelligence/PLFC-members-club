@@ -355,3 +355,11 @@
   .annual-signal-grid,.annual-metrics-platforms{margin:.7rem .75rem}
   .annual-milestone-form,.annual-milestone-list,.annual-metric-reconcile,.annual-analytics-import,.annual-analytics-export{margin:.7rem .75rem}
 }
+
+.annual-pattern-insights{margin:.8rem 1rem;padding:.6rem .8rem;border:1px solid #b8ddca;border-radius:10px;background:#f4faf6}
+.annual-pattern-insights summary{font-size:.88rem;font-weight:800;color:#176853;cursor:pointer}
+.annual-pattern-insights p{font-size:.79rem;color:#5f786b;line-height:1.5;margin:.6rem 0}
+.annual-insights-table-wrap{overflow-x:auto}
+.annual-pattern-insights table{width:100%;border-collapse:collapse;font-size:.79rem;min-width:420px}
+.annual-pattern-insights th,.annual-pattern-insights td{text-align:left;border-bottom:1px solid #dbe9df;padding:.45rem .5rem}
+.annual-pattern-insights th{background:#e5f2e9;color:#255d4e;font-weight:750}
