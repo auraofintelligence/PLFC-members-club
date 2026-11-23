@@ -111,7 +111,10 @@ export async function socialPlannerEndpoint(request,env,identity,helpers) {
       old.channels!==JSON.stringify(plan.channels));
   if(plan.workflow?.approved&&previous.approved&&contentChanged)
     throw new HttpError(400,'Updated content must be saved as a draft, then approved again by PLFC.','social_reapproval_required');
-  const approval=plan.workflow===null?storedWorkflow(oldLinks):plan.workflow;
+  if(plan.workflow===null&&previous.approved&&contentChanged&&['ready','published'].includes(plan.status))
+    throw new HttpError(400,'Edited material must return to PLFC for fresh approval.','social_reapproval_required');
+  const approval=plan.workflow===null?
+    (contentChanged?defaultWorkflow():storedWorkflow(oldLinks)):plan.workflow;
   if(plan.workflow?.approved){
     if(previous.approved&&!contentChanged){
       approval.approvedBy=previous.approvedBy;approval.approvedAt=previous.approvedAt;
