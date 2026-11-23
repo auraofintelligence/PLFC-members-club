@@ -518,3 +518,15 @@
  .annual-week-day-actions .button{flex:1 1 auto}
  .annual-day-pattern-toolbar{padding:.7rem}
 }
+
+
+/* Month is a fast pattern guide: show the day/week/month choice, tuck bulk sliders away. */
+.annual-month-bulk-options{margin:.85rem 0 .25rem;border:1px solid #cfe4d6;border-radius:13px;background:#fff;overflow:hidden}
+.annual-month-bulk-options>summary{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.35rem 1rem;padding:.9rem 1.05rem;color:#165e52;font-size:.94rem;font-weight:800;cursor:pointer}
+.annual-month-bulk-options>summary small{font-weight:600;font-size:.76rem;color:#637e70}
+.annual-month-bulk-options[open]>summary{background:#edf7ef;border-bottom:1px solid #d9e9dc}
+.annual-month-bulk-body{display:grid;gap:.9rem;padding:1rem}
+.annual-month-bulk-body .annual-day-limits{margin:0}
+.annual-month-bulk-body>.annual-actions{margin:.1rem 0 0}
+.annual-month-bulk-body>.annual-small{margin:0}
+@media(max-width:640px){.annual-month-bulk-options>summary{padding:.85rem}.annual-month-bulk-body{padding:.75rem;gap:.7rem}}
