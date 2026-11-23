@@ -103,9 +103,10 @@ export const DEFAULT_DAILY_LIMITS=Object.freeze({
 });
 export function normaliseDailyLimits(existing={}){
   const output={...DEFAULT_DAILY_LIMITS};
+  const legacy=Object.keys(existing).sort().join(',')==='friday,holiday,weekday,weekend';
   for(const {id} of POSTING_DAY_TYPES){
     const max=existing[id],min=existing[id+'Min'];
-    if(Number.isInteger(max))output[id]=Math.max(1,Math.min(12,max));
+    if(Number.isInteger(max))output[id]=Math.max(1,Math.min(12,id==='weekday'&&legacy&&max===2?4:max));
     if(Number.isInteger(min))output[id+'Min']=Math.max(1,Math.min(12,min));
     output[id]=Math.max(output[id],output[id+'Min']);
   }
