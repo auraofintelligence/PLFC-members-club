@@ -177,19 +177,32 @@ export function setupAnnualCampaigns({mount,api,esc,isActive,onUse,reviewOnly=fa
       '<p class="annual-small annual-footer-guidance">Ideas are drafts. Check dates, permissions, fishing rules and current conditions before publishing.</p></div>';
   }
 
-  function markup(){return '<section class="annual-root" data-annual-root aria-label="12-month social pattern planner"><details class="annual-planner" open>'+
-      '<summary><strong>Annual pattern calendar</strong> · QLD + NSW holiday waves, 67% video-first</summary>'+
-      '<p>Independent layer switches, frequency, audience and daily density. '+(reviewOnly?'This page is an isolated visual preview; it does not use member data, save to Cloudflare, or publish.':'Saving changes only the committee settings, never social accounts.')+'</p>'+
-      (loaded?'<details class="annual-default-settings"><summary>Global annual defaults</summary>'+controls()+'</details>':'<p>Loading committee settings…</p>')+preview()+
-      '</details><p class="annual-small" data-annual-notice role="status" aria-live="polite">'+esc(notice)+'</p></section>';}
-  function draw(){const pane=root();if(!pane)return;const isOpen=pane.querySelector('details')?.open??true;
-    const monthlyLayersOpen=pane.querySelector('.annual-batch-layer-options')?.open??false;
-    const monthlyPlatformsOpen=pane.querySelector('.annual-batch-platform-options')?.open??false;
-    const globalOpen=pane.querySelector('.annual-default-settings')?.open??false;
-    const replacement=document.createElement('div');replacement.innerHTML=markup();
-    const next=replacement.firstElementChild;pane.replaceWith(next);next.querySelector('details').open=isOpen;
-    for(const [selector,open] of [['.annual-batch-layer-options',monthlyLayersOpen],['.annual-batch-platform-options',monthlyPlatformsOpen],['.annual-default-settings',globalOpen]]){
-      const panel=next.querySelector(selector);if(panel)panel.open=open;
+  function markup(){
+    const visual=preview();
+    const popup=renderCalendarDialog({day:modalDay,view:modalView,postId:modalPostId,
+      posts:visiblePosts,plan:lastPreview,esc,getEdit,reviewOnly});
+    return '<section class="annual-root" data-annual-root aria-label="12-month social workbench">'+
+      '<details class="annual-planner" open><summary><strong>📅 Social media workbench</strong> · 12-month plan</summary>'+
+      visual+
+      (loaded?'<details class="annual-default-settings"><summary>⚙️ Global annual defaults</summary>'+controls()+'</details>':'')+
+      '</details><p class="annual-small" data-annual-notice role="status" aria-live="polite">'+esc(notice)+'</p>'+
+      popup+'</section>';
+  }
+  function draw(){
+    const pane=root();if(!pane)return;
+    const states={};
+    for(const cls of ['annual-planner','annual-batch-layer-options','annual-batch-platform-options',
+      'annual-default-settings','annual-year-overview','annual-master-library']){
+      states[cls]=pane.querySelector('.'+cls)?.open??(cls==='annual-planner');
+    }
+    const temp=document.createElement('div');temp.innerHTML=markup();
+    const next=temp.firstElementChild;pane.replaceWith(next);
+    for(const [cls,open] of Object.entries(states)){
+      const panel=next.querySelector('.'+cls);if(panel)panel.open=open;
+    }
+    if(modalDay){
+      const dialog=next.querySelector('[data-annual-day-dialog]');
+      if(dialog && !dialog.open)dialog.showModal();
     }
   }
   async function open(){
@@ -197,7 +210,7 @@ export function setupAnnualCampaigns({mount,api,esc,isActive,onUse,reviewOnly=fa
     busy=true;
     try{const row=await api(endpoint,{cache:'no-store'});
       if(!isActive())return;
-      version=row.version;settings=row.settings||defaultCampaignSettings();settings.monthOverrides??={};saved=JSON.stringify(settings);loaded=true;monthDraft=null;batchMonth='';
+      version=row.version;settings=row.settings||defaultCampaignSettings();settings.monthOverrides??={};saved=JSON.stringify(settings);loaded=true;monthDraft=null;batchMonth='';loadEdits();
       notice=reviewOnly?'Temporary preview settings loaded. No database or live club data is connected.':row.updatedAt?'Loaded saved settings from '+row.updatedAt.slice(0,10)+'.':'Default settings loaded; not yet shared.';
     }catch(e){notice='Could not load settings: '+e.message;}finally{busy=false;draw();}
   }
@@ -216,6 +229,15 @@ export function setupAnnualCampaigns({mount,api,esc,isActive,onUse,reviewOnly=fa
     if(!list.length)list=['all'];
     settings.layers[selectedLayer].audience[field]=[...new Set(list)];
   }
+  mount.addEventListener('input',event=>{
+    const target=event.target;
+    const key=target.hasAttribute('data-month-video')?'video':
+      target.hasAttribute('data-month-limit')?target.dataset.monthLimit:
+      target.hasAttribute('data-month-weekly')?'layer-'+target.dataset.monthWeekly:null;
+    if(!key)return;
+    const output=target.closest('label')?.querySelector('[data-range-output]');
+    if(output)output.textContent=target.value+(key==='video'?'%':'');
+  });
   mount.addEventListener('change',event=>{
     if(!isActive()||!loaded||!event.target.closest('[data-annual-root]'))return;
     const e=event.target;
@@ -244,6 +266,9 @@ export function setupAnnualCampaigns({mount,api,esc,isActive,onUse,reviewOnly=fa
       batchDirty=true;notice='Previewing '+monthName(selectedMonth)+' adjustments. Choose Apply and save to keep this month.';
       draw();return;
     }
+    if(e.hasAttribute('data-annual-topic')){
+      topicFilter=e.value;draw();return;
+    }
     if(e.hasAttribute('data-annual-enabled'))settings.layers[e.dataset.annualEnabled].enabled=e.checked;
     else if(e.hasAttribute('data-annual-visible'))settings.layers[e.dataset.annualVisible].visible=e.checked;
     else if(e.hasAttribute('data-annual-frequency'))settings.layers[e.dataset.annualFrequency].weekly=Math.max(0,Math.min(7,Number(e.value)||0));
@@ -258,11 +283,11 @@ export function setupAnnualCampaigns({mount,api,esc,isActive,onUse,reviewOnly=fa
     else if(e.hasAttribute('data-annual-audience'))updateAudience(e.dataset.annualAudience,e.value,e.checked);
     else if(e.hasAttribute('data-annual-start') && /^20\d{2}-(0[1-9]|1[0-2])$/.test(e.value)){
       if(batchDirty&&!window.confirm('Discard unapplied changes to this month?')){draw();return;}
-      startMonth=e.value;selectedMonth=startMonth;monthDraft=null;batchMonth='';
+      startMonth=e.value;selectedMonth=startMonth;monthDraft=null;batchMonth='';modalDay=null;loadEdits();
     }
     else if(e.hasAttribute('data-annual-month')){
       if(batchDirty&&!window.confirm('Discard unapplied changes to this month?')){draw();return;}
-      selectedMonth=e.value;monthDraft=null;batchMonth='';
+      selectedMonth=e.value;monthDraft=null;batchMonth='';modalDay=null;
     }
     if(!batchDirty && !settings.monthOverrides[selectedMonth]){monthDraft=null;batchMonth='';}
     notice=changed()?(reviewOnly?'Trial changes are unsaved. Keep them in this tab to try another layout.':'Unsaved changes. Select Save committee settings to share them.'):'Settings match the saved version.';
@@ -270,6 +295,41 @@ export function setupAnnualCampaigns({mount,api,esc,isActive,onUse,reviewOnly=fa
   });
   mount.addEventListener('click',event=>{
     const b=event.target.closest('button');if(!b||!b.closest('[data-annual-root]')||!isActive())return;
+    if(b.hasAttribute('data-calendar-close')){
+      root()?.querySelector('[data-annual-day-dialog]')?.close();
+      modalDay=null;modalPostId=null;modalView='day';return;
+    }
+    if(b.hasAttribute('data-calendar-day')){
+      modalDay=b.dataset.calendarDay;modalPostId=null;modalView='day';draw();return;
+    }
+    if(b.hasAttribute('data-calendar-back')){modalView='day';modalPostId=null;draw();return;}
+    if(b.hasAttribute('data-calendar-detail')||b.hasAttribute('data-calendar-edit')){
+      const id=b.dataset.calendarDetail||b.dataset.calendarEdit;
+      if(!visiblePosts.some(post=>post.id===id&&post.date===modalDay))return;
+      modalPostId=id;modalView=b.hasAttribute('data-calendar-edit')?'edit':'detail';draw();return;
+    }
+    if(b.hasAttribute('data-calendar-save')){
+      const id=b.dataset.calendarSave,post=visiblePosts.find(item=>item.id===id&&item.date===modalDay);
+      if(!post)return;
+      const modal=root()?.querySelector('[data-annual-day-dialog]');
+      const title=modal?.querySelector('[data-post-title]')?.value.trim();
+      const brief=modal?.querySelector('[data-post-brief]')?.value.trim();
+      const notes=modal?.querySelector('[data-post-notes]')?.value.trim();
+      const status=modal?.querySelector('[data-post-status]')?.value;
+      if(!title||!brief){modal?.querySelector(!title?'[data-post-title]':'[data-post-brief]')?.focus();return;}
+      postEdits[id]={title,brief,notes,status};
+      const persisted=persistEdits();
+      notice=persisted?'Post edits saved in this browser.':'Edit saved for this visit only; your browser blocked local storage.';
+      modalView='detail';modalPostId=id;draw();return;
+    }
+    if(b.hasAttribute('data-annual-step')){
+      const months=Array.from({length:12},(_,i)=>nextMonth(startMonth,i));
+      const target=months.indexOf(selectedMonth)+Number(b.dataset.annualStep);
+      if(target<0||target>=months.length)return;
+      if(batchDirty&&!window.confirm('Discard unapplied month settings?'))return;
+      selectedMonth=months[target];modalDay=null;modalPostId=null;
+      monthDraft=null;batchMonth='';draw();return;
+    }
     if(b.hasAttribute('data-month-apply')){
       settings.monthOverrides[selectedMonth]=copyMonthSettings(currentBatch());
       batchDirty=false;void save();return;
@@ -289,12 +349,22 @@ export function setupAnnualCampaigns({mount,api,esc,isActive,onUse,reviewOnly=fa
     if(b.hasAttribute('data-annual-reload')){if(changed()&&!window.confirm('Discard unsaved pattern changes?'))return;loaded=false;void open();return;}
     if(b.hasAttribute('data-annual-go')){
       if(batchDirty&&!window.confirm('Discard unapplied changes to this month?'))return;
-      selectedMonth=b.dataset.annualGo;monthDraft=null;batchMonth='';draw();return;
+      selectedMonth=b.dataset.annualGo;monthDraft=null;batchMonth='';modalDay=null;draw();return;
     }
     if(b.hasAttribute('data-annual-use')){
       const post=lastPreview?.posts.find(p=>p.id===b.dataset.annualUse);if(!post)return;
-      onUse({title:post.title,body:post.brief+'\n\nSuggested format: '+post.format+' ('+post.size+'). '+post.cta+'. Review creative exports in the annual planner before publication.',channels:post.channels,plannedDate:post.date});
+      const edit=getEdit(post.id);
+      root()?.querySelector('[data-annual-day-dialog]')?.close();
+      modalDay=null;modalPostId=null;modalView='day';
+      onUse({title:postLabel(post,edit),body:postBrief(post,edit)+(edit.notes?'\n\nWorking notes: '+edit.notes:'')+
+        '\n\nSuggested format: '+post.format+' ('+post.size+'). '+post.cta+'. Verify details before publishing.',
+        channels:post.channels,plannedDate:post.date});
     }
   });
-  return {markup,open,reset(){loaded=false;busy=false;settings=defaultCampaignSettings();saved=JSON.stringify(settings);version=0;notice='';lastPreview=null;}};
+  mount.addEventListener('close',event=>{
+    if(event.target.matches('[data-annual-day-dialog]')){modalDay=null;modalPostId=null;modalView='day';}
+  },true);
+  return {markup,open,reset(){loaded=false;busy=false;settings=defaultCampaignSettings();saved=JSON.stringify(settings);
+    version=0;notice='';lastPreview=null;modalDay=null;modalPostId=null;modalView='day';}};
+
 }
