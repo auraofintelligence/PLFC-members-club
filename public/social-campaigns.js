@@ -1,4 +1,6 @@
-import {CAMPAIGN_LAYERS,POSTING_DAY_TYPES,normaliseDailyLimits,defaultCampaignSettings,generateCampaignYear,monthSettingsFor,copyMonthSettings,weekStart,settingsForDate,scopeSettingsFor} from './social-campaign-engine.js?v=20261123-min-max';
+import {CAMPAIGN_LAYERS,POSTING_DAY_TYPES,dayPostingBounds,normaliseDailyLimits,defaultCampaignSettings,generateCampaignYear,monthSettingsFor,copyMonthSettings,weekStart,settingsForDate,scopeSettingsFor} from './social-campaign-engine.js?v=20261124-itemised';
+import {BUILTIN_DAY_PATTERNS,allDayPresets,patternFor,planFromPattern,planFromPosts,newDaySlot,validSlot} from './social-day-patterns.js?v=20261124-itemised';
+import {renderItemisedDay,renderWeekItemised,mondayOf,nextDay} from './social-day-ui.js?v=20261124-itemised';
 import {PUBLISHING_DESTINATIONS,placementSources,CREATIVE_SPEC_VERSION,MASTER_ASSET_PRESETS} from './social-placements.js?v=20261123-formats';
 import {renderDestinationChoices,renderAssetGuide} from './social-format-guide.js?v=20261123-formats';
 import {LAYER_ICONS,renderMonthCalendar,renderCalendarDialog,postLabel,postBrief,postTime,isMinuteTime,brisbaneToday} from './social-visual-ui.js?v=20261123-main-studio';
@@ -25,6 +27,7 @@ export function setupAnnualCampaigns({mount,api,esc,isActive,onUse,reviewOnly=fa
   const normaliseSettings=value=>{
     const config=value&&typeof value==='object'?value:defaultCampaignSettings();
     config.monthOverrides??={};config.weekOverrides??={};config.dayOverrides??={};
+    config.dayPlans??={};config.dayArchetypes??={};
     config.postingTime??='auto';config.timingSignals??=defaultCampaignSettings().timingSignals;
     config.milestones??=[];config.limits=normaliseDailyLimits(config.limits);
     for(const bucket of ['monthOverrides','weekOverrides','dayOverrides'])
@@ -49,6 +52,7 @@ export function setupAnnualCampaigns({mount,api,esc,isActive,onUse,reviewOnly=fa
   let selectedLayer='nswHolidays',startMonth=new Date(Date.now()+36000000).toISOString().slice(0,7),selectedMonth=startMonth;
   let lastPreview=null,monthDraft=null,batchMonth='',batchDirty=false;
   let planningScope='month',focusDay=brisbaneToday();
+  let workingDayPlans=null,dayFormTouched=false;
   let modalDay=null,modalView='day',modalPostId=null,topicFilter='all',visiblePosts=[],postEdits={};
   let metrics=[],pendingReport=null,metricsPlatform='facebook',metricsNotice='',editingMilestone='';
   const metricsKey=()=> 'plfc-social-performance-v1:'+(reviewOnly?'review':'committee');
@@ -94,7 +98,19 @@ export function setupAnnualCampaigns({mount,api,esc,isActive,onUse,reviewOnly=fa
     }
     return monthDraft;
   }
-  const previewSettings=()=>({...settings,[overrideBucket()]:{...settings[overrideBucket()],[scopeKey()]:currentBatch()}});
+  const draftPlans=()=>workingDayPlans??=(structuredClone(settings.dayPlans||{}));
+  const dayPlanFor=day=>{
+    const existing=draftPlans()[day];
+    if(existing)return existing;
+    const posts=(lastPreview?.posts||[]).filter(post=>post.date===day);
+    return planFromPosts(posts,postEdits);
+  };
+  const currentDayKind=day=>dayPostingBounds(day,settingsForDate(settings,day).limits).category;
+  const previewSettings=()=>{
+    const data={...settings,dayPlans:workingDayPlans??settings.dayPlans};
+    if(planningScope==='month')data.monthOverrides={...settings.monthOverrides,[selectedMonth]:currentBatch()};
+    return data;
+  };
   const selectMonth=month=>{
     selectedMonth=month;
     if(!focusDay.startsWith(month))focusDay=(brisbaneToday().startsWith(month)?brisbaneToday():month+'-01');
@@ -146,7 +162,54 @@ export function setupAnnualCampaigns({mount,api,esc,isActive,onUse,reviewOnly=fa
       '<button type="button" class="button outline" data-annual-reload'+(busy?' disabled':'')+'>Reload saved settings</button></div></div>';
   }
 
+  function dailyWeekControls(){
+    const dates=lastPreview?.days||[];
+    if(!dates.some(item=>item.date===focusDay))focusDay=dates[0]?.date||focusDay;
+    if(planningScope==='day'){
+      const day=focusDay,dayPlan=dayPlanFor(day),type=currentDayKind(day);
+      return renderItemisedDay({day,type,dayPlan,savedPatterns:settings.dayArchetypes,
+        esc,layers:CAMPAIGN_LAYERS,reviewOnly});
+    }
+    const monday=mondayOf(focusDay);
+    return renderWeekItemised({
+      day:focusDay,startDate:monday,esc,savedPatterns:settings.dayArchetypes,
+      dates:Array.from({length:7},(_,i)=>{
+        const date=nextDay(monday,i),inside=dates.some(d=>d.date===date);
+        const type=currentDayKind(date);
+        const plan=inside?dayPlanFor(date):{items:[]};
+        return {date,type,items:plan.items,curated:Boolean(draftPlans()[date]),inside};
+      })
+    });
+  }
+  function captureDayEditor(force=false){
+    if(planningScope!=='day'||(!dayFormTouched&&!force))return;
+    const editor=root()?.querySelector('[data-day-editor]');
+    if(!editor||editor.dataset.dayEditor!==focusDay)return;
+    const existing=dayPlanFor(focusDay);
+    const items=[...editor.querySelectorAll('[data-daily-item]')].map(item=>{
+      const read=field=>item.querySelector('[data-day-item-field="'+field+'"]')?.value||'';
+      return {id:item.dataset.dailyItem,layerId:read('layerId'),time:read('time'),
+        format:read('format'),title:read('title').trim(),brief:read('brief').trim()};
+    });
+    if(!items.length){notice='Keep at least one post on each day.';return false;}
+    if(items.some(item=>!validSlot(item))){notice='Check each post’s title, time, topic and format.';return false;}
+    draftPlans()[focusDay]={patternId:existing.patternId||'',items};
+    dayFormTouched=false;return true;
+  }
+  function applyDailyPattern(date,id){
+    const type=currentDayKind(date),pattern=patternFor(type,id,settings.dayArchetypes);
+    if(!pattern)return false;
+    draftPlans()[date]=planFromPattern(pattern);
+    dayFormTouched=false;
+    return true;
+  }
+  function saveItemisedPlans(label){
+    settings.dayPlans=structuredClone(draftPlans());
+    notice='Saving '+label+' as a committee planning draft; no posts are authorised or published.';
+    void save();
+  }
   function monthControls(){
+    if(planningScope!=='month')return dailyWeekControls();
     const batch=currentBatch();
     const chosen=scopeKey(),bucket=overrideBucket();
     const scopes=[['day','Day'],['week','Week'],['month','Month']].map(([id,label])=>
@@ -321,7 +384,7 @@ export function setupAnnualCampaigns({mount,api,esc,isActive,onUse,reviewOnly=fa
       const remote=normaliseSettings(row.settings||defaultCampaignSettings());
       const local=!reviewOnly?browserDraft():null;
       settings=local||remote;saved=JSON.stringify(remote);sharedSettingsReady=true;
-      loaded=true;monthDraft=null;batchMonth='';loadEdits();importMetrics();
+      loaded=true;monthDraft=null;batchMonth='';workingDayPlans=null;dayFormTouched=false;loadEdits();importMetrics();
       notice=local?'Shared settings connected. Your browser-only changes are loaded for review; select Save to share them with the committee.':
         reviewOnly?'Temporary preview settings loaded. No database or live club data is connected.':
         row.updatedAt?'Loaded saved settings from '+row.updatedAt.slice(0,10)+'.':'Default settings loaded; not yet shared.';
@@ -330,7 +393,7 @@ export function setupAnnualCampaigns({mount,api,esc,isActive,onUse,reviewOnly=fa
       if(e.status>=500){
         settings=browserDraft()||normaliseSettings(defaultCampaignSettings());
         saved=JSON.stringify(settings);loaded=true;sharedSettingsReady=false;
-        version=0;monthDraft=null;batchMonth='';loadEdits();importMetrics();
+        version=0;monthDraft=null;batchMonth='';workingDayPlans=null;dayFormTouched=false;loadEdits();importMetrics();
         notice='Shared settings could not be reached. The calendar is open in browser-only mode; no committee changes will be shared until the connection is restored.';
       }else notice='Could not load committee settings: '+e.message;
     }finally{busy=false;draw();}
@@ -349,7 +412,7 @@ export function setupAnnualCampaigns({mount,api,esc,isActive,onUse,reviewOnly=fa
       const row=await api(endpoint,{method:'POST',body:JSON.stringify({version,settings})});
       if(!isActive())return;
       version=row.version;settings=normaliseSettings(row.settings);
-      saved=JSON.stringify(settings);
+      saved=JSON.stringify(settings);workingDayPlans=null;dayFormTouched=false;
       try{localStorage.removeItem(offlineKey);}catch{}
       notice=reviewOnly?'Trial settings updated in this browser tab only; refreshing will reset them. No posts were published.':'Shared settings saved. No posts were published.';
     }catch(e){
@@ -429,6 +492,7 @@ export function setupAnnualCampaigns({mount,api,esc,isActive,onUse,reviewOnly=fa
   });
   mount.addEventListener('input',event=>{
     const target=event.target;
+    if(target.closest?.('[data-day-editor]')){dayFormTouched=true;return;}
     const key=target.hasAttribute('data-month-video')?'video':
       target.hasAttribute('data-month-limit')?target.dataset.monthLimit:
       target.hasAttribute('data-month-weekly')?'layer-'+target.dataset.monthWeekly:null;
@@ -439,6 +503,7 @@ export function setupAnnualCampaigns({mount,api,esc,isActive,onUse,reviewOnly=fa
   mount.addEventListener('change',event=>{
     if(!isActive()||!loaded||!event.target.closest('[data-annual-root]'))return;
     const e=event.target;
+    if(e.closest?.('[data-day-editor]')){dayFormTouched=true;return;}
     const batch=e.hasAttribute('data-month-video')||e.hasAttribute('data-month-limit')||
       e.hasAttribute('data-month-enabled')||e.hasAttribute('data-month-visible')||
       e.hasAttribute('data-month-weekly')||e.hasAttribute('data-month-audience')||
@@ -482,6 +547,8 @@ export function setupAnnualCampaigns({mount,api,esc,isActive,onUse,reviewOnly=fa
     }
     if(e.hasAttribute('data-scope-day')){
       if(batchDirty&&!window.confirm('Discard unapplied planning changes?')){draw();return;}
+      if(!lastPreview?.days.some(d=>d.date===e.value)){notice='Choose a date within the 12-month plan.';draw();return;}
+      if(planningScope==='day'&&dayFormTouched&&!captureDayEditor()){draw();return;}
       focusDay=e.value;selectedMonth=focusDay.slice(0,7);monthDraft=null;batchMonth='';draw();return;
     }
     if(e.hasAttribute('data-scope-time')){
@@ -583,6 +650,7 @@ export function setupAnnualCampaigns({mount,api,esc,isActive,onUse,reviewOnly=fa
       metricsNotice='Exported the year-long plan with any linked platform results.';return;
     }
     if(b.hasAttribute('data-planning-scope')){
+      if(planningScope==='day'&&dayFormTouched&&!captureDayEditor())return;
       const value=b.dataset.planningScope;
       if(!['day','week','month'].includes(value))return;
       if(batchDirty&&!window.confirm('Discard unapplied changes to this planning period?'))return;
@@ -629,6 +697,78 @@ export function setupAnnualCampaigns({mount,api,esc,isActive,onUse,reviewOnly=fa
       notice='Removed a suggested idea from this browser. Restore removed suggestions if needed.';
       draw();return;
     }
+    if(b.hasAttribute('data-day-apply-pattern')){
+      const id=root()?.querySelector('[data-day-pattern]')?.value;
+      if(!id)return;
+      if(dayFormTouched&&!captureDayEditor())return;
+      if(!window.confirm('Replace this day’s itemised post list with the selected pattern?'))return;
+      if(applyDailyPattern(focusDay,id)){notice='Pattern applied. Review the individual posts, then Save day.';draw();}
+      return;
+    }
+    if(b.hasAttribute('data-day-add-item')){
+      if(dayFormTouched&&!captureDayEditor())return;
+      const plan=dayPlanFor(focusDay);
+      if(plan.items.length>=12){notice='The limit is 12 individual suggestions per day.';draw();return;}
+      const ids=new Set(plan.items.map(x=>x.id));let n=1;while(ids.has('s'+n))n++;
+      draftPlans()[focusDay]={...plan,items:[...plan.items,newDaySlot(n)]};
+      notice='Added a new post item. Edit its details, then save the day.';draw();return;
+    }
+    if(b.hasAttribute('data-day-remove-item')){
+      if(dayFormTouched&&!captureDayEditor())return;
+      const id=b.dataset.dayRemoveItem,plan=dayPlanFor(focusDay);
+      if(plan.items.length<=1){notice='Keep at least one item for each planned day.';draw();return;}
+      draftPlans()[focusDay]={...plan,items:plan.items.filter(item=>item.id!==id)};
+      notice='Removed this item from the day’s draft. Save to keep the change.';draw();return;
+    }
+    if(b.hasAttribute('data-day-save')){
+      if(!captureDayEditor(true)){draw();return;}
+      saveItemisedPlans('daily posts');return;
+    }
+    if(b.hasAttribute('data-day-reset')){
+      if(!window.confirm('Restore generated suggestions for this date? This removes the customised daily plan.'))return;
+      delete draftPlans()[focusDay];dayFormTouched=false;saveItemisedPlans('restored suggestions');return;
+    }
+    if(b.hasAttribute('data-day-save-pattern')){
+      if(!captureDayEditor(true)){draw();return;}
+      const name=root()?.querySelector('[data-day-pattern-name]')?.value.trim();
+      if(!name||name.length>75){notice='Give the reusable pattern a name of up to 75 characters.';draw();return;}
+      const type=currentDayKind(focusDay),items=settings.dayArchetypes[type]||[];
+      if(items.length>=8){notice='This day type already has eight saved custom patterns.';draw();return;}
+      const pattern={id:'custom-'+crypto.randomUUID(),name,items:structuredClone(dayPlanFor(focusDay).items)};
+      settings.dayArchetypes[type]=[...items,pattern];
+      draftPlans()[focusDay].patternId=pattern.id;
+      saveItemisedPlans('daily pattern');return;
+    }
+    if(b.hasAttribute('data-week-apply')){
+      const date=b.dataset.weekApply;
+      if(!lastPreview?.days.some(d=>d.date===date))return;
+      const id=root()?.querySelector('[data-week-pattern="'+date+'"]')?.value;
+      if(!id){notice='Choose a day pattern first.';draw();return;}
+      if(applyDailyPattern(date,id)){notice='Pattern applied to '+date+'. Save the week to keep it.';draw();}
+      return;
+    }
+    if(b.hasAttribute('data-week-edit')){
+      const date=b.dataset.weekEdit;
+      if(!lastPreview?.days.some(d=>d.date===date))return;
+      focusDay=date;selectedMonth=date.slice(0,7);planningScope='day';draw();
+      root()?.querySelector('#annual-plan-settings')?.scrollIntoView?.({behavior:'smooth',block:'start'});return;
+    }
+    if(b.hasAttribute('data-week-reset')){
+      const date=b.dataset.weekReset;delete draftPlans()[date];
+      notice='Generated suggestions restored for '+date+'. Save the week to keep the change.';draw();return;
+    }
+    if(b.hasAttribute('data-week-fill')){
+      if(!window.confirm('Fill unedited days of this week with their first saved archetype?'))return;
+      const start=mondayOf(focusDay);
+      for(let i=0;i<7;i++){
+        const date=nextDay(start,i);
+        if(!lastPreview?.days.some(d=>d.date===date)||draftPlans()[date])continue;
+        const type=currentDayKind(date),first=allDayPresets(type,settings.dayArchetypes)[0];
+        if(first)applyDailyPattern(date,first.id);
+      }
+      notice='Starter patterns applied to unedited days. Save the week to keep them.';draw();return;
+    }
+    if(b.hasAttribute('data-week-save')){saveItemisedPlans('weekly daily plans');return;}
     if(b.hasAttribute('data-calendar-close')){
       root()?.querySelector('[data-annual-day-dialog]')?.close();
       modalDay=null;modalPostId=null;modalView='day';return;
@@ -706,7 +846,7 @@ export function setupAnnualCampaigns({mount,api,esc,isActive,onUse,reviewOnly=fa
   mount.addEventListener('close',event=>{
     if(event.target.matches('[data-annual-day-dialog]')){modalDay=null;modalPostId=null;modalView='day';}
   },true);
-  return {markup,open,reset(){loaded=false;busy=false;sharedSettingsReady=true;settings=defaultCampaignSettings();saved=JSON.stringify(settings);
+  return {markup,open,reset(){loaded=false;busy=false;sharedSettingsReady=true;workingDayPlans=null;dayFormTouched=false;settings=defaultCampaignSettings();saved=JSON.stringify(settings);
     version=0;notice='';lastPreview=null;modalDay=null;modalPostId=null;modalView='day';planningScope='month';monthDraft=null;batchMonth='';}};
 
 }
