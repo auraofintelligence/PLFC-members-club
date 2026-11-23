@@ -7,17 +7,49 @@ async function startReview(){
     const dialog=document.querySelector('#trial-draft');
     const draftBody=document.querySelector('#trial-draft-body');
     const esc=value=>String(value??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
-    let version=0,settings=null,draftText='';
+    let draftText='';
+    const key='plfc-social-review-local-settings-v2';
+    let stored=null;
+    try{
+      const data=JSON.parse(localStorage.getItem(key)||'null');
+      if(data&&data.version>0&&data.settings&&Array.isArray(data.history))stored=data;
+    }catch{}
+    let version=stored?.version||0,settings=stored?.settings||null,history=stored?.history||[];
+    const reviewStamp=()=>history[0]?.savedAt||null;
+    const diffPreview=(before,after)=>{
+      const changes=[];
+      for(const field of new Set([...Object.keys(before||{}),...Object.keys(after||{})])){
+        if(JSON.stringify(before?.[field])!==JSON.stringify(after?.[field]))
+          changes.push({field,before:'Earlier browser version',after:'Updated browser version'});
+      }
+      return {count:changes.length,changes,note:'Browser-only trial settings update'};
+    };
     const api=async(path,options={})=>{
-      if(path!=='/api/committee/social-campaign-settings')throw new Error('This review does not contact club APIs.');
+      const parsed=new URL(path,location.origin);
+      if(parsed.pathname!=='/api/committee/social-campaign-settings')
+        throw new Error('This review does not contact club APIs.');
       if(options.method==='POST'){
         const value=JSON.parse(options.body);
-        if(value.version!==version)throw Object.assign(new Error('Your trial settings changed; refresh the page.'),{status:409});
-        settings=structuredClone(value.settings);
-        version++;
-        return {version,settings:structuredClone(settings),updatedAt:null,updatedBy:'trial'};
+        if(value.version!==version)throw Object.assign(new Error('Reload the saved browser version before trying again.'),{status:409});
+        const updated=structuredClone(value.settings),time=new Date().toISOString(),next=version+1;
+        const entry={version:next,actorId:'preview-browser',actorName:'This browser',
+          actorOffice:'Browser preview',actorRole:'local preview',savedAt:time,
+          changes:diffPreview(settings,updated),settings:updated};
+        const newHistory=[entry,...history].slice(0,80);
+        try{localStorage.setItem(key,JSON.stringify({version:next,settings:updated,history:newHistory}));}
+        catch{throw Object.assign(new Error('Your browser blocked local storage. The trial settings could not be saved.'),{status:507});}
+        settings=updated;version=next;history=newHistory;
+        return {version,settings:structuredClone(settings),updatedAt:time,updatedByName:'This browser',updatedOffice:'Browser preview'};
       }
-      return {version,settings:settings?structuredClone(settings):null,updatedAt:null,updatedBy:null};
+      if(parsed.searchParams.has('history'))
+        return {version,history:history.map(({settings,...entry})=>entry)};
+      if(parsed.searchParams.has('version')){
+        const item=history.find(record=>record.version===Number(parsed.searchParams.get('version')));
+        if(!item)throw Object.assign(new Error('That browser version is unavailable.'),{status:404});
+        return {revision:structuredClone(item)};
+      }
+      return {version,settings:settings?structuredClone(settings):null,updatedAt:reviewStamp(),
+        updatedByName:version?'This browser':null,updatedOffice:'Browser preview'};
     };
     const planner=setupAnnualCampaigns({
       mount,api,esc,isActive:()=>true,reviewOnly:true,
