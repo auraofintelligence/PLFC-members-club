@@ -45,6 +45,7 @@ export function renderMonthCalendar({month,days,posts,esc,today=brisbaneToday(),
       const temporal=date===today?'today':date<today?'past':'future';
       const icons=[...new Set(items.map(post=>layerIcon(post.layerIds[0])))].slice(0,3);
       const views=items.reduce((total,post)=>total+metricsForPost(post.id).reduce((n,item)=>n+(item.views??0),0),0);
+      const hasLead=items.some(post=>Boolean(post.timingSignal));
       const tooltip=formatDate(date)+'; '+items.length+' planned '+(items.length===1?'post':'posts')+
         '; '+temporal+(qld?'; Queensland school holidays':'')+(nsw?'; NSW school holidays':'');
       html+='<button type="button" class="annual-calendar-day '+temporal+(items.length?' has-posts':'')+
@@ -56,6 +57,7 @@ export function renderMonthCalendar({month,days,posts,esc,today=brisbaneToday(),
         '<span class="annual-calendar-dots">'+(qld?'<i class="qld" title="Queensland school holidays"></i>':'')+
         (nsw?'<i class="nsw" title="NSW school holidays"></i>':'')+'</span>'+
         (temporal==='today'?'<small class="annual-today-label">TODAY</small>':'')+
+        (hasLead?'<small class="annual-calendar-signal">📣 Lead-in</small>':'')+
         (views?'<small class="annual-calendar-performance">📈 '+(views>=1000?(views/1000).toFixed(1)+'k':views)+' reported</small>':'')+
         '</button>';
     }
@@ -115,6 +117,13 @@ export function renderCalendarDialog({day,view,postId,posts,plan,esc,getEdit,rev
   if(view==='detail'&&post){
     const variants=post.creativeVariants;
     const results=metricsForPost(post.id);
+    const timing=post.timingSignal?
+      '<section class="annual-dialog-section"><h4>📣 Timing signal</h4><p>'+
+      post.timingSignal.leadDays+' days before '+esc(post.timingSignal.title)+
+      ' · target '+esc(post.timingSignal.targetDate)+'</p>'+
+      (post.timingSignal.sourceUrl?'<p>Source: <a href="'+esc(post.timingSignal.sourceUrl)+
+        '" target="_blank" rel="noopener noreferrer">View verified reference</a></p>':'')+
+      '</section>':'';
     const performance=results.length?'<section class="annual-dialog-section annual-dialog-performance">'+
       '<h4>📈 Imported platform results</h4>'+
       '<div class="annual-result-pills">'+results.map(x=>
@@ -128,7 +137,7 @@ export function renderCalendarDialog({day,view,postId,posts,plan,esc,getEdit,rev
       '<h3 class="annual-dialog-post-title">'+esc(postLabel(post,edit))+'</h3>'+
       '<div class="annual-post-tags"><span>'+(isVideo(post)?'🎬 30-sec video':'🖼️ Image or link')+'</span>'+
       '<span>'+esc(postTime(post,edit))+' AEST</span><span>'+esc(edit?.status||'Idea')+'</span></div>'+
-      '<section class="annual-dialog-section"><h4>Creative brief</h4><p>'+esc(postBrief(post,edit))+'</p></section>'+performance+
+      '<section class="annual-dialog-section"><h4>Creative brief</h4><p>'+esc(postBrief(post,edit))+'</p></section>'+timing+performance+
       (edit?.notes?'<section class="annual-dialog-section"><h4>Your notes</h4><p>'+esc(edit.notes)+'</p></section>':'')+
       '<section class="annual-dialog-section"><h4>Audience and invitation</h4><p>'+esc(Object.values(post.audience||{}).map(a=>a.join(', ')).join(' · '))+
       '</p><p><strong>Call to action:</strong> '+esc(post.cta)+'</p></section>'+
@@ -153,7 +162,8 @@ export function renderCalendarDialog({day,view,postId,posts,plan,esc,getEdit,rev
       return '<article class="annual-day-post"><div class="annual-day-post-icon" aria-hidden="true">'+layerIcon(post.layerIds[0])+'</div>'+
         '<div class="annual-day-post-content"><div class="annual-post-tags"><span>'+(isVideo(post)?'🎬 Video':'🖼️ Graphic')+
         '</span><span>'+esc(postTime(post,edit))+' AEST</span>'+
-        (edit?.status&&edit.status!=='Idea'?'<span>'+esc(edit.status)+'</span>':'')+'</div>'+
+        (edit?.status&&edit.status!=='Idea'?'<span>'+esc(edit.status)+'</span>':'')+
+        (post.timingSignal?'<span>📣 '+post.timingSignal.leadDays+'-day lead-in</span>':'')+'</div>'+
         '<h3>'+esc(postLabel(post,edit))+'</h3><p>'+esc(summary)+'</p>'+
         (totalViews?'<p class="annual-performance-note">📈 '+totalViews.toLocaleString('en-AU')+' imported views</p>':'')+
         '<div class="annual-day-post-actions"><button class="button small" type="button" data-calendar-detail="'+esc(post.id)+'">View details</button>'+
