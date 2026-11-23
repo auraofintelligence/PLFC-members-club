@@ -2,7 +2,7 @@
 export const LAYER_ICONS=Object.freeze({
   fish:'🐟',bait:'🪝',weather:'🌤️',safety:'🛟',events:'📅',holidays:'🏖️',
   nswHolidays:'🧳',camping:'🏕️',competition:'🏆',newsletter:'📰',
-  membership:'🤝',raffles:'🎟️',fundraisers:'🎯',wishes:'🎁',community:'💬',surprise:'✨'
+  membership:'🤝',raffles:'🎟️',fundraisers:'🎯',wishes:'🎁',community:'💬',surprise:'✨',daily:'📌'
 });
 export const STATUS_OPTIONS=Object.freeze(['Idea','Draft','Assets in progress','Ready to review','Reviewed']);
 const formatDate=value=>new Intl.DateTimeFormat('en-AU',{timeZone:'UTC',weekday:'long',day:'numeric',month:'long',year:'numeric'}).format(new Date(value+'T00:00:00Z'));
@@ -18,7 +18,7 @@ export const brisbaneToday=()=>{
 };
 export const postTime=(post,edit)=>edit?.time||post.suggestedTime||'18:00';
 export const isMinuteTime=value=>typeof value==='string'&&/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(value);
-export function renderMonthCalendar({month,days,posts,esc,today=brisbaneToday()}){
+export function renderMonthCalendar({month,days,posts,esc,today=brisbaneToday(),metricsForPost=()=>[]}){
   const [year,m]=month.split('-').map(Number);
   const count=new Date(Date.UTC(year,m,0)).getUTCDate();
   const first=(new Date(Date.UTC(year,m-1,1)).getUTCDay()+6)%7;
@@ -29,11 +29,12 @@ export function renderMonthCalendar({month,days,posts,esc,today=brisbaneToday()}
     byDate.get(post.date).push(post);
   }
   let html='<div class="annual-calendar-weekdays" aria-hidden="true">'+
-    ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(x=>'<span>'+x+'</span>').join('')+'</div>'+
+    ['Mon','Tue','Wed','Thu','Fri','Sat','Sun','Week total'].map(x=>'<span>'+x+'</span>').join('')+'</div>'+
     '<div class="annual-calendar-days" aria-label="'+esc('Post calendar for '+month)+'">';
   const totalCells=Math.ceil((first+count)/7)*7;
   let weekCount=0,weekDays=0;
   for(let pos=0;pos<totalCells;pos++){
+    if(pos%7===0)html+='<div class="annual-calendar-week-row">';
     const index=pos-first+1;
     if(index<1||index>count){
       html+='<span class="annual-calendar-pad" aria-hidden="true"></span>';
@@ -43,6 +44,7 @@ export function renderMonthCalendar({month,days,posts,esc,today=brisbaneToday()}
       const qld=Boolean(data?.holiday),nsw=Boolean(data?.nswHoliday);
       const temporal=date===today?'today':date<today?'past':'future';
       const icons=[...new Set(items.map(post=>layerIcon(post.layerIds[0])))].slice(0,3);
+      const views=items.reduce((total,post)=>total+metricsForPost(post.id).reduce((n,item)=>n+(item.views??0),0),0);
       const tooltip=formatDate(date)+'; '+items.length+' planned '+(items.length===1?'post':'posts')+
         '; '+temporal+(qld?'; Queensland school holidays':'')+(nsw?'; NSW school holidays':'');
       html+='<button type="button" class="annual-calendar-day '+temporal+(items.length?' has-posts':'')+
@@ -53,13 +55,15 @@ export function renderMonthCalendar({month,days,posts,esc,today=brisbaneToday()}
         '<span class="annual-calendar-icons" aria-hidden="true">'+icons.map(x=>'<span>'+x+'</span>').join('')+'</span>'+
         '<span class="annual-calendar-dots">'+(qld?'<i class="qld" title="Queensland school holidays"></i>':'')+
         (nsw?'<i class="nsw" title="NSW school holidays"></i>':'')+'</span>'+
-        (temporal==='today'?'<small class="annual-today-label">TODAY</small>':'')+'</button>';
+        (temporal==='today'?'<small class="annual-today-label">TODAY</small>':'')+
+        (views?'<small class="annual-calendar-performance">📈 '+(views>=1000?(views/1000).toFixed(1)+'k':views)+' views</small>':'')+
+        '</button>';
     }
     if(pos%7===6){
       const weekIndex=Math.floor(pos/7)+1;
       html+='<div class="annual-calendar-week-total" role="note"><span>Week '+weekIndex+'</span>'+
         '<strong>'+weekCount+' '+(weekCount===1?'post':'posts')+'</strong>'+
-        '<span>'+weekDays+' days shown</span></div>';
+        '<span>'+weekDays+' days shown</span></div></div>';
       weekCount=0;weekDays=0;
     }
   }
@@ -76,7 +80,7 @@ function hourlyGuide(posts,getEdit,esc){
         (count?'<b>'+count+'</b>':'')+'</span>';
     }).join('')+'</div><p>Choose a post and select Edit to set its exact hour and minute.</p></details>';
 }
-export function renderCalendarDialog({day,view,postId,posts,plan,esc,getEdit,reviewOnly}){
+export function renderCalendarDialog({day,view,postId,posts,plan,esc,getEdit,reviewOnly,metricsForPost=()=>[]}){
   if(!day)return '';
   const formatted=formatDate(day),today=posts.filter(post=>post.date===day)
     .sort((a,b)=>postTime(a,getEdit(a.id)).localeCompare(postTime(b,getEdit(b.id))));
@@ -110,6 +114,13 @@ export function renderCalendarDialog({day,view,postId,posts,plan,esc,getEdit,rev
   }
   if(view==='detail'&&post){
     const variants=post.creativeVariants;
+    const results=metricsForPost(post.id);
+    const performance=results.length?'<section class="annual-dialog-section annual-dialog-performance">'+
+      '<h4>📈 Imported platform results</h4>'+
+      '<div class="annual-result-pills">'+results.map(x=>
+        '<span>'+esc(x.platform)+': '+(x.views??0).toLocaleString('en-AU')+' views · '+
+        ((x.likes??0)+(x.comments??0)+(x.shares??0)+(x.saves??0)).toLocaleString('en-AU')+' interactions</span>').join('')+'</div>'+
+      '<p class="annual-small">Imported CSV snapshot, not a live feed. Check platform metric definitions.</p></section>':'';
     const placement=variants.map(v=>'<li><strong>'+esc(v.platform)+' · '+esc(v.placement)+'</strong><span>'+esc(v.size)+
       ' · '+esc(v.ratio)+(v.distribution==='paid'?' · ad idea':'')+(v.provisional?' · proposed':'')+'</span></li>').join('');
     return '<dialog class="annual-day-dialog" data-annual-day-dialog aria-label="Post details">'+headline+
@@ -117,7 +128,7 @@ export function renderCalendarDialog({day,view,postId,posts,plan,esc,getEdit,rev
       '<h3 class="annual-dialog-post-title">'+esc(postLabel(post,edit))+'</h3>'+
       '<div class="annual-post-tags"><span>'+(isVideo(post)?'🎬 30-sec video':'🖼️ Image or link')+'</span>'+
       '<span>'+esc(postTime(post,edit))+' AEST</span><span>'+esc(edit?.status||'Idea')+'</span></div>'+
-      '<section class="annual-dialog-section"><h4>Creative brief</h4><p>'+esc(postBrief(post,edit))+'</p></section>'+
+      '<section class="annual-dialog-section"><h4>Creative brief</h4><p>'+esc(postBrief(post,edit))+'</p></section>'+performance+
       (edit?.notes?'<section class="annual-dialog-section"><h4>Your notes</h4><p>'+esc(edit.notes)+'</p></section>':'')+
       '<section class="annual-dialog-section"><h4>Audience and invitation</h4><p>'+esc(Object.values(post.audience||{}).map(a=>a.join(', ')).join(' · '))+
       '</p><p><strong>Call to action:</strong> '+esc(post.cta)+'</p></section>'+
@@ -137,11 +148,14 @@ export function renderCalendarDialog({day,view,postId,posts,plan,esc,getEdit,rev
       const edit=getEdit(post.id);
       const brief=postBrief(post,edit);
       const summary=brief.length>145?brief.slice(0,142).trimEnd()+'…':brief;
+      const results=metricsForPost(post.id);
+      const totalViews=results.reduce((total,item)=>total+(item.views??0),0);
       return '<article class="annual-day-post"><div class="annual-day-post-icon" aria-hidden="true">'+layerIcon(post.layerIds[0])+'</div>'+
         '<div class="annual-day-post-content"><div class="annual-post-tags"><span>'+(isVideo(post)?'🎬 Video':'🖼️ Graphic')+
         '</span><span>'+esc(postTime(post,edit))+' AEST</span>'+
         (edit?.status&&edit.status!=='Idea'?'<span>'+esc(edit.status)+'</span>':'')+'</div>'+
         '<h3>'+esc(postLabel(post,edit))+'</h3><p>'+esc(summary)+'</p>'+
+        (totalViews?'<p class="annual-performance-note">📈 '+totalViews.toLocaleString('en-AU')+' imported views</p>':'')+
         '<div class="annual-day-post-actions"><button class="button small" type="button" data-calendar-detail="'+esc(post.id)+'">View details</button>'+
         '<button class="button outline small" type="button" data-calendar-edit="'+esc(post.id)+'">✏️ Edit</button></div></div></article>';
     }).join(''):'<p class="annual-dialog-empty">No suggestions on this date. Try another day or increase the monthly frequency.</p>')+
