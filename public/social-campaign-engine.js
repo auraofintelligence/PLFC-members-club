@@ -68,9 +68,9 @@ export const defaultCampaignSettings = () => ({
   },
   milestones:[],
   videoShare:67, postingTime:'auto', limits:{
-    weekdayMin:1,weekday:4,fridayMin:1,friday:3,weekendMin:1,weekend:4,
-    longWeekendMin:2,longWeekend:5,publicHolidayMin:2,publicHoliday:6,
-    holidayMin:1,holiday:5
+    weekdayMin:2,weekday:4,fridayMin:2,friday:3,weekendMin:2,weekend:4,
+    longWeekendMin:3,longWeekend:5,publicHolidayMin:3,publicHoliday:6,
+    holidayMin:2,holiday:5
   },
   delivery:{
     organic:['youtube','facebook','instagram','tiktok','noticeboard'],
@@ -97,9 +97,9 @@ export const POSTING_DAY_TYPES=Object.freeze([
   {id:'holiday',label:'QLD school holidays',icon:'🎒'}
 ]);
 export const DEFAULT_DAILY_LIMITS=Object.freeze({
-  weekdayMin:1,weekday:4,fridayMin:1,friday:3,weekendMin:1,weekend:4,
-  longWeekendMin:2,longWeekend:5,publicHolidayMin:2,publicHoliday:6,
-  holidayMin:1,holiday:5
+  weekdayMin:2,weekday:4,fridayMin:2,friday:3,weekendMin:2,weekend:4,
+  longWeekendMin:3,longWeekend:5,publicHolidayMin:3,publicHoliday:6,
+  holidayMin:2,holiday:5
 });
 export function normaliseDailyLimits(existing={}){
   const output={...DEFAULT_DAILY_LIMITS};
