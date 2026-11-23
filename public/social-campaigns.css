@@ -31,3 +31,16 @@
 .annual-post-list small,.annual-small{color:var(--muted);font-size:.85rem}
 .annual-post-list button{flex-shrink:0}
 @media(max-width:600px){.annual-post-list li{flex-direction:column}.annual-month-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+.annual-delivery{display:grid;gap:.65rem;border-top:1px solid var(--line);padding-top:1rem}
+.annual-delivery h3{margin:0}
+.annual-delivery>label{display:inline-flex;gap:.55rem;align-items:center;font-weight:650}
+.annual-destinations{display:flex;flex-wrap:wrap;gap:.35rem .9rem;padding:.65rem .8rem;border:1px solid var(--line);border-radius:.55rem}
+.annual-destinations legend{font-weight:750}
+.annual-destinations label{display:inline-flex;gap:.35rem;align-items:center;font-size:.9rem}
+.annual-destinations input{accent-color:var(--teal)}
+.annual-placement-detail{margin:.5rem 0;padding:.55rem .8rem;border:1px solid var(--line);border-radius:.5rem}
+.annual-placement-detail summary{cursor:pointer;font-weight:700;color:var(--teal)}
+.annual-placement-detail ul{list-style:none;margin:.5rem 0;padding:0}
+.annual-placement-detail li{display:block;border-top:1px solid var(--line);padding:.5rem 0;font-size:.88rem}
+.annual-placement-detail small{display:block;color:var(--muted);margin:.15rem 0}
