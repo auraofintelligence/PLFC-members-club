@@ -40,9 +40,11 @@ export async function socialCampaignSettingsEndpoint(request,env,identity,{json,
   if(!body||Object.keys(body).sort().join(',')!=='settings,version'||!Number.isInteger(body.version)||body.version<0||body.version>2147483645)invalid('Reload the saved campaign settings.');
   const settings=validateCampaignSettings(body.settings,invalid);
   const now=new Date().toISOString();
-  const write=db.prepare(`INSERT INTO committee_social_campaign_settings (id,version,settings_json,updated_at,updated_by)
-    VALUES(1,1,?,?,?) ON CONFLICT(id) DO UPDATE SET version=version+1,settings_json=excluded.settings_json,
-      updated_at=excluded.updated_at,updated_by=excluded.updated_by WHERE version=?`).bind(JSON.stringify(settings),now,identity.id,body.version);
+  const write=body.version===0?
+    db.prepare('INSERT INTO committee_social_campaign_settings(id,version,settings_json,updated_at,updated_by) VALUES(1,1,?,?,?) ON CONFLICT(id) DO NOTHING')
+      .bind(JSON.stringify(settings),now,identity.id):
+    db.prepare('UPDATE committee_social_campaign_settings SET version=version+1,settings_json=?,updated_at=?,updated_by=? WHERE id=1 AND version=?')
+      .bind(JSON.stringify(settings),now,identity.id,body.version);
   const [result,,last]=await db.batch([write,
     db.prepare('INSERT INTO audit_log SELECT ?,?,?,?,?,? WHERE changes()=1').bind(crypto.randomUUID(),identity.id,identity.accountRole||identity.role,'social_campaign_settings_saved','social-campaign-settings',now),query]);
   if(result.meta.changes!==1)throw new HttpError(409,'Another officer updated the campaign patterns. Reload their settings before saving.','campaign_conflict');
