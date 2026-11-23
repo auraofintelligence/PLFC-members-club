@@ -22,14 +22,16 @@ export function renderTimingPanel(settings,esc=fallbackEsc,editingId=''){
   const editing=(settings.milestones||[]).find(item=>item.id===editingId);
   const milestones=(settings.milestones||[]).slice().sort((a,b)=>a.date.localeCompare(b.date)).map(item=>
     '<li><span><strong>'+esc(item.title)+'</strong><small>'+esc(item.date)+' · '+esc(LABELS[item.kind]?.[1]||item.kind)+
-    (item.confirmed?' · Confirmed':' · Unconfirmed')+'</small></span>'+
+    (item.id.startsWith('m-import-')?' · Imported from committee calendar/CSV':'')+
+    (item.confirmed?' · Date verified':' · Tentative planning only')+'</small></span>'+
     '<span class="annual-milestone-actions"><button type="button" data-signal-edit="'+esc(item.id)+'">Edit</button>'+
     '<button type="button" data-signal-remove="'+esc(item.id)+'" aria-label="Remove milestone '+esc(item.title)+'">Remove</button></span></li>').join('');
   return '<details class="annual-signals"><summary>📣 Timing signals and lead-in campaigns <small>School holidays, meetings, events and seasons</small></summary>'+
     '<p>Turn lead-ins on or off, then choose how many days ahead to spark interest. Holiday windows are planning ideas, not verified booking behaviour.</p>'+
     '<div class="annual-signal-grid">'+timing+'</div>'+
     '<h3>Confirmed dates and milestones</h3>'+
-    '<p>Only confirmed dates generate event, meeting or seasonal countdowns. Enter source details and confirm against the relevant authority before using season dates.</p>'+
+    '<p>Confirmed dates generate countdowns. Imported unconfirmed dates may show internal preparation ideas only. '+
+    'Use the annual calendar importer above to bring existing event records into this list; verify dates and applicable fishing rules before any public promotion.</p>'+
     '<div class="annual-milestone-form"><label>Type <select data-milestone-kind>'+
     Object.entries(LABELS).filter(([k])=>!['holidays','nswHolidays'].includes(k)).map(([k,v])=>
       '<option value="'+k+'"'+(editing?.kind===k?' selected':'')+'>'+esc(v[1])+'</option>').join('')+'</select></label>'+
