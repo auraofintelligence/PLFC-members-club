@@ -406,17 +406,25 @@ export function setupAnnualCampaigns({mount,api,esc,isActive,onUse,reviewOnly=fa
       const local=!reviewOnly?browserDraft():null;
       settings=local||remote;saved=JSON.stringify(remote);sharedSettingsReady=true;
       loaded=true;monthDraft=null;batchMonth='';workingDayPlans=null;dayFormTouched=false;loadEdits();importMetrics();
-      notice=local?'Shared settings connected. Your browser-only changes are loaded for review; select Save to share them with the committee.':
-        reviewOnly?'Temporary preview settings loaded. No database or live club data is connected.':
-        row.updatedAt?'Loaded saved settings from '+row.updatedAt.slice(0,10)+'.':'Default settings loaded; not yet shared.';
+      latestSave={version:row.version,updatedAt:row.updatedAt,updatedByName:row.updatedByName,updatedOffice:row.updatedOffice};
+      historyRows=null;historyError='';
+      saveState=local||reviewOnly?'local':row.version>0?'shared':'idle';
+      saveMessage=local?'Browser-only changes loaded. Review them before sharing with the committee.':
+        reviewOnly?'Trial settings are kept in this browser between refreshes; no club data is changed.':
+        row.updatedAt?'Shared settings loaded from the PLFC database.':'No committee settings saved yet.';
+      notice=saveMessage;
     }catch(e){
       if(!isActive())return;
       if(e.status>=500){
         settings=browserDraft()||normaliseSettings(defaultCampaignSettings());
         saved=JSON.stringify(settings);loaded=true;sharedSettingsReady=false;
         version=0;monthDraft=null;batchMonth='';workingDayPlans=null;dayFormTouched=false;loadEdits();importMetrics();
-        notice='Shared settings could not be reached. The calendar is open in browser-only mode; no committee changes will be shared until the connection is restored.';
-      }else notice='Could not load committee settings: '+e.message;
+        latestSave=null;saveState='local';historyRows=null;
+        saveMessage='The club database is unavailable. Changes can be kept in this browser, but not shared yet.';
+        notice=saveMessage;
+      }else{
+        saveState='error';saveMessage='Could not load committee settings: '+e.message;notice=saveMessage;
+      }
     }finally{busy=false;draw();}
   }
   async function save(){
