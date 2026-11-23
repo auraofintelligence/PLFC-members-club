@@ -57,7 +57,7 @@ export function metricFromRow(row,mapping,{platform,filename,importedAt}){
   const col=field=>String(row[mapping[field]]??'').trim();
   const counts=Object.fromEntries(['views','likes','comments','shares','saves','clicks'].map(field=>[field,positiveInteger(col(field))]));
   return {
-    id:'',platform,postId:col('postId'),externalId:col('externalId'),postUrl:col('postUrl'),
+    id:'',platform,visibilitySourceField:mapping.views||'',postId:col('postId'),externalId:col('externalId'),postUrl:col('postUrl'),
     publishedAt:col('publishedAt'),importedAt,filename,
     ...counts
   };
@@ -131,7 +131,7 @@ export function planMetricsCSV(posts,postEdits,records){
   const columns=['plfc_post_id','date','time_AEST','time_zone','title','content_format','topics',
     'channels','brief','cta','storyboard','working_notes','working_status',
     'timing_signal','signal_target','lead_days',
-    'platform','external_post_id','post_url','report_imported_at',
+    'platform','external_post_id','post_url','platform_published_at','visibility_source_field','report_imported_at',
     'views','likes','comments','shares','saves','clicks'];
   const quote=value=>{
     let str=String(value??'').replace(/\r?\n/g,' ');
@@ -151,7 +151,7 @@ export function planMetricsCSV(posts,postEdits,records){
         timing_signal:p.timingSignal?.kind||'',signal_target:p.timingSignal?.targetDate||'',
         lead_days:p.timingSignal?.leadDays??'',
         platform:result?.platform||'',external_post_id:result?.externalId||'',
-        post_url:result?.postUrl||'',report_imported_at:result?.importedAt||'',
+        post_url:result?.postUrl||'',platform_published_at:result?.publishedAt||'',visibility_source_field:result?.visibilitySourceField||'',report_imported_at:result?.importedAt||'',
         views:result?.views??'',likes:result?.likes??'',comments:result?.comments??'',
         shares:result?.shares??'',saves:result?.saves??'',clicks:result?.clicks??''
       };
