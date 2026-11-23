@@ -1,4 +1,4 @@
-const ids=['fish','bait','weather','safety','events','holidays','camping','competition','newsletter','membership','raffles','fundraisers','wishes','community','surprise'];
+const ids=['fish','bait','weather','safety','events','holidays','nswHolidays','camping','competition','newsletter','membership','raffles','fundraisers','wishes','community','surprise'];
 const memberships=['all','adult','cadet','junior','social','casual','lifetime','prospect'];
 const genders=['all','women','men','self-described'];
 const places=['all','local','tourist','regional'];
