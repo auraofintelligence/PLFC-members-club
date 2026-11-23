@@ -239,7 +239,7 @@ export function setupAnnualCampaigns({mount,api,esc,isActive,onUse,reviewOnly=fa
     busy=true;
     try{const row=await api(endpoint,{cache:'no-store'});
       if(!isActive())return;
-      version=row.version;settings=row.settings||defaultCampaignSettings();settings.monthOverrides??={};saved=JSON.stringify(settings);loaded=true;monthDraft=null;batchMonth='';loadEdits();
+      version=row.version;settings=row.settings||defaultCampaignSettings();settings.monthOverrides??={};settings.weekOverrides??={};settings.dayOverrides??={};settings.postingTime??='auto';saved=JSON.stringify(settings);loaded=true;monthDraft=null;batchMonth='';loadEdits();
       notice=reviewOnly?'Temporary preview settings loaded. No database or live club data is connected.':row.updatedAt?'Loaded saved settings from '+row.updatedAt.slice(0,10)+'.':'Default settings loaded; not yet shared.';
     }catch(e){notice='Could not load settings: '+e.message;}finally{busy=false;draw();}
   }
@@ -248,7 +248,7 @@ export function setupAnnualCampaigns({mount,api,esc,isActive,onUse,reviewOnly=fa
     busy=true;notice='Saving committee settings…';draw();
     try{const row=await api(endpoint,{method:'POST',body:JSON.stringify({version,settings})});
       if(!isActive())return;
-      version=row.version;settings=row.settings;saved=JSON.stringify(settings);
+      version=row.version;settings=row.settings;settings.monthOverrides??={};settings.weekOverrides??={};settings.dayOverrides??={};saved=JSON.stringify(settings);
       notice=reviewOnly?'Trial settings updated in this browser tab only; refreshing will reset them. No posts were published.':'Shared settings saved. No posts were published.';
     }catch(e){notice=e.status===409?'Someone else edited these settings. Reload the saved version before retrying.':e.message;}finally{busy=false;draw();}
   }
@@ -258,6 +258,32 @@ export function setupAnnualCampaigns({mount,api,esc,isActive,onUse,reviewOnly=fa
     if(!list.length)list=['all'];
     settings.layers[selectedLayer].audience[field]=[...new Set(list)];
   }
+  function exportSchedule(){
+    if(!lastPreview)return;
+    const columns=['post_id','date','time_AEST','time_zone','title','content_format','channels','status','brief','notes','lead_signal_kind','lead_days','views','likes','comments','shares','saves','clicks'];
+    const rows=lastPreview.posts.filter(p=>p.date.startsWith(selectedMonth)).map(p=>{
+      const edit=getEdit(p.id);
+      const item={
+        post_id:p.id,date:p.date,time_AEST:postTime(p,edit),time_zone:'Australia/Brisbane',
+        title:postLabel(p,edit),content_format:p.format,channels:p.channels.join('|'),status:edit.status||'Idea',
+        brief:postBrief(p,edit),notes:edit.notes||'',
+        lead_signal_kind:p.timingSignal?.kind||'',lead_days:p.timingSignal?.leadDays??'',
+        views:edit.metrics?.views??'',likes:edit.metrics?.likes??'',comments:edit.metrics?.comments??'',
+        shares:edit.metrics?.shares??'',saves:edit.metrics?.saves??'',clicks:edit.metrics?.clicks??''
+      };
+      return columns.map(key=>{
+        let cell=String(item[key]??'').replace(/\r?\n/g,' ');
+        if(/^\s*[=+@-]/.test(cell))cell="'"+cell;
+        return '"'+cell.replaceAll('"','""')+'"';
+      }).join(',');
+    });
+    const csv='\uFEFF'+[columns.join(','),...rows].join('\r\n');
+    const link=document.createElement('a'),url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
+    link.href=url;link.download='plfc-social-schedule-'+selectedMonth+'.csv';link.click();
+    setTimeout(()=>URL.revokeObjectURL(url),5000);
+    notice='Exported '+rows.length+' posts for '+monthName(selectedMonth)+'. Times use Brisbane AEST.';
+  }
+
   mount.addEventListener('input',event=>{
     const target=event.target;
     const key=target.hasAttribute('data-month-video')?'video':
@@ -295,6 +321,14 @@ export function setupAnnualCampaigns({mount,api,esc,isActive,onUse,reviewOnly=fa
       batchDirty=true;notice='Previewing '+monthName(selectedMonth)+' adjustments. Choose Apply and save to keep this month.';
       draw();return;
     }
+    if(e.hasAttribute('data-scope-day')){
+      if(batchDirty&&!window.confirm('Discard unapplied planning changes?')){draw();return;}
+      focusDay=e.value;selectedMonth=focusDay.slice(0,7);monthDraft=null;batchMonth='';draw();return;
+    }
+    if(e.hasAttribute('data-scope-time')){
+      if(e.value && !isMinuteTime(e.value)){notice='Choose a valid Brisbane time (HH:MM).';draw();return;}
+      currentBatch().postingTime=e.value||'auto';batchDirty=true;draw();return;
+    }
     if(e.hasAttribute('data-annual-topic')){
       topicFilter=e.value;draw();return;
     }
@@ -312,24 +346,50 @@ export function setupAnnualCampaigns({mount,api,esc,isActive,onUse,reviewOnly=fa
     else if(e.hasAttribute('data-annual-audience'))updateAudience(e.dataset.annualAudience,e.value,e.checked);
     else if(e.hasAttribute('data-annual-start') && /^20\d{2}-(0[1-9]|1[0-2])$/.test(e.value)){
       if(batchDirty&&!window.confirm('Discard unapplied changes to this month?')){draw();return;}
-      startMonth=e.value;selectedMonth=startMonth;monthDraft=null;batchMonth='';modalDay=null;loadEdits();
+      startMonth=e.value;selectMonth(startMonth);loadEdits();
     }
     else if(e.hasAttribute('data-annual-month')){
       if(batchDirty&&!window.confirm('Discard unapplied changes to this month?')){draw();return;}
-      selectedMonth=e.value;monthDraft=null;batchMonth='';modalDay=null;
+      selectMonth(e.value);
     }
-    if(!batchDirty && !settings.monthOverrides[selectedMonth]){monthDraft=null;batchMonth='';}
+    if(!batchDirty && !settings[overrideBucket()]?.[scopeKey()]){monthDraft=null;batchMonth='';}
     notice=changed()?(reviewOnly?'Trial changes are unsaved. Keep them in this tab to try another layout.':'Unsaved changes. Select Save committee settings to share them.'):'Settings match the saved version.';
     draw();
   });
   mount.addEventListener('click',event=>{
     const b=event.target.closest('button');if(!b||!b.closest('[data-annual-root]')||!isActive())return;
+    if(b.hasAttribute('data-planning-scope')){
+      const value=b.dataset.planningScope;
+      if(!['day','week','month'].includes(value))return;
+      if(batchDirty&&!window.confirm('Discard unapplied changes to this planning period?'))return;
+      planningScope=value;monthDraft=null;batchMonth='';draw();return;
+    }
+    if(b.hasAttribute('data-scope-auto')){
+      currentBatch().postingTime='auto';batchDirty=true;draw();return;
+    }
+    if(b.hasAttribute('data-calendar-plan-day')){
+      focusDay=b.dataset.calendarPlanDay;planningScope='day';
+      modalDay=null;modalPostId=null;modalView='day';monthDraft=null;batchMonth='';draw();
+      root()?.querySelector('#annual-plan-settings')?.scrollIntoView({behavior:'smooth',block:'start'});return;
+    }
+    if(b.hasAttribute('data-calendar-time-preset')){
+      const time=root()?.querySelector('[data-post-time]');
+      if(time){time.value=b.dataset.calendarTimePreset;time.focus();}
+      return;
+    }
+    if(b.hasAttribute('data-calendar-hour')){
+      const time=root()?.querySelector('[data-post-time]');if(time){
+        const minute=isMinuteTime(time.value)?time.value.slice(3):'00';time.value=b.dataset.calendarHour+':'+minute;
+        time.focus();
+      }return;
+    }
+    if(b.hasAttribute('data-calendar-export')){exportSchedule();return;}
     if(b.hasAttribute('data-calendar-close')){
       root()?.querySelector('[data-annual-day-dialog]')?.close();
       modalDay=null;modalPostId=null;modalView='day';return;
     }
     if(b.hasAttribute('data-calendar-day')){
-      modalDay=b.dataset.calendarDay;modalPostId=null;modalView='day';draw();return;
+      modalDay=b.dataset.calendarDay;focusDay=modalDay;modalPostId=null;modalView='day';draw();return;
     }
     if(b.hasAttribute('data-calendar-back')){modalView='day';modalPostId=null;draw();return;}
     if(b.hasAttribute('data-calendar-detail')||b.hasAttribute('data-calendar-edit')){
@@ -345,8 +405,9 @@ export function setupAnnualCampaigns({mount,api,esc,isActive,onUse,reviewOnly=fa
       const brief=modal?.querySelector('[data-post-brief]')?.value.trim();
       const notes=modal?.querySelector('[data-post-notes]')?.value.trim();
       const status=modal?.querySelector('[data-post-status]')?.value;
-      if(!title||!brief){modal?.querySelector(!title?'[data-post-title]':'[data-post-brief]')?.focus();return;}
-      postEdits[id]={title,brief,notes,status};
+      const time=modal?.querySelector('[data-post-time]')?.value;
+      if(!title||!brief||!isMinuteTime(time)){modal?.querySelector(!title?'[data-post-title]':!brief?'[data-post-brief]':'[data-post-time]')?.focus();return;}
+      postEdits[id]={title,brief,notes,status,time};
       const persisted=persistEdits();
       notice=persisted?'Post edits saved in this browser.':'Edit saved for this visit only; your browser blocked local storage.';
       modalView='detail';modalPostId=id;draw();return;
@@ -356,29 +417,31 @@ export function setupAnnualCampaigns({mount,api,esc,isActive,onUse,reviewOnly=fa
       const target=months.indexOf(selectedMonth)+Number(b.dataset.annualStep);
       if(target<0||target>=months.length)return;
       if(batchDirty&&!window.confirm('Discard unapplied month settings?'))return;
-      selectedMonth=months[target];modalDay=null;modalPostId=null;
-      monthDraft=null;batchMonth='';draw();return;
+      selectMonth(months[target]);draw();return;
     }
     if(b.hasAttribute('data-month-apply')){
-      settings.monthOverrides[selectedMonth]=copyMonthSettings(currentBatch());
+      settings[overrideBucket()][scopeKey()]=copyMonthSettings(currentBatch());
       batchDirty=false;void save();return;
     }
     if(b.hasAttribute('data-month-copy-next')){
-      const nextMonth=nextMonthValue(selectedMonth);
-      settings.monthOverrides[selectedMonth]=copyMonthSettings(currentBatch());
-      settings.monthOverrides[nextMonth]=copyMonthSettings(currentBatch());
-      batchDirty=false;notice='Applied '+monthName(selectedMonth)+' and copied its settings to '+monthName(nextMonth)+'.';
+      const key=scopeKey(),scope=planningScope,bucket=overrideBucket(),copy=copyMonthSettings(currentBatch());
+      const offset=scope==='day'?1:scope==='week'?7:null;
+      const next=offset===null?nextMonth(key,1):
+        new Date(Date.parse(key+'T00:00:00Z')+offset*86400000).toISOString().slice(0,10);
+      settings[bucket][key]=copyMonthSettings(copy);
+      settings[bucket][next]=copyMonthSettings(copy);
+      batchDirty=false;notice='Copied '+scope+' planning settings to '+next+'.';
       void save();return;
     }
     if(b.hasAttribute('data-month-reset')){
-      delete settings.monthOverrides[selectedMonth];monthDraft=copyMonthSettings(settings);
+      delete settings[overrideBucket()][scopeKey()];monthDraft=null;batchMonth='';
       batchDirty=false;void save();return;
     }
     if(b.hasAttribute('data-annual-save')){void save();return;}
     if(b.hasAttribute('data-annual-reload')){if(changed()&&!window.confirm('Discard unsaved pattern changes?'))return;loaded=false;void open();return;}
     if(b.hasAttribute('data-annual-go')){
       if(batchDirty&&!window.confirm('Discard unapplied changes to this month?'))return;
-      selectedMonth=b.dataset.annualGo;monthDraft=null;batchMonth='';modalDay=null;draw();return;
+      selectMonth(b.dataset.annualGo);draw();return;
     }
     if(b.hasAttribute('data-annual-use')){
       const post=lastPreview?.posts.find(p=>p.id===b.dataset.annualUse);if(!post)return;
@@ -387,13 +450,13 @@ export function setupAnnualCampaigns({mount,api,esc,isActive,onUse,reviewOnly=fa
       modalDay=null;modalPostId=null;modalView='day';
       onUse({title:postLabel(post,edit),body:postBrief(post,edit)+(edit.notes?'\n\nWorking notes: '+edit.notes:'')+
         '\n\nSuggested format: '+post.format+' ('+post.size+'). '+post.cta+'. Verify details before publishing.',
-        channels:post.channels,plannedDate:post.date});
+        channels:post.channels,plannedDate:post.date,plannedTime:postTime(post,edit)});
     }
   });
   mount.addEventListener('close',event=>{
     if(event.target.matches('[data-annual-day-dialog]')){modalDay=null;modalPostId=null;modalView='day';}
   },true);
   return {markup,open,reset(){loaded=false;busy=false;settings=defaultCampaignSettings();saved=JSON.stringify(settings);
-    version=0;notice='';lastPreview=null;modalDay=null;modalPostId=null;modalView='day';}};
+    version=0;notice='';lastPreview=null;modalDay=null;modalPostId=null;modalView='day';planningScope='month';monthDraft=null;batchMonth='';}};
 
 }
