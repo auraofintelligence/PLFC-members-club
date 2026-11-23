@@ -147,6 +147,7 @@ export function renderCalendarDialog({day,view,postId,posts,plan,esc,getEdit,rev
       '<p>Placement requirements must be verified before publishing.</p></details>'+
       '<footer class="annual-dialog-actions">'+
       '<button type="button" class="button" data-calendar-edit="'+esc(post.id)+'">✏️ Edit this post</button>'+
+      '<button type="button" class="button outline" data-calendar-dismiss="'+esc(post.id)+'">Remove suggestion</button>'+
       '<button type="button" class="button outline" data-annual-use="'+esc(post.id)+'">Open in club editor</button>'+
       '<button type="button" class="button outline" data-calendar-back>← All posts today</button></footer></dialog>';
   }
@@ -169,6 +170,7 @@ export function renderCalendarDialog({day,view,postId,posts,plan,esc,getEdit,rev
         '<div class="annual-day-post-actions"><button class="button small" type="button" data-calendar-detail="'+esc(post.id)+'">View details</button>'+
         '<button class="button outline small" type="button" data-calendar-edit="'+esc(post.id)+'">✏️ Edit</button></div></div></article>';
     }).join(''):'<p class="annual-dialog-empty">No suggestions on this date. Try another day or increase the monthly frequency.</p>')+
-    '</div><footer class="annual-dialog-actions"><button class="button" type="button" data-calendar-plan-day="'+esc(day)+'">🎛️ Plan this day</button>'+
+    '</div><footer class="annual-dialog-actions"><button class="button" type="button" data-calendar-add="'+esc(day)+'">＋ Add your own post</button>'+
+    '<button class="button outline" type="button" data-calendar-plan-day="'+esc(day)+'">🎛️ Plan this day</button>'+
     '<button class="button outline" type="button" data-calendar-close>Close</button></footer></dialog>';
 }
