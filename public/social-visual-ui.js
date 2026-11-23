@@ -45,7 +45,9 @@ export function renderMonthCalendar({month,days,posts,esc,today=brisbaneToday(),
       const qld=Boolean(data?.holiday),nsw=Boolean(data?.nswHoliday);
       const publicHoliday=Boolean(data?.publicHoliday),longWeekend=Boolean(data?.longWeekend);
       const temporal=date===today?'today':date<today?'past':'future';
-      const icons=[...new Set(items.map(post=>layerIcon(post.layerIds[0])))].slice(0,3);
+      // One icon represents one post, even when several posts share a topic.
+      // The calendar wraps them rather than hiding, sampling or deduplicating.
+      const icons=items.map(post=>({icon:layerIcon(post.layerIds[0]),title:post.title||'Planned post'}));
       const views=items.reduce((total,post)=>total+metricsForPost(post.id).reduce((n,item)=>n+(item.views??0),0),0);
       const hasLead=items.some(post=>Boolean(post.timingSignal));
       const tooltip=formatDate(date)+'; '+items.length+' planned '+(items.length===1?'post':'posts')+
@@ -61,13 +63,18 @@ export function renderMonthCalendar({month,days,posts,esc,today=brisbaneToday(),
         ' aria-label="'+esc(tooltip)+'" title="'+esc(tooltip)+'">'+
         '<span class="annual-calendar-day-top"><strong>'+index+'</strong>'+
         (items.length?'<b class="annual-calendar-count">'+items.length+'</b>':'')+'</span>'+
-        '<span class="annual-calendar-icons" aria-hidden="true">'+icons.map(x=>'<span>'+x+'</span>').join('')+'</span>'+
+        ((publicHoliday||longWeekend||data?.partialPublicHoliday)?
+          '<span class="annual-calendar-date-flags">'+
+          (publicHoliday?'<span class="annual-cal-notation ph" title="'+esc(data.publicHolidayName||'Queensland public holiday')+'">PH</span>':'')+
+          (longWeekend?'<span class="annual-cal-notation lw" title="Long weekend">LW</span>':'')+
+          (data?.partialPublicHoliday&&!publicHoliday?'<span class="annual-cal-notation part" title="'+esc(data.partialPublicHoliday)+'">PH eve</span>':'')+
+          '</span>':'')+
+        '<span class="annual-calendar-icons">'+icons.map(item=>'<span class="annual-calendar-post-icon" title="'+esc(item.title)+'" aria-hidden="true">'+
+          item.icon+'</span>').join('')+'</span>'+
         '<span class="annual-calendar-dots">'+(qld?'<i class="qld" title="Queensland school holidays"></i>':'')+
         (nsw?'<i class="nsw" title="NSW school holidays"></i>':'')+'</span>'+
         (temporal==='today'?'<small class="annual-today-label">TODAY</small>':'')+
-        (publicHoliday?'<small class="annual-calendar-holiday">🎉 Public holiday</small>':
-          longWeekend?'<small class="annual-calendar-holiday">🧳 Long weekend</small>':
-          data?.partialPublicHoliday?'<small class="annual-calendar-holiday">🌙 PH evening</small>':'')+
+        (publicHoliday&&data?.publicHolidayName?'<small class="annual-calendar-holiday-name">'+esc(data.publicHolidayName)+'</small>':'')+
         (hasLead?'<small class="annual-calendar-signal">📣 Lead-in</small>':'')+
         (data?.signature?'<small class="annual-calendar-signed">'+
           renderDaySignature(data.signature,esc,true)+'</small>':'')+
