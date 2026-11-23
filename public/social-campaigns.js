@@ -1,5 +1,5 @@
 import {CAMPAIGN_LAYERS,defaultCampaignSettings,generateCampaignYear} from './social-campaign-engine.js';
-import {PUBLISHING_DESTINATIONS,placementSources} from './social-placements.js';
+import {PUBLISHING_DESTINATIONS,placementSources,CREATIVE_SPEC_VERSION,MASTER_ASSET_PRESETS} from './social-placements.js';
 
 const endpoint='/api/committee/social-campaign-settings';
 const choices={
@@ -67,7 +67,13 @@ export function setupAnnualCampaigns({mount,api,esc,isActive,onUse}){
     const days=new Map(plan.days.map(day=>[day.date,day]));
     const nsw=plan.days.filter(day=>day.nswHoliday&&!day.holiday).length;
     const paidIdeas=plan.posts.filter(p=>p.creativeVariants.some(v=>v.distribution==='paid')).length;
+    const masterLibrary='<details class="annual-master-library"><summary>Master asset production presets ('+MASTER_ASSET_PRESETS.length+')</summary>'+
+      '<p>Use high-quality masters and create independent crops or edits for each placement; never enlarge an existing low-resolution export.</p><ul>'+
+      MASTER_ASSET_PRESETS.map(a=>'<li><strong>'+esc(a.label)+'</strong> · '+a.width+' × '+a.height+' · '+esc(a.ratio)+'</li>').join('')+
+      '</ul></details>';
     return '<div class="annual-preview">'+
+      '<p class="annual-small">Placement spec version <strong>'+esc(CREATIVE_SPEC_VERSION.id)+'</strong> · reviewed '+esc(CREATIVE_SPEC_VERSION.reviewedOn)+'. Working exports, not upload minimums. Verify again before advertising.</p>'+
+      masterLibrary+
       '<div class="annual-month-choose"><label>Year begins <input type="month" data-annual-start min="2026-01" max="2028-02" value="'+startMonth+'"></label>'+
       '<label>View month <select data-annual-month>'+months.map(m=>'<option value="'+m+'"'+(selectedMonth===m?' selected':'')+'>'+monthName(m)+'</option>').join('')+'</select></label></div>'+
       '<div class="annual-stats"><strong>'+plan.totals.posts+' suggestions</strong><strong>'+plan.totals.videos+' videos ('+
@@ -87,7 +93,17 @@ export function setupAnnualCampaigns({mount,api,esc,isActive,onUse}){
           '<details class="annual-placement-detail"><summary>'+p.creativeVariants.length+' placement-specific creative exports</summary><ul>'+
           p.creativeVariants.map(v=>'<li><strong>'+esc(v.platform)+' · '+esc(v.placement)+'</strong> · '+esc(v.asset)+
             ' · '+esc(v.size)+' · '+esc(v.ratio)+' · '+(v.distribution==='paid'?'Paid ad template / unapproved':'Organic')+
-            (v.provisional?' · PROPOSED ONLY':'')+'<small>'+esc(v.note)+'</small></li>').join('')+
+            (v.provisional?' · PROPOSED ONLY':'')+
+            '<small><strong>File:</strong> '+esc(v.fileFormats.join(', '))+
+            (v.maximumDurationSeconds?' · maximum documented duration '+v.maximumDurationSeconds+'s':'')+
+            (v.recommendedDurationSeconds?' · suggested edit '+v.recommendedDurationSeconds+'s':'')+'</small>'+
+            (v.thumbnail?'<small><strong>Thumbnail:</strong> '+esc(v.thumbnail.label)+' '+v.thumbnail.width+' × '+v.thumbnail.height+'</small>':'')+
+            '<small><strong>Safe zones:</strong> '+esc(v.safeZone.label)+
+            (v.safeZone.topPixels?' ('+v.safeZone.topPixels+'px top, '+v.safeZone.bottomPixels+'px bottom, '+v.safeZone.sidePixels+'px sides)':'')+'</small>'+
+            (v.carousel?'<small><strong>Carousel:</strong> '+v.carousel.min+'–'+v.carousel.max+' slides; '+(v.carousel.requiresMusic?'music required':'check music rules')+'</small>':'')+
+            '<small><strong>Checklist:</strong> '+esc(v.checklist.join(' · '))+'</small>'+
+            '<small><strong>Approval:</strong> '+esc(v.approval)+'</small>'+
+            '<small>'+esc(v.note)+' · <a href="'+esc(v.sourceUrl)+'" target="_blank" rel="noopener noreferrer">Specification reference</a></small></li>').join('')+
           '</ul></details></div>'+
           '<button type="button" class="button outline small" data-annual-use="'+esc(p.id)+'">Use as draft</button></li>';
       }).join('')+'</ol>':'<p>No suggestions in the visible layers for this month.</p>')+
