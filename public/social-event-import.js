@@ -27,10 +27,11 @@ const limitWindow=(date,start,months=12)=>{
 };
 export function clubEventCandidates(events,startMonth){
   if(!Array.isArray(events))return [];
-  return events.filter(x=>x?.status==='open'&&limitWindow(x.date,startMonth)&&
+  return events.filter(x=>['open','closed'].includes(x?.status)&&limitWindow(x.date,startMonth)&&
     typeof x.title==='string'&&x.title.trim()&&typeof x.id==='string').map(x=>({
     id:importKey('event',x.id),title:x.title.trim().slice(0,140),date:x.date,kind:'event',
-    origin:'Club event run sheet',status:'Planning run sheet',description:String(x.goal||'').slice(0,250)
+    origin:'Club event run sheet',status:x.status==='closed'?'Closed run sheet — check before promotion':'Planning run sheet',
+    inactive:x.status==='closed',description:String(x.goal||'').slice(0,250)
   }));
 }
 export function meetingCandidates(meetings,startMonth){
@@ -81,11 +82,11 @@ export function importCalendarAnchors(milestones,candidates,selectedIds,verified
   for(const event of chosen){
     const prior=merged.get(event.id);
     const changed=prior&&(prior.title!==event.title||prior.date!==event.date||prior.kind!==event.kind);
-    const verified=verifiedIds.includes(event.id);
-    // A title/date changed upstream requires deliberate reconfirmation. Do not
-    // silently carry over yesterday's approval for a different event date.
-    const confirmed=verified||Boolean(!changed&&prior?.confirmed);
-    if(changed&&prior.confirmed&&!verified)verificationReset++;
+    const verified=!event.inactive&&verifiedIds.includes(event.id);
+    // A source date change or closed run sheet needs an explicit fresh review.
+    // Closed event plans cannot be marked verified by importing them.
+    const confirmed=!event.inactive&&(verified||Boolean(!changed&&prior?.confirmed));
+    if(prior?.confirmed&&!confirmed)verificationReset++;
     const target={id:event.id,kind:event.kind,title:event.title,date:event.date,
       sourceUrl:'',confirmed};
     if(!prior)added++;
