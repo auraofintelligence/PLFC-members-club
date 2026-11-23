@@ -15,7 +15,7 @@ export function renderSaveFeedback({status='idle',message='',latest=null,reviewO
   const by=latest?.updatedByName?officerLabel(latest.updatedOffice,latest.updatedByName):'';
   const saved=latest?.updatedAt?saveTime(latest.updatedAt):'';
   const headline=status==='shared'?'✓ Saved for the PLFC committee':
-    status==='local'?'◈ Browser-only save':
+    status==='local'?(latest?.version?'◈ Browser-only save':'◈ Browser-only planning'):
     status==='error'?'⚠ Not saved to the club':
     status==='saving'?'⏳ Saving changes…':
     latest?.version>0?'✓ Shared settings are loaded':'No shared save yet';
@@ -23,7 +23,7 @@ export function renderSaveFeedback({status='idle',message='',latest=null,reviewO
     'Changes are only shared after the committee database confirms the save.');
   return '<aside class="annual-save-feedback '+style+'" data-save-feedback role="status" aria-live="polite">'+
     '<strong>'+esc(headline)+'</strong><span>'+esc(details)+'</span>'+
-    (by?'<small>Last shared save: '+esc(by)+(saved?' · '+esc(saved):'')+
+    (by?'<small>'+(reviewOnly?'Last browser save: ':'Last shared save: ')+esc(by)+(saved?' · '+esc(saved):'')+
       (latest?.version?' · version '+latest.version:'')+'</small>':'')+
     '</aside>';
 }
@@ -31,7 +31,7 @@ export function renderCampaignHistory({history=null,loading=false,error='',revie
   const preview=reviewOnly;
   const intro=preview?'Only saves on this browser appear here. These are not committee audit records.':
     'Shared revisions are kept in the PLFC database, including saves made through the Webmaster account. Every record identifies the signed-in officer and the fields changed.';
-  const entries=Array.isArray(history)?'<ol class="annual-history-list">'+history.map(row=>{
+  const entries=Array.isArray(history)?(history.length?'<ol class="annual-history-list">'+history.map(row=>{
     const person=officerLabel(row.actorOffice,row.actorName);
     const changes=row.changes||{count:0,changes:[]};
     const note=changes.note||'';
@@ -47,7 +47,7 @@ export function renderCampaignHistory({history=null,loading=false,error='',revie
         '<p class="annual-small">No field differences recorded for this save.</p>')+
       (changes.count>changes.changes?.length?'<p class="annual-small">Additional changes are included in the downloadable version snapshot.</p>':'')+
       '</details></li>';
-  }).join('')+'</ol>':'';
+  }).join('')+'</ol>':'<p class="annual-small">No versions have been saved yet.</p>'):'';
   return '<details class="annual-history" id="annual-save-history"><summary>🕘 Saved changes and responsible officers <small>'+
     (preview?'This browser only':'PLFC shared history')+'</small></summary>'+
     '<div class="annual-history-body"><p>'+esc(intro)+'</p>'+
