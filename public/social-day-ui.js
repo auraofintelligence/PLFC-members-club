@@ -50,6 +50,7 @@ export function renderItemisedDay({day,type,dayPlan,savedPatterns,esc,layers}){
       ).join('')+'</div>'+
       '<div class="annual-day-operations">'+
       '<button type="button" class="button outline" data-day-add-item>＋ Add a post</button>'+
+      '<button type="button" class="button outline annual-surprise-button" data-day-surprise>✨ Unexpected opportunity</button>'+
       '<button type="button" class="button outline" data-day-reset>↺ Use generated suggestions</button>'+
       '</div>'+
       '<div class="annual-day-save"><button type="button" class="button" data-day-save>✓ Save this day’s posts</button>'+
