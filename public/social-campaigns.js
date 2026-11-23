@@ -1,4 +1,4 @@
-import {CAMPAIGN_LAYERS,defaultCampaignSettings,generateCampaignYear} from './social-campaign-engine.js';
+import {CAMPAIGN_LAYERS,defaultCampaignSettings,generateCampaignYear,monthSettingsFor,copyMonthSettings} from './social-campaign-engine.js';
 import {PUBLISHING_DESTINATIONS,placementSources,CREATIVE_SPEC_VERSION,MASTER_ASSET_PRESETS} from './social-placements.js';
 
 const endpoint='/api/committee/social-campaign-settings';
@@ -9,6 +9,7 @@ const choices={
 };
 const checked=value=>value?' checked':'';
 const nextMonth=(start,index)=>new Date(Date.UTC(Number(start.slice(0,4)),Number(start.slice(5))-1+index,1)).toISOString().slice(0,7);
+const nextMonthValue=value=>nextMonth(value,1);
 const monthName=value=>new Intl.DateTimeFormat('en-AU',{timeZone:'UTC',month:'short',year:'numeric'}).format(new Date(value+'-01T00:00:00Z'));
 const audienceText=selection=>Object.values(selection||{}).map(values=>values.join(', ')).join(' · ');
 const csvDate=value=>value.slice(0,10);
@@ -16,7 +17,16 @@ const csvDate=value=>value.slice(0,10);
 export function setupAnnualCampaigns({mount,api,esc,isActive,onUse,reviewOnly=false}){
   let settings=defaultCampaignSettings(),saved=JSON.stringify(settings),version=0,loaded=false,busy=false,notice='';
   let selectedLayer='nswHolidays',startMonth=new Date(Date.now()+36000000).toISOString().slice(0,7),selectedMonth=startMonth;
-  let lastPreview=null;
+  let lastPreview=null,monthDraft=null,batchMonth='',batchDirty=false;
+  function currentBatch(){
+    if(!monthDraft||batchMonth!==selectedMonth){
+      batchMonth=selectedMonth;
+      monthDraft=copyMonthSettings(monthSettingsFor(settings,selectedMonth));
+      batchDirty=false;
+    }
+    return monthDraft;
+  }
+  const previewSettings=()=>({...settings,monthOverrides:{...settings.monthOverrides,[selectedMonth]:currentBatch()}});
   const root=()=>mount.querySelector('[data-annual-root]');
   const changed=()=>JSON.stringify(settings)!==saved;
   const labels={
@@ -56,13 +66,55 @@ export function setupAnnualCampaigns({mount,api,esc,isActive,onUse,reviewOnly=fa
       '<div class="annual-actions"><button type="button" class="button" data-annual-save'+(busy?' disabled':'')+'>'+(reviewOnly?'Keep trial settings in this tab':'Save committee settings')+'</button>'+
       '<button type="button" class="button outline" data-annual-reload'+(busy?' disabled':'')+'>Reload saved settings</button></div></div>';
   }
+
+  function monthControls(){
+    const batch=currentBatch();
+    const limits=Object.entries(labels).map(([id,title])=>'<label>'+title+
+      '<input data-month-limit="'+id+'" type="number" min="0" max="12" step="1" value="'+batch.limits[id]+'"></label>').join('');
+    const rows=CAMPAIGN_LAYERS.map(layer=>{
+      const row=batch.layers[layer.id];
+      return '<tr><th scope="row">'+esc(layer.label)+'</th>'+
+        '<td><input type="checkbox" aria-label="Generate '+esc(layer.label)+' this month" data-month-enabled="'+layer.id+'"'+checked(row.enabled)+'></td>'+
+        '<td><input type="checkbox" aria-label="Show '+esc(layer.label)+' this month" data-month-visible="'+layer.id+'"'+checked(row.visible)+'></td>'+
+        '<td><input type="number" aria-label="Frequency for '+esc(layer.label)+' this month" min="0" max="7" step="1" data-month-weekly="'+layer.id+'" value="'+row.weekly+'"></td></tr>';
+    }).join('');
+    const audience=Object.entries(choices).map(([field,options])=>
+      '<fieldset><legend>'+{membership:'Membership classes',gender:'Gender (voluntary)',place:'Local, regional or visitor'}[field]+'</legend>'+
+      options.map(([id,label])=>'<label><input data-month-audience="'+field+'" type="checkbox" value="'+id+'"'+
+        checked(batch.layers[selectedLayer].audience[field].includes(id))+'>'+esc(label)+'</label>').join('')+'</fieldset>').join('');
+    const destinations=(mode,label)=>'<fieldset class="annual-destinations"><legend>'+label+'</legend>'+
+      PUBLISHING_DESTINATIONS.map(c=>'<label><input type="checkbox" data-month-destination="'+mode+'" value="'+c.id+'"'+
+        checked(batch.delivery[mode].includes(c.id))+'>'+esc(c.label)+(c.status==='proposed'?' (future)':'')+'</label>').join('')+'</fieldset>';
+    return '<section class="annual-batch" aria-label="Monthly batch controls">'+
+      '<div class="annual-batch-head"><h2>Monthly batch · '+monthName(selectedMonth)+'</h2>'+
+      '<span>'+((settings.monthOverrides||{})[selectedMonth]?'Saved month-specific rules':'Using annual defaults')+
+      (batchDirty?' · unsaved trial changes':'')+'</span></div>'+
+      '<p>Set the entire month together. The suggestions below change immediately, while saved and published posts remain untouched.</p>'+
+      '<div class="annual-limits"><label>Video target % <input type="number" min="0" max="100" step="1" data-month-video value="'+batch.videoShare+'"></label>'+
+      limits+'</div>'+
+      '<details class="annual-batch-layer-options"><summary>Category layers, frequency and audience</summary>'+
+      '<div class="annual-pattern-table"><table><thead><tr><th>Pattern</th><th>Generate</th><th>Show</th><th>Per week</th></tr></thead><tbody>'+
+      rows+'</tbody></table></div>'+
+      '<div class="annual-audience"><label>Targeting settings for <select data-month-select-layer>'+
+      CAMPAIGN_LAYERS.map(p=>'<option value="'+p.id+'"'+(selectedLayer===p.id?' selected':'')+'>'+esc(p.label)+'</option>').join('')+'</select></label>'+
+      audience+'</div></details>'+
+      '<details class="annual-batch-platform-options"><summary>Platform and paid-ad production</summary>'+
+      destinations('organic','Organic destinations')+
+      '<label class="annual-batch-check"><input type="checkbox" data-month-paid-planning'+checked(batch.delivery.paidPlanning)+'> Include paid creative suggestions (no ad purchases)</label>'+
+      destinations('paid','Paid creative destinations')+'</details>'+
+      '<div class="annual-actions"><button type="button" class="button" data-month-apply'+(busy?' disabled':'')+'>Apply and save '+monthName(selectedMonth)+'</button>'+
+      '<button type="button" class="button outline" data-month-copy-next'+(busy?' disabled':'')+'>Copy to next month</button>'+
+      '<button type="button" class="button outline" data-month-reset'+(busy?' disabled':'')+'>Reset this month</button></div>'+
+      '<p class="annual-small">All changes are suggestions until an officer deliberately opens and saves a post. No SMS, email, publishing, or advertising is triggered.</p></section>';
+  }
+
   function preview(){
     if(!loaded)return '<p>Loading committee campaign settings…</p>';
-    let plan;try{plan=generateCampaignYear(startMonth,settings);}catch(e){return '<p role="alert">'+esc(e.message)+'</p>';}
+    let plan;try{plan=generateCampaignYear(startMonth,previewSettings());}catch(e){return '<p role="alert">'+esc(e.message)+'</p>';}
     lastPreview=plan;
     const months=Array.from({length:12},(_,i)=>nextMonth(startMonth,i));
     if(!months.includes(selectedMonth))selectedMonth=months[0];
-    const visible=plan.posts.filter(p=>p.layerIds.some(id=>settings.layers[id]?.visible));
+    const visible=plan.posts.filter(p=>p.layerIds.some(id=>monthSettingsFor(previewSettings(),p.date).layers[id]?.visible));
     const current=visible.filter(p=>p.date.startsWith(selectedMonth));
     const days=new Map(plan.days.map(day=>[day.date,day]));
     const nsw=plan.days.filter(day=>day.nswHoliday&&!day.holiday).length;
@@ -76,7 +128,7 @@ export function setupAnnualCampaigns({mount,api,esc,isActive,onUse,reviewOnly=fa
       masterLibrary+
       '<div class="annual-month-choose"><label>Year begins <input type="month" data-annual-start min="2026-01" max="2028-02" value="'+startMonth+'"></label>'+
       '<label>View month <select data-annual-month>'+months.map(m=>'<option value="'+m+'"'+(selectedMonth===m?' selected':'')+'>'+monthName(m)+'</option>').join('')+'</select></label></div>'+
-      '<div class="annual-stats"><strong>'+plan.totals.posts+' suggestions</strong><strong>'+plan.totals.videos+' videos ('+
+      monthControls()+'<div class="annual-stats"><strong>'+plan.totals.posts+' suggestions</strong><strong>'+plan.totals.videos+' videos ('+
         Math.round(100*plan.totals.videos/Math.max(1,plan.totals.posts))+'%)</strong><strong>'+plan.totals.combined+
         ' composite posts</strong><span>'+nsw+' NSW-only visitor days</span><span>'+plan.totals.omitted+' ideas over daily limits</span><span>'+paidIdeas+' ideas with ad creative suggestions (unapproved)</span></div>'+
       '<div class="annual-month-grid">'+months.map(m=>'<button type="button" data-annual-go="'+m+'" aria-pressed="'+(selectedMonth===m)+'">'+monthName(m)+
@@ -114,18 +166,24 @@ export function setupAnnualCampaigns({mount,api,esc,isActive,onUse,reviewOnly=fa
   function markup(){return '<section class="annual-root" data-annual-root aria-label="12-month social pattern planner"><details class="annual-planner" open>'+
       '<summary><strong>Annual pattern calendar</strong> · QLD + NSW holiday waves, 67% video-first</summary>'+
       '<p>Independent layer switches, frequency, audience and daily density. '+(reviewOnly?'This page is an isolated visual preview; it does not use member data, save to Cloudflare, or publish.':'Saving changes only the committee settings, never social accounts.')+'</p>'+
-      (loaded?controls():'<p>Loading committee settings…</p>')+preview()+
+      (loaded?'<details class="annual-default-settings"><summary>Global annual defaults</summary>'+controls()+'</details>':'<p>Loading committee settings…</p>')+preview()+
       '</details><p class="annual-small" data-annual-notice role="status" aria-live="polite">'+esc(notice)+'</p></section>';}
   function draw(){const pane=root();if(!pane)return;const isOpen=pane.querySelector('details')?.open??true;
+    const monthlyLayersOpen=pane.querySelector('.annual-batch-layer-options')?.open??false;
+    const monthlyPlatformsOpen=pane.querySelector('.annual-batch-platform-options')?.open??false;
+    const globalOpen=pane.querySelector('.annual-default-settings')?.open??false;
     const replacement=document.createElement('div');replacement.innerHTML=markup();
     const next=replacement.firstElementChild;pane.replaceWith(next);next.querySelector('details').open=isOpen;
+    for(const [selector,open] of [['.annual-batch-layer-options',monthlyLayersOpen],['.annual-batch-platform-options',monthlyPlatformsOpen],['.annual-default-settings',globalOpen]]){
+      const panel=next.querySelector(selector);if(panel)panel.open=open;
+    }
   }
   async function open(){
     if(loaded||busy||!isActive())return;
     busy=true;
     try{const row=await api(endpoint,{cache:'no-store'});
       if(!isActive())return;
-      version=row.version;settings=row.settings||defaultCampaignSettings();saved=JSON.stringify(settings);loaded=true;
+      version=row.version;settings=row.settings||defaultCampaignSettings();saved=JSON.stringify(settings);loaded=true;monthDraft=null;batchMonth='';
       notice=reviewOnly?'Temporary preview settings loaded. No database or live club data is connected.':row.updatedAt?'Loaded saved settings from '+row.updatedAt.slice(0,10)+'.':'Default settings loaded; not yet shared.';
     }catch(e){notice='Could not load settings: '+e.message;}finally{busy=false;draw();}
   }
@@ -147,6 +205,31 @@ export function setupAnnualCampaigns({mount,api,esc,isActive,onUse,reviewOnly=fa
   mount.addEventListener('change',event=>{
     if(!isActive()||!loaded||!event.target.closest('[data-annual-root]'))return;
     const e=event.target;
+    const batch=e.hasAttribute('data-month-video')||e.hasAttribute('data-month-limit')||
+      e.hasAttribute('data-month-enabled')||e.hasAttribute('data-month-visible')||
+      e.hasAttribute('data-month-weekly')||e.hasAttribute('data-month-audience')||
+      e.hasAttribute('data-month-select-layer')||e.hasAttribute('data-month-destination')||
+      e.hasAttribute('data-month-paid-planning');
+    if(batch){
+      const current=currentBatch();
+      if(e.hasAttribute('data-month-video'))current.videoShare=Math.max(0,Math.min(100,Number(e.value)||0));
+      else if(e.hasAttribute('data-month-limit'))current.limits[e.dataset.monthLimit]=Math.max(0,Math.min(12,Number(e.value)||0));
+      else if(e.hasAttribute('data-month-enabled'))current.layers[e.dataset.monthEnabled].enabled=e.checked;
+      else if(e.hasAttribute('data-month-visible'))current.layers[e.dataset.monthVisible].visible=e.checked;
+      else if(e.hasAttribute('data-month-weekly'))current.layers[e.dataset.monthWeekly].weekly=Math.max(0,Math.min(7,Number(e.value)||0));
+      else if(e.hasAttribute('data-month-select-layer'))selectedLayer=e.value;
+      else if(e.hasAttribute('data-month-paid-planning'))current.delivery.paidPlanning=e.checked;
+      else if(e.hasAttribute('data-month-destination')){
+        const k=e.dataset.monthDestination;
+        current.delivery[k]=e.checked?[...new Set([...current.delivery[k],e.value])]:current.delivery[k].filter(x=>x!==e.value);
+      }else if(e.hasAttribute('data-month-audience')){
+        const k=e.dataset.monthAudience,existing=current.layers[selectedLayer].audience[k];
+        const next=e.value==='all'?['all']:e.checked?[...existing.filter(x=>x!=='all'),e.value]:existing.filter(x=>x!==e.value);
+        current.layers[selectedLayer].audience[k]=next.length?[...new Set(next)]:['all'];
+      }
+      batchDirty=true;notice='Previewing '+monthName(selectedMonth)+' adjustments. Choose Apply and save to keep this month.';
+      draw();return;
+    }
     if(e.hasAttribute('data-annual-enabled'))settings.layers[e.dataset.annualEnabled].enabled=e.checked;
     else if(e.hasAttribute('data-annual-visible'))settings.layers[e.dataset.annualVisible].visible=e.checked;
     else if(e.hasAttribute('data-annual-frequency'))settings.layers[e.dataset.annualFrequency].weekly=Math.max(0,Math.min(7,Number(e.value)||0));
@@ -159,16 +242,40 @@ export function setupAnnualCampaigns({mount,api,esc,isActive,onUse,reviewOnly=fa
     }
     else if(e.hasAttribute('data-annual-select-layer'))selectedLayer=e.value;
     else if(e.hasAttribute('data-annual-audience'))updateAudience(e.dataset.annualAudience,e.value,e.checked);
-    else if(e.hasAttribute('data-annual-start') && /^20\d{2}-(0[1-9]|1[0-2])$/.test(e.value))startMonth=e.value;
-    else if(e.hasAttribute('data-annual-month'))selectedMonth=e.value;
+    else if(e.hasAttribute('data-annual-start') && /^20\d{2}-(0[1-9]|1[0-2])$/.test(e.value)){
+      if(batchDirty&&!window.confirm('Discard unapplied changes to this month?')){draw();return;}
+      startMonth=e.value;selectedMonth=startMonth;monthDraft=null;batchMonth='';
+    }
+    else if(e.hasAttribute('data-annual-month')){
+      if(batchDirty&&!window.confirm('Discard unapplied changes to this month?')){draw();return;}
+      selectedMonth=e.value;monthDraft=null;batchMonth='';
+    }
     notice=changed()?(reviewOnly?'Trial changes are unsaved. Keep them in this tab to try another layout.':'Unsaved changes. Select Save committee settings to share them.'):'Settings match the saved version.';
     draw();
   });
   mount.addEventListener('click',event=>{
     const b=event.target.closest('button');if(!b||!b.closest('[data-annual-root]')||!isActive())return;
+    if(b.hasAttribute('data-month-apply')){
+      settings.monthOverrides[selectedMonth]=copyMonthSettings(currentBatch());
+      batchDirty=false;void save();return;
+    }
+    if(b.hasAttribute('data-month-copy-next')){
+      const nextMonth=nextMonthValue(selectedMonth);
+      settings.monthOverrides[selectedMonth]=copyMonthSettings(currentBatch());
+      settings.monthOverrides[nextMonth]=copyMonthSettings(currentBatch());
+      batchDirty=false;notice='Applied '+monthName(selectedMonth)+' and copied its settings to '+monthName(nextMonth)+'.';
+      void save();return;
+    }
+    if(b.hasAttribute('data-month-reset')){
+      delete settings.monthOverrides[selectedMonth];monthDraft=copyMonthSettings(settings);
+      batchDirty=false;void save();return;
+    }
     if(b.hasAttribute('data-annual-save')){void save();return;}
     if(b.hasAttribute('data-annual-reload')){if(changed()&&!window.confirm('Discard unsaved pattern changes?'))return;loaded=false;void open();return;}
-    if(b.hasAttribute('data-annual-go')){selectedMonth=b.dataset.annualGo;draw();return;}
+    if(b.hasAttribute('data-annual-go')){
+      if(batchDirty&&!window.confirm('Discard unapplied changes to this month?'))return;
+      selectedMonth=b.dataset.annualGo;monthDraft=null;batchMonth='';draw();return;
+    }
     if(b.hasAttribute('data-annual-use')){
       const post=lastPreview?.posts.find(p=>p.id===b.dataset.annualUse);if(!post)return;
       onUse({title:post.title,body:post.brief+'\n\nSuggested format: '+post.format+' ('+post.size+'). '+post.cta+'. Review creative exports in the annual planner before publication.',channels:post.channels,plannedDate:post.date});
