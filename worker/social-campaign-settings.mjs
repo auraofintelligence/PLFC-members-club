@@ -18,8 +18,28 @@ export function validateCampaignSettings(value,fail){
   if(!value.delivery||Object.keys(value.delivery).sort().join(',')!=='organic,paid,paidPlanning'||
     typeof value.delivery.paidPlanning!=='boolean'||!validDestinations(value.delivery.organic)||
     !validDestinations(value.delivery.paid))bad();
-  if(!value.limits||Object.keys(value.limits).sort().join(',')!=='friday,holiday,weekday,weekend'||
-    Object.values(value.limits).some(n=>!Number.isInteger(n)||n<0||n>12))bad();
+  const limitIds=['weekday','friday','weekend','longWeekend','publicHoliday','holiday'];
+  const expectedKeys=limitIds.flatMap(key=>[key,key+'Min']).sort().join(',');
+  const previousKeys=['friday','holiday','weekday','weekend'].sort().join(',');
+  if(!value.limits||typeof value.limits!=='object'||Array.isArray(value.limits))bad();
+  const received=Object.keys(value.limits).sort().join(',');
+  if(received===previousKeys){
+    if(Object.values(value.limits).some(n=>!Number.isInteger(n)||n<0||n>12))bad();
+    const defaults={
+      weekdayMin:1,weekday:4,fridayMin:1,friday:3,weekendMin:1,weekend:4,
+      longWeekendMin:2,longWeekend:5,publicHolidayMin:2,publicHoliday:6,
+      holidayMin:1,holiday:5
+    };
+    for(const id of ['weekday','friday','weekend','holiday']){
+      const max=id==='weekday'&&value.limits[id]===2?4:value.limits[id];
+      defaults[id]=Math.max(defaults[id+'Min'],max);
+    }
+    value.limits=defaults;
+  }else{
+    if(received!==expectedKeys ||
+      Object.values(value.limits).some(n=>!Number.isInteger(n)||n<1||n>12)||
+      limitIds.some(key=>value.limits[key+'Min']>value.limits[key]))bad();
+  }
   if(!value.layers||typeof value.layers!=='object'||Array.isArray(value.layers)||
     Object.keys(value.layers).length!==ids.length||ids.some(id=>!Object.hasOwn(value.layers,id)))bad();
   for(const id of ids){
