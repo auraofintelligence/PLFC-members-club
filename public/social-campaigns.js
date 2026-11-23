@@ -432,26 +432,59 @@ export function setupAnnualCampaigns({mount,api,esc,isActive,onUse,reviewOnly=fa
     if(!sharedSettingsReady){
       if(saveBrowserDraft()){
         saved=JSON.stringify(settings);
-        notice='Saved in this browser only. Not shared with the committee; use Retry connection to restore shared saving.';
-      }else notice='The browser could not save these settings. Copy your plan before leaving this page.';
-      draw();return;
+        saveState='local';saveMessage='Saved on this browser only. Retry the connection before treating this as shared with PLFC.';
+      }else{
+        saveState='error';saveMessage='This browser could not store the settings. Nothing is confirmed as saved.';
+      }
+      notice=saveMessage;draw();return;
     }
-    busy=true;notice='Saving committee settings…';draw();
+    busy=true;saveState='saving';saveMessage='Saving and checking the result…';draw();
     try{
       const row=await api(endpoint,{method:'POST',body:JSON.stringify({version,settings})});
       if(!isActive())return;
       version=row.version;settings=normaliseSettings(row.settings);
       saved=JSON.stringify(settings);workingDayPlans=null;dayFormTouched=false;
+      latestSave={version:row.version,updatedAt:row.updatedAt,
+        updatedByName:row.updatedByName,updatedOffice:row.updatedOffice};
+      historyRows=null;historyError='';
       try{localStorage.removeItem(offlineKey);}catch{}
-      notice=reviewOnly?'Trial settings updated in this browser tab only; refreshing will reset them. No posts were published.':'Shared settings saved. No posts were published.';
+      saveState=reviewOnly?'local':'shared';
+      saveMessage=reviewOnly?'Saved on this browser. These settings survive a refresh here; nothing is shared with PLFC.':
+        'Saved to the shared PLFC database as version '+row.version+'. You can refresh without losing these settings.';
+      notice=saveMessage;
     }catch(e){
-      if(e.status>=500){
-        sharedSettingsReady=false;
-        const savedHere=saveBrowserDraft();
-        notice=savedHere?'The club could not save shared settings. Your changes are kept in this browser only; retry the connection before treating them as shared.':
-          'The club could not save shared settings; this browser also refused local storage. Your changes are not confirmed.';
-      }else notice=e.status===409?'Someone else edited these settings. Reload the saved version before retrying.':e.message;
+      const draftKept=saveBrowserDraft();
+      if(e.status>=500)sharedSettingsReady=false;
+      saveState=draftKept?'local':'error';
+      saveMessage=(e.status===409?'Another officer saved a newer version. ':
+        e.message?e.message+'. ':'The save was not confirmed. ')+
+        (draftKept?'Your settings are preserved only in this browser, not shared with PLFC.':
+          'Your settings could not be stored. Do not leave this page without copying them.');
+      notice=saveMessage;
     }finally{busy=false;draw();}
+  }
+  async function loadHistory(){
+    if(historyLoading||!loaded)return;
+    historyLoading=true;historyError='';draw();
+    try{
+      const result=await api(endpoint+'?history=1',{cache:'no-store'});
+      if(!isActive())return;
+      historyRows=result.history||[];
+    }catch(e){historyError='Could not load the change history: '+e.message;}
+    finally{historyLoading=false;draw();}
+  }
+  async function exportHistoryVersion(value){
+    const number=Number(value);
+    if(!Number.isInteger(number)||number<1)return;
+    try{
+      const result=await api(endpoint+'?version='+number,{cache:'no-store'});
+      if(!isActive())return;
+      const blob=new Blob([JSON.stringify(result.revision,null,2)],{type:'application/json'});
+      const url=URL.createObjectURL(blob),link=document.createElement('a');
+      link.href=url;link.download='plfc-social-settings-version-'+number+'.json';link.click();
+      setTimeout(()=>URL.revokeObjectURL(url),5000);
+      notice='Downloaded version '+number+' for comparison. Nothing was restored or overwritten.';
+    }catch(e){historyError='Could not download version '+number+': '+e.message;draw();}
   }
   function updateAudience(field,id,on){
     const existing=settings.layers[selectedLayer].audience[field];
@@ -619,6 +652,8 @@ export function setupAnnualCampaigns({mount,api,esc,isActive,onUse,reviewOnly=fa
   });
   mount.addEventListener('click',event=>{
     const b=event.target.closest('button');if(!b||!b.closest('[data-annual-root]')||!isActive())return;
+    if(b.hasAttribute('data-history-load')){void loadHistory();return;}
+    if(b.hasAttribute('data-history-export')){void exportHistoryVersion(b.dataset.historyExport);return;}
     if(b.hasAttribute('data-signal-save')){void save();return;}
     if(b.hasAttribute('data-milestone-cancel')){editingMilestone='';draw();return;}
     if(b.hasAttribute('data-signal-edit')){
@@ -911,7 +946,9 @@ export function setupAnnualCampaigns({mount,api,esc,isActive,onUse,reviewOnly=fa
   mount.addEventListener('close',event=>{
     if(event.target.matches('[data-annual-day-dialog]')){modalDay=null;modalPostId=null;modalView='day';}
   },true);
-  return {markup,open,reset(){loaded=false;busy=false;sharedSettingsReady=true;workingDayPlans=null;dayFormTouched=false;settings=defaultCampaignSettings();saved=JSON.stringify(settings);
+  return {markup,open,reset(){loaded=false;busy=false;sharedSettingsReady=true;saveState='idle';saveMessage='';
+    latestSave=null;historyRows=null;historyError='';historyLoading=false;workingDayPlans=null;dayFormTouched=false;
+    settings=defaultCampaignSettings();saved=JSON.stringify(settings);
     version=0;notice='';lastPreview=null;modalDay=null;modalPostId=null;modalView='day';planningScope='month';monthDraft=null;batchMonth='';}};
 
 }
