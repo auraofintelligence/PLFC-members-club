@@ -12,8 +12,9 @@ function validAudience(values,allowed){
 export function validateCampaignSettings(value,fail){
   const bad=()=>fail('Check the campaign pattern settings and audience choices.');
   if(!value || typeof value!=='object'||Array.isArray(value)||
-    Object.keys(value).sort().join(',')!=='dayOverrides,delivery,layers,limits,monthOverrides,videoShare,weekOverrides')bad();
+    Object.keys(value).sort().join(',')!=='dayOverrides,delivery,layers,limits,monthOverrides,postingTime,videoShare,weekOverrides')bad();
   if(!Number.isInteger(value.videoShare)||value.videoShare<0||value.videoShare>100)bad();
+  if(value.postingTime!=='auto' && (typeof value.postingTime!=='string'||!/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(value.postingTime)))bad();
   if(!value.delivery||Object.keys(value.delivery).sort().join(',')!=='organic,paid,paidPlanning'||
     typeof value.delivery.paidPlanning!=='boolean'||!validDestinations(value.delivery.organic)||
     !validDestinations(value.delivery.paid))bad();
@@ -42,7 +43,7 @@ export function validateCampaignSettings(value,fail){
     if(!entries||typeof entries!=='object'||Array.isArray(entries)||Object.keys(entries).length>max)bad();
     for(const [key,config] of Object.entries(entries)){
       if(!valid(key)||!config||typeof config!=='object'||Array.isArray(config)||
-        Object.keys(config).sort().join(',')!=='delivery,layers,limits,videoShare')bad();
+        Object.keys(config).sort().join(',')!=='delivery,layers,limits,postingTime,videoShare')bad();
       validateCampaignSettings({...config,monthOverrides:{},weekOverrides:{},dayOverrides:{}},fail);
     }
   }
