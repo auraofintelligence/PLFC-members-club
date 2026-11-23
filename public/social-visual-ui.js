@@ -49,9 +49,13 @@ export function renderMonthCalendar({month,days,posts,esc,today=brisbaneToday(),
       // The calendar wraps them rather than hiding, sampling or deduplicating.
       const icons=items.map(post=>({icon:layerIcon(post.layerIds[0]),title:post.title||'Planned post'}));
       const views=items.reduce((total,post)=>total+metricsForPost(post.id).reduce((n,item)=>n+(item.views??0),0),0);
-      const hasLead=items.some(post=>Boolean(post.timingSignal));
+      const hasLead=items.some(post=>post.timingSignal?.phase==='lead'||post.timingSignal&&!post.timingSignal.phase);
+      const hasTentative=items.some(post=>post.timingSignal?.tentative);
+      const hasRecap=items.some(post=>post.timingSignal?.phase==='follow');
+      const anchored=data?.eventAnchors||[];
       const tooltip=formatDate(date)+'; '+items.length+' planned '+(items.length===1?'post':'posts')+
         (data?.signature?'; prepared by '+signatureOfficer(data.signature):'')+
+        (anchored.length?'; annual events: '+anchored.map(item=>item.title+(item.confirmed?' (verified)':' (tentative)')).join('; '):'')+
         '; '+temporal+(qld?'; Queensland school holidays':'')+(nsw?'; NSW school holidays':'')+
         (data?.publicHolidayName?'; '+data.publicHolidayName:'')+
         (longWeekend?'; long weekend':'')+
@@ -75,7 +79,12 @@ export function renderMonthCalendar({month,days,posts,esc,today=brisbaneToday(),
         (nsw?'<i class="nsw" title="NSW school holidays"></i>':'')+'</span>'+
         (temporal==='today'?'<small class="annual-today-label">TODAY</small>':'')+
         (publicHoliday&&data?.publicHolidayName?'<small class="annual-calendar-holiday-name">'+esc(data.publicHolidayName)+'</small>':'')+
+        (anchored.length?'<small class="annual-calendar-event-mark" title="'+
+          esc(anchored.map(item=>item.title+(item.confirmed?' (verified)':' (planning only)')).join('; '))+'">'+
+          '📅 '+anchored.length+' club '+(anchored.length===1?'event':'events')+'</small>':'')+
+        (hasTentative?'<small class="annual-calendar-tentative">⏳ Tentative</small>':'')+
         (hasLead?'<small class="annual-calendar-signal">📣 Lead-in</small>':'')+
+        (hasRecap?'<small class="annual-calendar-recap">📸 Follow-up idea</small>':'')+
         (data?.signature?'<small class="annual-calendar-signed">'+
           renderDaySignature(data.signature,esc,true)+'</small>':'')+
         (views?'<small class="annual-calendar-performance">📈 '+(views>=1000?(views/1000).toFixed(1)+'k':views)+' reported</small>':'')+
@@ -110,10 +119,15 @@ export function renderCalendarDialog({day,view,postId,posts,plan,esc,getEdit,rev
   const flags=[dayData?.publicHolidayName||null,dayData?.longWeekend?'Long weekend':null,
     dayData?.holiday?'QLD school holidays':null,dayData?.nswHoliday?'NSW school holidays':null,
     dayData?.partialPublicHoliday||null].filter(Boolean);
+  const eventAnchors=dayData?.eventAnchors||[];
+  const eventList=eventAnchors.length?'<aside class="annual-date-event-anchors" aria-label="Committee annual calendar dates">'+
+    '<strong>📅 Committee annual event anchors</strong>'+
+    '<ul>'+eventAnchors.map(item=>'<li><span>'+esc(item.title)+'</span>'+
+      '<small>'+esc(item.confirmed?'Date verified for planning':'Tentative · confirm before public promotion')+'</small></li>').join('')+'</ul></aside>':'';
   const headline='<header class="annual-dialog-header"><div><p class="annual-dialog-kicker">'+
     (flags.length?flags.map(esc).join(' · '):'Content calendar')+'</p>'+
     '<h2>'+esc(formatted)+'</h2></div><button type="button" class="annual-dialog-close" data-calendar-close aria-label="Close popup">✕</button></header>'+
-    (dayData?.signature?renderDaySignature(dayData.signature,esc):'');
+    (dayData?.signature?renderDaySignature(dayData.signature,esc):'')+eventList;
   const post=today.find(x=>x.id===postId),edit=post?getEdit(post.id):null;
   if(view==='edit'&&post){
     const title=postLabel(post,edit),brief=postBrief(post,edit),time=postTime(post,edit);
@@ -141,9 +155,14 @@ export function renderCalendarDialog({day,view,postId,posts,plan,esc,getEdit,rev
     const variants=post.creativeVariants;
     const results=metricsForPost(post.id);
     const timing=post.timingSignal?
-      '<section class="annual-dialog-section"><h4>📣 Timing signal</h4><p>'+
-      post.timingSignal.leadDays+' days before '+esc(post.timingSignal.title)+
-      ' · target '+esc(post.timingSignal.targetDate)+'</p>'+
+      '<section class="annual-dialog-section"><h4>'+
+      (post.timingSignal.tentative?'⏳ Tentative internal planning':post.timingSignal.phase==='follow'?'📸 Follow-up suggestion':post.timingSignal.phase==='day'?'📅 Event-day suggestion':'📣 Timing signal')+
+      '</h4><p>'+
+      (post.timingSignal.tentative?'Not confirmed. Do not advertise the date until the committee verifies it. ':
+        post.timingSignal.phase==='follow'?'Confirm the actual outcome before publishing. ':
+        post.timingSignal.phase==='day'?'Recheck the event details before publishing. ':
+        post.timingSignal.leadDays+' days before ')+
+      esc(post.timingSignal.title)+' · target '+esc(post.timingSignal.targetDate)+'</p>'+
       (post.timingSignal.sourceUrl?'<p>Source: <a href="'+esc(post.timingSignal.sourceUrl)+
         '" target="_blank" rel="noopener noreferrer">View verified reference</a></p>':'')+
       '</section>':'';
