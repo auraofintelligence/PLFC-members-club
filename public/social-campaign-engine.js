@@ -1,3 +1,4 @@
+import {creativeVariantsFor} from './social-placements.js';
 export const CAMPAIGN_LAYERS = [
   {id:'fish',label:'Fish species and seasonal guides',frequency:3,priority:5,topics:['Species spotlight: identification and habitat','Check the seasonal fishing guide before a trip','Species handling and release demonstration','Compare two common local species'],cta:'Open the fishing guide'},
   {id:'bait',label:'Bait, rigs and tackle',frequency:3,priority:5,topics:['Which bait suits this fishing method?','Show a simple rig step by step','Packing a tackle kit for a day trip','How to look after bait on a warm day'],cta:'Explore the bait and rig guide'},
@@ -56,6 +57,11 @@ const dayBeforeHoliday = day => QLD_SCHOOL_HOLIDAYS.some(([a])=>iso(dayMs(a)-MS)
 const dayBeforeNSW = day => NSW_SCHOOL_HOLIDAYS_EASTERN.some(([a])=>iso(dayMs(a)-MS)===day);
 export const defaultCampaignSettings = () => ({
   videoShare:67, limits:{weekday:2,friday:3,weekend:4,holiday:5},
+  delivery:{
+    organic:['youtube','facebook','instagram','tiktok','noticeboard'],
+    paid:['youtube','facebook','instagram','tiktok','noticeboard'],
+    paidPlanning:true
+  },
   layers:Object.fromEntries(CAMPAIGN_LAYERS.map(layer=>[layer.id,{enabled:true,visible:true,weekly:layer.frequency,
     audience:{membership:['all'],gender:['all'],place:layer.id==='nswHolidays'?['tourist','regional']:['all']}}]))
 });
@@ -152,7 +158,11 @@ export function generateCampaignYear(startMonth,settings=defaultCampaignSettings
     p.size=p.format.startsWith('30-second')?'1080×1920':p.format==='link'?'1200×630':'1080×1350';
     p.durationSeconds=p.format.startsWith('30-second')?30:null;
     p.suggestedTime=[0,6].includes(weekday(p.date))?'08:00':weekday(p.date)===5?'17:00':'18:00';
-    p.channels=p.format.startsWith('30-second')?['facebook','instagram','youtube','tiktok']:['facebook','instagram'];
+    p.creativeVariants=creativeVariantsFor(p,settings.delivery);
+    p.destinations=[...new Set(p.creativeVariants.filter(v=>v.distribution==='organic').map(v=>v.platform))];
+    // The existing social post editor supports only the four connected club channels.
+    // The Noticeboard is a separate, unconnected pilot and is never sent there.
+    p.channels=p.destinations.filter(id=>id!=='noticeboard');
     p.storyboard=p.durationSeconds? p.sections.length>1?['0–3s: Hook',...p.sections.map((s,i)=>'Segment '+(i+1)+': '+s),'Final 3s: Club link / call to action']:['0–3s: Hook','3–24s: '+p.sections[0],'24–30s: Call to action']:[];
   }
   return {startMonth,posts,days:dayCards,totals:{posts:posts.length,videos:posts.filter(p=>p.durationSeconds).length,combined:composites.length,omitted:dayCards.reduce((n,d)=>n+d.omitted,0)}};
