@@ -1,5 +1,5 @@
 import {socialChannels} from './social-channels.js';
-import {setupAnnualCampaigns} from './social-campaigns.js?v=20261123-timing-reports';
+import {setupAnnualCampaigns} from './social-campaigns.js?v=20261123-main-studio';
 import {setupBrainstorm, starterBrowser, chosenStarter, updateStarterCard, practiceGuide, contributorName} from './social-brainstorm.js?v=20261121-club-funding';
 
 const endpoint = '/api/committee/social-planner';
@@ -161,7 +161,7 @@ export function setupSocialPlanner({api, esc}) {
     request?.abort();
     const controller = new AbortController();
     request = controller;
-    if (!desk) mount.innerHTML = '<h1>Social media planner</h1><p role="status">Opening the club’s plan…</p>';
+    if (!desk) mount.innerHTML = '<h1>Social Studio</h1><p role="status">Opening the club’s plan…</p>';
     mount.setAttribute('aria-busy', 'true');
     try {
       const query = new URLSearchParams();
