@@ -563,9 +563,10 @@ export function setupAnnualCampaigns({mount,api,esc,isActive,onUse,reviewOnly=fa
       eventCandidates=mergeEventCandidates(eventCandidates,items);
       const previous=new Map(settings.milestones.map(m=>[m.id,m]));
       for(const item of items){
-        eventSelected.add(item.id);
         const old=previous.get(item.id);
-        if(old?.confirmed&&old.title===item.title&&old.date===item.date)eventVerified.add(item.id);
+        if(!item.inactive||old)eventSelected.add(item.id);
+        if(!item.inactive&&old?.confirmed&&old.title===item.title&&old.date===item.date)
+          eventVerified.add(item.id);
         else eventVerified.delete(item.id);
       }
       eventImportNotice='Found '+items.length+' dated records. Review the selection and verified-date boxes before importing.';
@@ -632,8 +633,10 @@ export function setupAnnualCampaigns({mount,api,esc,isActive,onUse,reviewOnly=fa
     }
     if(e.hasAttribute('data-calendar-import-verify')){
       const id=e.dataset.calendarImportVerify;
-      if(e.checked){eventVerified.add(id);eventSelected.add(id);}
+      const event=eventCandidates.find(item=>item.id===id);
+      if(e.checked&&!event?.inactive){eventVerified.add(id);eventSelected.add(id);}
       else eventVerified.delete(id);
+      draw();
       return;
     }
     if(e.closest?.('[data-day-editor]')){dayFormTouched=true;return;}
