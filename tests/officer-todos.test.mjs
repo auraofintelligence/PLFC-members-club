@@ -226,6 +226,6 @@ test('monthly Secretary social review appears automatically once and can be comp
   const done=await submit('secretary',{action:'complete',source:task.source,id:task.id,version:0,paper:false});
   assert.equal(done.tasks.some(x=>x.id===task.id),false);
   await submit('secretary',{action:'complete',source:task.source,id:task.id,version:0,paper:false});
-  const record=await db.prepare("SELECT count(*) AS n FROM officer_todo_log WHERE source='monthly-standard' AND task_id=? AND action='complete'").bind(task.id).first();
+  const record=await db.prepare("SELECT count(*) AS n FROM officer_todo_log WHERE source='manual' AND task_id=? AND action='complete'").bind(task.id).first();
   assert.equal(record.n,1);
 });
