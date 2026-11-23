@@ -172,21 +172,21 @@ test('a fictional informal catch-up only contributes finalised follow-ups to off
     return {record:meetings.find(item=>item.id===meetingId),open:openJobs.filter(job=>job.meetingId===meetingId)};
   };
   const initial=await snapshot();assert.equal(initial.record.kind,'informal');assert.equal(initial.record.openActions,0);
-  for(const login of officers)assert.deepEqual((await view(login)).tasks,[],login+' has an empty work list before anyone assigns work');
+  for(const login of officers)assert.deepEqual((await view(login)).tasks.filter(t=>t.source!=='monthly-standard'),[],login+' has no assigned one-off work before anyone assigns it');
 
   const job={id:'check-ice',text:'Confirm ice for the local meet',owner:'Treasurer',dueDate:'2026-11-25',done:false};
   await db.prepare(`INSERT INTO meeting_notes(id,actions_json,version,updated_at,updated_by,last_mutation_id,status)
     VALUES(?,?,1,'2026-11-21','user-secretary','draft','draft')`).bind(meetingId,JSON.stringify([job])).run();
   assert.equal((await snapshot()).record.openActions,0);
   assert.deepEqual((await snapshot()).open,[]);
-  assert.deepEqual((await view('assistantsecretary')).tasks,[]);
+  assert.deepEqual((await view('assistantsecretary')).tasks.filter(t=>t.source!=='monthly-standard'),[]);
   assert.deepEqual((await view('treasurer')).tasks,[]);
 
   const originalId=randomUUID();
   await submit('treasurer',{action:'add',id:originalId,office:'treasurer',title:'Follow up an old receipt',details:'Already assigned',dueDate:'2026-11-12'});
   await db.prepare("UPDATE meeting_notes SET status='approved',approved_at='2026-11-22T02:00:00Z',version=2 WHERE id=?").bind(meetingId).run();
   const final=await snapshot();assert.equal(final.record.openActions,1);assert.deepEqual(final.open.map(item=>item.id),[job.id]);
-  for(const login of ['assistantsecretary','treasurer'])assert.deepEqual((await view(login)).tasks.map(t=>t.id),[originalId,job.id]);
+  for(const login of ['assistantsecretary','treasurer'])assert.deepEqual((await view(login)).tasks.filter(t=>t.source!=='monthly-standard').map(t=>t.id),[originalId,job.id]);
   const personal=await view('president');assert.deepEqual(personal.tasks,[]);
 });
 
@@ -210,4 +210,22 @@ test('the Secretary can assign an unclaimed AGM task to a paper-only seat; paper
   assert.equal((await db.prepare("SELECT done_by FROM agm_job_state WHERE job='papers'").first()).done_by,'assistantsecretary');
   assert.equal((await db.prepare("SELECT status FROM newsletter_editions WHERE month='2026-10'").first()).status,'review');
   assert.equal((await view('president')).tasks.filter(t=>t.id==='papers').length,0);
+});
+
+test('monthly Secretary social review appears automatically once and can be completed',async t=>{
+  const {db,view,submit}=await fixture(t);
+  const first=await view('secretary');
+  const jobs=first.tasks.filter(task=>task.source==='monthly-standard');
+  assert.equal(jobs.length,1);
+  const task=jobs[0];
+  assert.equal(task.office,'secretary');
+  assert.equal(task.href,'#committee/social');
+  assert.equal(task.dueDate.slice(0,7),first.today.slice(0,7));
+  assert.match(task.details,/import their CSV reports/i);
+  assert.deepEqual((await view('secretary')).tasks.filter(x=>x.source==='monthly-standard').map(x=>x.id),[task.id]);
+  const done=await submit('secretary',{action:'complete',source:task.source,id:task.id,version:0,paper:false});
+  assert.equal(done.tasks.some(x=>x.id===task.id),false);
+  await submit('secretary',{action:'complete',source:task.source,id:task.id,version:0,paper:false});
+  const record=await db.prepare("SELECT count(*) AS n FROM officer_todo_log WHERE source='monthly-standard' AND task_id=? AND action='complete'").bind(task.id).first();
+  assert.equal(record.n,1);
 });
