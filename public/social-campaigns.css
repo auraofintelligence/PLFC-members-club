@@ -414,3 +414,10 @@
 
 .annual-schedule-actions{display:flex;align-items:center;gap:.5rem;flex-wrap:wrap}
 .annual-schedule-actions .button{min-height:39px}
+
+/* Private committee calendar remains usable when shared settings storage fails. */
+.annual-storage-warning{display:flex;flex-wrap:wrap;align-items:center;gap:.45rem .9rem;padding:.85rem 1rem;margin:.4rem 0 1rem;border:1px solid #dfc68a;border-left:5px solid #c18b36;background:#fff9ec;color:#624617;border-radius:10px}
+.annual-storage-warning strong{font-weight:800}
+.annual-storage-warning p{margin:0;flex:1 1 310px;font-size:.85rem;line-height:1.45;color:#735525}
+.annual-storage-warning button{flex:0 0 auto}
+@media(max-width:600px){.annual-storage-warning{align-items:flex-start}.annual-storage-warning button{flex:1 1 auto}}

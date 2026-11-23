@@ -20,6 +20,30 @@ const csvDate=value=>value.slice(0,10);
 
 export function setupAnnualCampaigns({mount,api,esc,isActive,onUse,reviewOnly=false}){
   let settings=defaultCampaignSettings(),saved=JSON.stringify(settings),version=0,loaded=false,busy=false,notice='';
+  let sharedSettingsReady=true;
+  const offlineKey='plfc-social-studio-offline-draft-v1';
+  const normaliseSettings=value=>{
+    const config=value&&typeof value==='object'?value:defaultCampaignSettings();
+    config.monthOverrides??={};config.weekOverrides??={};config.dayOverrides??={};
+    config.postingTime??='auto';config.timingSignals??=defaultCampaignSettings().timingSignals;
+    config.milestones??=[];
+    for(const bucket of ['monthOverrides','weekOverrides','dayOverrides'])
+      for(const scoped of Object.values(config[bucket]))scoped.postingTime??='auto';
+    return config;
+  };
+  const browserDraft=()=>{
+    try{
+      const payload=JSON.parse(localStorage.getItem(offlineKey)||'null');
+      const value=payload?.version===1?payload.settings:null;
+      if(!value||!value.layers||!value.limits||!value.delivery||
+        !value.monthOverrides||!value.weekOverrides||!value.dayOverrides)return null;
+      return normaliseSettings(value);
+    }catch{return null;}
+  };
+  const saveBrowserDraft=()=>{
+    try{localStorage.setItem(offlineKey,JSON.stringify({version:1,settings}));return true;}
+    catch{return false;}
+  };
   let selectedLayer='nswHolidays',startMonth=new Date(Date.now()+36000000).toISOString().slice(0,7),selectedMonth=startMonth;
   let lastPreview=null,monthDraft=null,batchMonth='',batchDirty=false;
   let planningScope='month',focusDay=brisbaneToday();
@@ -159,7 +183,7 @@ export function setupAnnualCampaigns({mount,api,esc,isActive,onUse,reviewOnly=fa
       destinations('organic')+
       '<label class="annual-batch-check"><input type="checkbox" data-month-paid-planning'+checked(batch.delivery.paidPlanning)+'> Include paid creative suggestions</label>'+
       destinations('paid')+'</details>'+
-      '<div class="annual-actions"><button type="button" class="button" data-month-apply'+(busy?' disabled':'')+'>✓ Save '+esc(scopeLabel())+'</button>'+
+      '<div class="annual-actions"><button type="button" class="button" data-month-apply'+(busy?' disabled':'')+'>✓ Save '+esc(scopeLabel())+(sharedSettingsReady?'':' in this browser')+'</button>'+
       '<button type="button" class="button outline" data-month-copy-next'+(busy?' disabled':'')+'>Copy to next '+planningScope+'</button>'+
       '<button type="button" class="button outline" data-month-reset'+(busy?' disabled':'')+'>Reset '+planningScope+'</button></div>'+
       '<p class="annual-small">Monthly changes update suggested content only. Existing posts are not overwritten.</p></section>';
@@ -240,6 +264,9 @@ export function setupAnnualCampaigns({mount,api,esc,isActive,onUse,reviewOnly=fa
       posts:visiblePosts,plan:lastPreview,esc,getEdit,reviewOnly,metricsForPost});
     return '<section class="annual-root" data-annual-root aria-label="12-month social workbench">'+
       '<details class="annual-planner" open><summary><strong>📅 Social media workbench</strong> · 12-month plan</summary>'+
+      (loaded&&!sharedSettingsReady?'<div class="annual-storage-warning" role="alert"><strong>Shared settings are unavailable</strong>'+
+        '<p>Your planning calendar still works. Changes here stay in this browser only and are not shared with PLFC officers.</p>'+
+        '<button type="button" class="button outline small" data-annual-reconnect>Retry connection</button></div>':'')+
       visual+(loaded?signals+analytics:'')+
       (loaded?'<details class="annual-default-settings"><summary>⚙️ Global annual defaults</summary>'+controls()+'</details>':'')+
       '</details><p class="annual-small" data-annual-notice role="status" aria-live="polite">'+esc(notice)+'</p>'+
@@ -265,31 +292,52 @@ export function setupAnnualCampaigns({mount,api,esc,isActive,onUse,reviewOnly=fa
   async function open(){
     if(loaded||busy||!isActive())return;
     busy=true;
-    try{const row=await api(endpoint,{cache:'no-store'});
+    try{
+      const row=await api(endpoint,{cache:'no-store'});
       if(!isActive())return;
-      version=row.version;settings=row.settings||defaultCampaignSettings();settings.monthOverrides??={};settings.weekOverrides??={};settings.dayOverrides??={};
-      settings.postingTime??='auto';settings.timingSignals??=defaultCampaignSettings().timingSignals;
-      settings.milestones??=[];
-      for(const bucket of ['monthOverrides','weekOverrides','dayOverrides'])
-        for(const config of Object.values(settings[bucket]))config.postingTime??='auto';
-      saved=JSON.stringify(settings);loaded=true;monthDraft=null;batchMonth='';
-      loadEdits();importMetrics();
-      notice=reviewOnly?'Temporary preview settings loaded. No database or live club data is connected.':row.updatedAt?'Loaded saved settings from '+row.updatedAt.slice(0,10)+'.':'Default settings loaded; not yet shared.';
-    }catch(e){notice='Could not load settings: '+e.message;}finally{busy=false;draw();}
+      version=row.version;
+      const remote=normaliseSettings(row.settings||defaultCampaignSettings());
+      const local=!reviewOnly?browserDraft():null;
+      settings=local||remote;saved=JSON.stringify(remote);sharedSettingsReady=true;
+      loaded=true;monthDraft=null;batchMonth='';loadEdits();importMetrics();
+      notice=local?'Shared settings connected. Your browser-only changes are loaded for review; select Save to share them with the committee.':
+        reviewOnly?'Temporary preview settings loaded. No database or live club data is connected.':
+        row.updatedAt?'Loaded saved settings from '+row.updatedAt.slice(0,10)+'.':'Default settings loaded; not yet shared.';
+    }catch(e){
+      if(!isActive())return;
+      if(e.status>=500){
+        settings=browserDraft()||normaliseSettings(defaultCampaignSettings());
+        saved=JSON.stringify(settings);loaded=true;sharedSettingsReady=false;
+        version=0;monthDraft=null;batchMonth='';loadEdits();importMetrics();
+        notice='Shared settings could not be reached. The calendar is open in browser-only mode; no committee changes will be shared until the connection is restored.';
+      }else notice='Could not load committee settings: '+e.message;
+    }finally{busy=false;draw();}
   }
   async function save(){
     if(busy||!loaded||!isActive())return;
+    if(!sharedSettingsReady){
+      if(saveBrowserDraft()){
+        saved=JSON.stringify(settings);
+        notice='Saved in this browser only. Not shared with the committee; use Retry connection to restore shared saving.';
+      }else notice='The browser could not save these settings. Copy your plan before leaving this page.';
+      draw();return;
+    }
     busy=true;notice='Saving committee settings…';draw();
-    try{const row=await api(endpoint,{method:'POST',body:JSON.stringify({version,settings})});
+    try{
+      const row=await api(endpoint,{method:'POST',body:JSON.stringify({version,settings})});
       if(!isActive())return;
-      version=row.version;settings=row.settings;settings.monthOverrides??={};settings.weekOverrides??={};
-      settings.dayOverrides??={};settings.timingSignals??=defaultCampaignSettings().timingSignals;
-      settings.milestones??=[];
-      for(const bucket of ['monthOverrides','weekOverrides','dayOverrides'])
-        for(const config of Object.values(settings[bucket]))config.postingTime??='auto';
+      version=row.version;settings=normaliseSettings(row.settings);
       saved=JSON.stringify(settings);
+      try{localStorage.removeItem(offlineKey);}catch{}
       notice=reviewOnly?'Trial settings updated in this browser tab only; refreshing will reset them. No posts were published.':'Shared settings saved. No posts were published.';
-    }catch(e){notice=e.status===409?'Someone else edited these settings. Reload the saved version before retrying.':e.message;}finally{busy=false;draw();}
+    }catch(e){
+      if(e.status>=500){
+        sharedSettingsReady=false;
+        const savedHere=saveBrowserDraft();
+        notice=savedHere?'The club could not save shared settings. Your changes are kept in this browser only; retry the connection before treating them as shared.':
+          'The club could not save shared settings; this browser also refused local storage. Your changes are not confirmed.';
+      }else notice=e.status===409?'Someone else edited these settings. Reload the saved version before retrying.':e.message;
+    }finally{busy=false;draw();}
   }
   function updateAudience(field,id,on){
     const existing=settings.layers[selectedLayer].audience[field];
@@ -612,6 +660,10 @@ export function setupAnnualCampaigns({mount,api,esc,isActive,onUse,reviewOnly=fa
       delete settings[overrideBucket()][scopeKey()];monthDraft=null;batchMonth='';
       batchDirty=false;void save();return;
     }
+    if(b.hasAttribute('data-annual-reconnect')){
+      if((changed()||batchDirty)&&!window.confirm('Keep working locally? Retry will reload saved settings but will not discard a saved browser-only copy.'))return;
+      loaded=false;void open();return;
+    }
     if(b.hasAttribute('data-annual-save')){void save();return;}
     if(b.hasAttribute('data-annual-reload')){if(changed()&&!window.confirm('Discard unsaved pattern changes?'))return;loaded=false;void open();return;}
     if(b.hasAttribute('data-annual-go')){
@@ -632,7 +684,7 @@ export function setupAnnualCampaigns({mount,api,esc,isActive,onUse,reviewOnly=fa
   mount.addEventListener('close',event=>{
     if(event.target.matches('[data-annual-day-dialog]')){modalDay=null;modalPostId=null;modalView='day';}
   },true);
-  return {markup,open,reset(){loaded=false;busy=false;settings=defaultCampaignSettings();saved=JSON.stringify(settings);
+  return {markup,open,reset(){loaded=false;busy=false;sharedSettingsReady=true;settings=defaultCampaignSettings();saved=JSON.stringify(settings);
     version=0;notice='';lastPreview=null;modalDay=null;modalPostId=null;modalView='day';planningScope='month';monthDraft=null;batchMonth='';}};
 
 }
