@@ -1,6 +1,6 @@
-import {CAMPAIGN_LAYERS,defaultCampaignSettings,generateCampaignYear,monthSettingsFor,copyMonthSettings} from './social-campaign-engine.js';
+import {CAMPAIGN_LAYERS,defaultCampaignSettings,generateCampaignYear,monthSettingsFor,copyMonthSettings,weekStart,settingsForDate,scopeSettingsFor} from './social-campaign-engine.js';
 import {PUBLISHING_DESTINATIONS,placementSources,CREATIVE_SPEC_VERSION,MASTER_ASSET_PRESETS} from './social-placements.js';
-import {LAYER_ICONS,renderMonthCalendar,renderCalendarDialog,postLabel,postBrief} from './social-visual-ui.js';
+import {LAYER_ICONS,renderMonthCalendar,renderCalendarDialog,postLabel,postBrief,postTime,isMinuteTime,brisbaneToday} from './social-visual-ui.js';
 
 const endpoint='/api/committee/social-campaign-settings';
 const choices={
@@ -19,6 +19,7 @@ export function setupAnnualCampaigns({mount,api,esc,isActive,onUse,reviewOnly=fa
   let settings=defaultCampaignSettings(),saved=JSON.stringify(settings),version=0,loaded=false,busy=false,notice='';
   let selectedLayer='nswHolidays',startMonth=new Date(Date.now()+36000000).toISOString().slice(0,7),selectedMonth=startMonth;
   let lastPreview=null,monthDraft=null,batchMonth='',batchDirty=false;
+  let planningScope='month',focusDay=brisbaneToday();
   let modalDay=null,modalView='day',modalPostId=null,topicFilter='all',visiblePosts=[],postEdits={};
   const editKey=()=> 'plfc-social-post-edits-v1:'+startMonth+':'+(reviewOnly?'review':'committee');
   function loadEdits(){
@@ -31,15 +32,31 @@ export function setupAnnualCampaigns({mount,api,esc,isActive,onUse,reviewOnly=fa
     try{localStorage.setItem(editKey(),JSON.stringify(postEdits));return true;}catch{return false;}
   }
   const getEdit=id=>postEdits[id]||{};
+  const overrideBucket=()=>({day:'dayOverrides',week:'weekOverrides',month:'monthOverrides'})[planningScope];
+  const scopeKey=()=>planningScope==='day'?focusDay:planningScope==='week'?weekStart(focusDay):selectedMonth;
+  const scopeLabel=()=>planningScope==='month'?monthName(selectedMonth):
+    planningScope==='week'?'week of '+new Intl.DateTimeFormat('en-AU',{day:'numeric',month:'short',timeZone:'UTC'}).format(new Date(scopeKey()+'T00:00:00Z')):
+    new Intl.DateTimeFormat('en-AU',{day:'numeric',month:'short',timeZone:'UTC'}).format(new Date(focusDay+'T00:00:00Z'));
+  const scopeEnd=()=>{
+    const offset=planningScope==='day'?1:planningScope==='week'?7:null;
+    if(offset===null)return nextMonth(selectedMonth,1);
+    return new Date(Date.parse(scopeKey()+'T00:00:00Z')+86400000*offset).toISOString().slice(0,10);
+  };
   function currentBatch(){
-    if(!monthDraft||batchMonth!==selectedMonth){
-      batchMonth=selectedMonth;
-      monthDraft=copyMonthSettings(monthSettingsFor(settings,selectedMonth));
+    const key=planningScope+':'+scopeKey();
+    if(!monthDraft||batchMonth!==key){
+      batchMonth=key;
+      monthDraft=copyMonthSettings(scopeSettingsFor(settings,planningScope,scopeKey()));
       batchDirty=false;
     }
     return monthDraft;
   }
-  const previewSettings=()=>({...settings,monthOverrides:{...settings.monthOverrides,[selectedMonth]:currentBatch()}});
+  const previewSettings=()=>({...settings,[overrideBucket()]:{...settings[overrideBucket()],[scopeKey()]:currentBatch()}});
+  const selectMonth=month=>{
+    selectedMonth=month;
+    if(!focusDay.startsWith(month))focusDay=(brisbaneToday().startsWith(month)?brisbaneToday():month+'-01');
+    monthDraft=null;batchMonth='';modalDay=null;modalPostId=null;modalView='day';
+  };
   const root=()=>mount.querySelector('[data-annual-root]');
   const changed=()=>JSON.stringify(settings)!==saved;
   const labels={
@@ -82,10 +99,13 @@ export function setupAnnualCampaigns({mount,api,esc,isActive,onUse,reviewOnly=fa
 
   function monthControls(){
     const batch=currentBatch();
+    const chosen=scopeKey(),bucket=overrideBucket();
+    const scopes=[['day','Day'],['week','Week'],['month','Month']].map(([id,label])=>
+      '<button type="button" data-planning-scope="'+id+'" aria-pressed="'+(planningScope===id)+'">'+label+'</button>').join('');
     const range=(label,icon,attr,value,max,unit='')=>
       '<label class="annual-range-card"><span class="annual-range-heading"><span class="annual-range-label"><span aria-hidden="true">'+icon+'</span> '+esc(label)+'</span>'+
       '<output data-range-output="'+attr+'">'+value+unit+'</output></span>'+
-      '<input type="range" min="0" max="'+max+'" step="1" '+(attr==='video'?'data-month-video': 'data-month-limit="'+attr+'"')+
+      '<input type="range" min="'+(attr==='video'?0:1)+'" max="'+max+'" step="1" '+(attr==='video'?'data-month-video': 'data-month-limit="'+attr+'"')+
       ' value="'+value+'" aria-label="'+esc(label)+'"></label>';
     const limits=Object.entries(labels).map(([id,label])=>range(label,{weekday:'☀️',friday:'✨',weekend:'🏖️',holiday:'🧳'}[id],id,batch.limits[id],12));
     const layers=CAMPAIGN_LAYERS.map(layer=>{
@@ -104,11 +124,17 @@ export function setupAnnualCampaigns({mount,api,esc,isActive,onUse,reviewOnly=fa
     const destinations=(mode,label)=>'<fieldset class="annual-destinations"><legend>'+label+'</legend>'+
       PUBLISHING_DESTINATIONS.map(c=>'<label><input type="checkbox" data-month-destination="'+mode+'" value="'+c.id+'"'+
         checked(batch.delivery[mode].includes(c.id))+'>'+esc(c.label)+(c.status==='proposed'?' (proposed)':'')+'</label>').join('')+'</fieldset>';
-    return '<section class="annual-batch" aria-label="Monthly batch controls">'+
-      '<header class="annual-batch-head"><div><span class="annual-eyebrow">🎛️ CREATE THE MONTH</span>'+
-      '<h2>Tune '+monthName(selectedMonth)+'</h2></div>'+
-      '<span class="annual-batch-status">'+((settings.monthOverrides||{})[selectedMonth]?'Custom month':'Annual defaults')+
+    return '<section class="annual-batch" id="annual-plan-settings" aria-label="Day, week or month planning controls">'+
+      '<header class="annual-batch-head"><div><span class="annual-eyebrow">🎛️ PLAN YOUR POSTS</span>'+
+      '<h2>Plan '+esc(scopeLabel())+'</h2></div>'+
+      '<span class="annual-batch-status">'+((settings[bucket]||{})[chosen]?'Custom schedule':'Annual defaults')+
       (batchDirty?' · unsaved changes':'')+'</span></header>'+
+      '<div class="annual-scope-toolbar"><div class="annual-scope-buttons" aria-label="Choose planning period">'+scopes+'</div>'+
+      '<label>Day to plan <input type="date" data-scope-day value="'+focusDay+'" min="'+startMonth+'-01" max="'+new Date(Date.UTC(Number(startMonth.slice(0,4))+1,Number(startMonth.slice(5))-1,0)).toISOString().slice(0,10)+'"></label></div>'+
+      '<div class="annual-time-default"><label>🕒 First post time (Brisbane AEST)'+
+      '<input type="time" step="60" data-scope-time value="'+(batch.postingTime==='auto'?'':esc(batch.postingTime))+'"></label>'+
+      '<button type="button" data-scope-auto class="button outline small">Use suggested times</button>'+
+      '<span>Choose any hour and minute. Further posts are staggered; individual times can be edited in each post.</span></div>'+
       '<div class="annual-slider-grid">'+range('Video share','🎬','video',batch.videoShare,100,'%')+limits.join('')+'</div>'+
       '<details class="annual-batch-layer-options"><summary><span>🐟 Topics, frequency and audiences</span><small>16 adjustable categories</small></summary>'+
       '<div class="annual-topic-grid">'+layers+'</div>'+
@@ -119,20 +145,20 @@ export function setupAnnualCampaigns({mount,api,esc,isActive,onUse,reviewOnly=fa
       destinations('organic','Organic destinations')+
       '<label class="annual-batch-check"><input type="checkbox" data-month-paid-planning'+checked(batch.delivery.paidPlanning)+'> Include paid creative suggestions</label>'+
       destinations('paid','Paid creative destinations')+'</details>'+
-      '<div class="annual-actions"><button type="button" class="button" data-month-apply'+(busy?' disabled':'')+'>✓ Save '+monthName(selectedMonth)+'</button>'+
-      '<button type="button" class="button outline" data-month-copy-next'+(busy?' disabled':'')+'>Copy to next month</button>'+
-      '<button type="button" class="button outline" data-month-reset'+(busy?' disabled':'')+'>Reset month</button></div>'+
+      '<div class="annual-actions"><button type="button" class="button" data-month-apply'+(busy?' disabled':'')+'>✓ Save '+esc(scopeLabel())+'</button>'+
+      '<button type="button" class="button outline" data-month-copy-next'+(busy?' disabled':'')+'>Copy to next '+planningScope+'</button>'+
+      '<button type="button" class="button outline" data-month-reset'+(busy?' disabled':'')+'>Reset '+planningScope+'</button></div>'+
       '<p class="annual-small">Monthly changes update suggested content only. Existing posts are not overwritten.</p></section>';
   }
 
   function preview(){
     if(!loaded)return '<p class="annual-loading" role="status">Preparing your calendar…</p>';
     const months=Array.from({length:12},(_,i)=>nextMonth(startMonth,i));
-    if(!months.includes(selectedMonth)){selectedMonth=months[0];monthDraft=null;batchMonth='';}
+    if(!months.includes(selectedMonth))selectMonth(months[0]);
     const scoped=previewSettings();
     let plan;try{plan=generateCampaignYear(startMonth,scoped);}catch(e){return '<p role="alert">'+esc(e.message)+'</p>';}
     lastPreview=plan;
-    const allVisible=plan.posts.filter(p=>p.layerIds.some(id=>monthSettingsFor(scoped,p.date).layers[id]?.visible));
+    const allVisible=plan.posts.filter(p=>p.layerIds.some(id=>settingsForDate(scoped,p.date).layers[id]?.visible));
     visiblePosts=topicFilter==='all'?allVisible:allVisible.filter(p=>p.layerIds.includes(topicFilter));
     const current=visiblePosts.filter(p=>p.date.startsWith(selectedMonth));
     const monthDays=plan.days.filter(day=>day.date.startsWith(selectedMonth));
@@ -156,7 +182,7 @@ export function setupAnnualCampaigns({mount,api,esc,isActive,onUse,reviewOnly=fa
       '<label class="sr-only" for="annual-month-picker">Choose a month</label>'+
       '<select id="annual-month-picker" data-annual-month>'+choice+'</select>'+
       '<button type="button" data-annual-step="1" aria-label="Next month"'+(i===months.length-1?' disabled':'')+'>›</button></div></div>'+
-      '<div class="annual-visual-stats">'+stat('🗓️',current.length,'Post ideas')+
+      '<div class="annual-visual-stats">'+stat('🗓️',current.length,'Posts this month')+
       stat('🎬',videoCount+' / '+current.length,'Video ideas')+
       stat('🔗',composites,'Combined topics')+
       stat('🏖️',qld+(nsw?' + '+nsw:''),'QLD / NSW holiday days')+'</div>'+
@@ -166,8 +192,11 @@ export function setupAnnualCampaigns({mount,api,esc,isActive,onUse,reviewOnly=fa
       '<option value="all">All topics</option>'+CAMPAIGN_LAYERS.map(l=>'<option value="'+l.id+'"'+(topicFilter===l.id?' selected':'')+'>'+
       esc((LAYER_ICONS[l.id]||'📌')+' '+l.label)+'</option>').join('')+'</select></label></div>'+
       renderMonthCalendar({month:selectedMonth,days:plan.days,posts:current,esc})+
-      '<div class="annual-calendar-legend"><span><i class="qld"></i> Queensland holidays</span>'+
-      '<span><i class="nsw"></i> NSW holidays</span><span>🎬 Video &nbsp; 🐟 Topic icons</span></div></section>'+
+      '<div class="annual-calendar-legend"><span class="annual-legend-today">● Today</span>'+
+      '<span class="annual-legend-past">◐ Past</span><span class="annual-legend-future">○ Future</span>'+
+      '<span><i class="qld"></i> QLD holidays</span><span><i class="nsw"></i> NSW holidays</span></div></section>'+
+      '<div class="annual-schedule-export"><span>🕒 Every day has a plan. Open a date to set exact posting times.</span>'+
+      '<button type="button" class="button outline small" data-calendar-export>⬇ Export this month’s schedule CSV</button></div>'+
       monthControls()+
       '<details class="annual-year-overview"><summary>🗓️ Browse all 12 months <small>'+plan.totals.posts+' planned suggestions</small></summary>'+
       '<div class="annual-month-grid">'+months.map(m=>'<button type="button" data-annual-go="'+m+'" aria-pressed="'+(selectedMonth===m)+'">'+
