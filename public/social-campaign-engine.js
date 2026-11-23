@@ -208,7 +208,7 @@ function insertTimingSignals(settings,postsByDay){
           title:'Tentative event planning: '+event.title,
           brief:'Internal draft only. Ask the committee to confirm the event date, permissions and promotional wording before publishing any announcement. Keep room for unexpected opportunities.',
           cta:'Confirm the committee event calendar',audience:config.layers[layer].audience,
-          priority:2,sections:['Provisional planning only'],composite:false,status:'suggestion',
+          priority:11,sections:['Provisional planning only'],composite:false,status:'suggestion',
           timingSignal:{kind:event.kind,title:event.title,targetDate:event.date,leadDays:chosen,
             tentative:true,phase:'planning',importedCalendar:true,sourceUrl:''}
         });
