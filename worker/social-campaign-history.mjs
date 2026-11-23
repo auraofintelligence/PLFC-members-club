@@ -1,6 +1,5 @@
 // Append-only record of every authenticated committee social settings save.
 // Includes the complete saved settings snapshot plus compact before/after differences.
-const owns=(obj,key)=>Object.prototype.hasOwnProperty.call(obj||{},key);
 const object=value=>value&&typeof value==='object'&&!Array.isArray(value);
 const preview=value=>{
   if(value===undefined)return '(not set)';
@@ -40,8 +39,22 @@ export const socialHistoryDDL=String.raw`CREATE TABLE IF NOT EXISTS committee_so
   changes_json TEXT NOT NULL CHECK(json_valid(changes_json)),
   settings_json TEXT NOT NULL CHECK(json_valid(settings_json))
 )`;
-export async function ensureSocialHistory(db){
+export async function ensureSocialHistory(db,current=null){
   await db.prepare(socialHistoryDDL).run();
+  // Retain the existing shared snapshot as a baseline if the history was
+  // introduced after the initial settings were already saved.
+  if(current?.version>0){
+    const prior={count:0,changes:[],note:'Existing saved settings at the start of change history'};
+    await db.prepare(`INSERT OR IGNORE INTO committee_social_campaign_history
+      (version,actor_id,actor_name,actor_office,actor_role,saved_at,changes_json,settings_json)
+      VALUES(?,?,?,?,?,?,?,?)`).bind(
+        current.version,current.updatedBy,
+        current.updatedByName||'Existing club account',
+        current.updatedOffice||'Committee member',
+        current.updatedByRole||'committee',
+        current.updatedAt,JSON.stringify(prior),current.settings
+    ).run();
+  }
 }
 export function revisionStatement(db,{version,actorId,actorName,actorOffice,actorRole,savedAt,changes,settings}){
   return db.prepare(`INSERT INTO committee_social_campaign_history
