@@ -12,7 +12,7 @@ function validAudience(values,allowed){
 export function validateCampaignSettings(value,fail){
   const bad=()=>fail('Check the campaign pattern settings and audience choices.');
   if(!value || typeof value!=='object'||Array.isArray(value)||
-    Object.keys(value).sort().join(',')!=='dayOverrides,delivery,layers,limits,milestones,monthOverrides,postingTime,timingSignals,videoShare,weekOverrides')bad();
+    Object.keys(value).sort().join(',')!=='dayArchetypes,dayOverrides,dayPlans,delivery,layers,limits,milestones,monthOverrides,postingTime,timingSignals,videoShare,weekOverrides')bad();
   if(!Number.isInteger(value.videoShare)||value.videoShare<0||value.videoShare>100)bad();
   if(value.postingTime!=='auto' && (typeof value.postingTime!=='string'||!/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(value.postingTime)))bad();
   if(!value.delivery||Object.keys(value.delivery).sort().join(',')!=='organic,paid,paidPlanning'||
@@ -78,6 +78,40 @@ export function validateCampaignSettings(value,fail){
   const validMonth=s=>/^20\d\d-(0[1-9]|1[0-2])$/.test(s);
   const validDay=s=>/^20\d\d-(0[1-9]|1[0-2])-([0-2]\d|3[01])$/.test(s)&&
     !Number.isNaN(Date.parse(s+'T00:00:00Z'))&&new Date(s+'T00:00:00Z').toISOString().slice(0,10)===s;
+  const dayKinds=['weekday','friday','weekend','longWeekend','publicHoliday','holiday'];
+  const validSlot=slot=>slot&&typeof slot==='object'&&!Array.isArray(slot)&&
+    Object.keys(slot).sort().join(',')==='brief,format,id,layerId,time,title'&&
+    typeof slot.id==='string'&&/^[-a-zA-Z0-9_]{1,50}$/.test(slot.id)&&
+    ids.includes(slot.layerId)&&['video','image','carousel','link'].includes(slot.format)&&
+    typeof slot.time==='string'&&/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(slot.time)&&
+    typeof slot.title==='string'&&slot.title.trim().length>0&&slot.title.length<=180&&
+    typeof slot.brief==='string'&&slot.brief.length<=4000;
+  const validateSlots=items=>{
+    if(!Array.isArray(items)||items.length<1||items.length>12||
+      items.some(slot=>!validSlot(slot))||
+      new Set(items.map(slot=>slot.id)).size!==items.length)bad();
+  };
+  if(!value.dayPlans||typeof value.dayPlans!=='object'||Array.isArray(value.dayPlans)||
+    Object.keys(value.dayPlans).length>366)bad();
+  for(const [date,plan] of Object.entries(value.dayPlans)){
+    if(!validDay(date)||!plan||typeof plan!=='object'||Array.isArray(plan)||
+      Object.keys(plan).sort().join(',')!=='items,patternId'||
+      typeof plan.patternId!=='string'||plan.patternId.length>80)bad();
+    validateSlots(plan.items);
+  }
+  if(!value.dayArchetypes||typeof value.dayArchetypes!=='object'||Array.isArray(value.dayArchetypes)||
+    Object.keys(value.dayArchetypes).some(kind=>!dayKinds.includes(kind)))bad();
+  for(const items of Object.values(value.dayArchetypes)){
+    if(!Array.isArray(items)||items.length>8||
+      new Set(items.map(item=>item?.id)).size!==items.length)bad();
+    for(const item of items){
+      if(!item||typeof item!=='object'||Array.isArray(item)||
+        Object.keys(item).sort().join(',')!=='id,items,name'||
+        typeof item.id!=='string'||!/^custom-[a-zA-Z0-9-]{6,56}$/.test(item.id)||
+        typeof item.name!=='string'||!item.name.trim()||item.name.length>75)bad();
+      validateSlots(item.items);
+    }
+  }
   const overrides=[
     ['monthOverrides',24,validMonth],
     ['weekOverrides',80,key=>validDay(key)&&new Date(key+'T00:00:00Z').getUTCDay()===1],
@@ -90,7 +124,8 @@ export function validateCampaignSettings(value,fail){
       if(!valid(key)||!config||typeof config!=='object'||Array.isArray(config)||
         Object.keys(config).sort().join(',')!=='delivery,layers,limits,postingTime,videoShare')bad();
       const validated=validateCampaignSettings({...config,monthOverrides:{},weekOverrides:{},dayOverrides:{},
-        timingSignals:value.timingSignals,milestones:value.milestones},fail);
+        timingSignals:value.timingSignals,milestones:value.milestones,
+        dayPlans:{},dayArchetypes:{}},fail);
       config.limits=validated.limits;
     }
   }
