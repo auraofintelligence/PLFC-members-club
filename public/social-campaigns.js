@@ -166,7 +166,7 @@ export function setupAnnualCampaigns({mount,api,esc,isActive,onUse,reviewOnly=fa
     const scoped=previewSettings();
     let plan;try{plan=generateCampaignYear(startMonth,scoped);}catch(e){return '<p role="alert">'+esc(e.message)+'</p>';}
     lastPreview=plan;
-    const allVisible=plan.posts.filter(p=>p.layerIds.some(id=>settingsForDate(scoped,p.date).layers[id]?.visible));
+    const allVisible=plan.posts.filter(p=>p.layerIds.includes('daily')||p.layerIds.some(id=>settingsForDate(scoped,p.date).layers[id]?.visible));
     visiblePosts=topicFilter==='all'?allVisible:allVisible.filter(p=>p.layerIds.includes(topicFilter));
     const current=visiblePosts.filter(p=>p.date.startsWith(selectedMonth));
     const monthDays=plan.days.filter(day=>day.date.startsWith(selectedMonth));
@@ -199,7 +199,7 @@ export function setupAnnualCampaigns({mount,api,esc,isActive,onUse,reviewOnly=fa
       '<label class="annual-calendar-filter">Topic <select data-annual-topic>'+
       '<option value="all">All topics</option>'+CAMPAIGN_LAYERS.map(l=>'<option value="'+l.id+'"'+(topicFilter===l.id?' selected':'')+'>'+
       esc((LAYER_ICONS[l.id]||'📌')+' '+l.label)+'</option>').join('')+'</select></label></div>'+
-      renderMonthCalendar({month:selectedMonth,days:plan.days,posts:current,esc})+
+      renderMonthCalendar({month:selectedMonth,days:plan.days,posts:current,esc,metricsForPost})+
       '<div class="annual-calendar-legend"><span class="annual-legend-today">● Today</span>'+
       '<span class="annual-legend-past">◐ Past</span><span class="annual-legend-future">○ Future</span>'+
       '<span><i class="qld"></i> QLD holidays</span><span><i class="nsw"></i> NSW holidays</span></div></section>'+
@@ -227,7 +227,7 @@ export function setupAnnualCampaigns({mount,api,esc,isActive,onUse,reviewOnly=fa
     });
     const signals=renderTimingPanel(settings,esc,editingMilestone);
     const popup=renderCalendarDialog({day:modalDay,view:modalView,postId:modalPostId,
-      posts:visiblePosts,plan:lastPreview,esc,getEdit,reviewOnly});
+      posts:visiblePosts,plan:lastPreview,esc,getEdit,reviewOnly,metricsForPost});
     return '<section class="annual-root" data-annual-root aria-label="12-month social workbench">'+
       '<details class="annual-planner" open><summary><strong>📅 Social media workbench</strong> · 12-month plan</summary>'+
       visual+(loaded?signals+analytics:'')+
