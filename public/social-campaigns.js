@@ -1,5 +1,6 @@
 import {CAMPAIGN_LAYERS,defaultCampaignSettings,generateCampaignYear,monthSettingsFor,copyMonthSettings} from './social-campaign-engine.js';
 import {PUBLISHING_DESTINATIONS,placementSources,CREATIVE_SPEC_VERSION,MASTER_ASSET_PRESETS} from './social-placements.js';
+import {LAYER_ICONS,renderMonthCalendar,renderCalendarDialog,postLabel,postBrief} from './social-visual-ui.js';
 
 const endpoint='/api/committee/social-campaign-settings';
 const choices={
@@ -18,6 +19,18 @@ export function setupAnnualCampaigns({mount,api,esc,isActive,onUse,reviewOnly=fa
   let settings=defaultCampaignSettings(),saved=JSON.stringify(settings),version=0,loaded=false,busy=false,notice='';
   let selectedLayer='nswHolidays',startMonth=new Date(Date.now()+36000000).toISOString().slice(0,7),selectedMonth=startMonth;
   let lastPreview=null,monthDraft=null,batchMonth='',batchDirty=false;
+  let modalDay=null,modalView='day',modalPostId=null,topicFilter='all',visiblePosts=[],postEdits={};
+  const editKey=()=> 'plfc-social-post-edits-v1:'+startMonth+':'+(reviewOnly?'review':'committee');
+  function loadEdits(){
+    try{
+      const item=JSON.parse(localStorage.getItem(editKey())||'{}');
+      postEdits=item&&typeof item==='object'&&!Array.isArray(item)?item:{};
+    }catch{postEdits={};}
+  }
+  function persistEdits(){
+    try{localStorage.setItem(editKey(),JSON.stringify(postEdits));return true;}catch{return false;}
+  }
+  const getEdit=id=>postEdits[id]||{};
   function currentBatch(){
     if(!monthDraft||batchMonth!==selectedMonth){
       batchMonth=selectedMonth;
@@ -69,100 +82,101 @@ export function setupAnnualCampaigns({mount,api,esc,isActive,onUse,reviewOnly=fa
 
   function monthControls(){
     const batch=currentBatch();
-    const limits=Object.entries(labels).map(([id,title])=>'<label>'+title+
-      '<input data-month-limit="'+id+'" type="number" min="0" max="12" step="1" value="'+batch.limits[id]+'"></label>').join('');
-    const rows=CAMPAIGN_LAYERS.map(layer=>{
+    const range=(label,icon,attr,value,max,unit='')=>
+      '<label class="annual-range-card"><span class="annual-range-heading"><span class="annual-range-label"><span aria-hidden="true">'+icon+'</span> '+esc(label)+'</span>'+
+      '<output data-range-output="'+attr+'">'+value+unit+'</output></span>'+
+      '<input type="range" min="0" max="'+max+'" step="1" '+(attr==='video'?'data-month-video': 'data-month-limit="'+attr+'"')+
+      ' value="'+value+'" aria-label="'+esc(label)+'"></label>';
+    const limits=Object.entries(labels).map(([id,label])=>range(label,{weekday:'☀️',friday:'✨',weekend:'🏖️',holiday:'🧳'}[id],id,batch.limits[id],12));
+    const layers=CAMPAIGN_LAYERS.map(layer=>{
       const row=batch.layers[layer.id];
-      return '<tr><th scope="row">'+esc(layer.label)+'</th>'+
-        '<td><input type="checkbox" aria-label="Generate '+esc(layer.label)+' this month" data-month-enabled="'+layer.id+'"'+checked(row.enabled)+'></td>'+
-        '<td><input type="checkbox" aria-label="Show '+esc(layer.label)+' this month" data-month-visible="'+layer.id+'"'+checked(row.visible)+'></td>'+
-        '<td><input type="number" aria-label="Frequency for '+esc(layer.label)+' this month" min="0" max="7" step="1" data-month-weekly="'+layer.id+'" value="'+row.weekly+'"></td></tr>';
+      return '<article class="annual-topic-card"><div class="annual-topic-top"><span class="annual-topic-icon" aria-hidden="true">'+(LAYER_ICONS[layer.id]||'📌')+'</span>'+
+        '<strong>'+esc(layer.label)+'</strong></div>'+
+        '<div class="annual-topic-toggles"><label><input type="checkbox" data-month-enabled="'+layer.id+'"'+checked(row.enabled)+'> Generate</label>'+
+        '<label><input type="checkbox" data-month-visible="'+layer.id+'"'+checked(row.visible)+'> 👁 Show</label></div>'+
+        '<label class="annual-topic-range"><span>Posts per week <output data-range-output="layer-'+layer.id+'">'+row.weekly+'</output></span>'+
+        '<input type="range" min="0" max="7" step="1" data-month-weekly="'+layer.id+'" value="'+row.weekly+'"></label></article>';
     }).join('');
     const audience=Object.entries(choices).map(([field,options])=>
-      '<fieldset><legend>'+{membership:'Membership classes',gender:'Gender (voluntary)',place:'Local, regional or visitor'}[field]+'</legend>'+
+      '<fieldset><legend>'+{membership:'Membership class',gender:'Gender (voluntary)',place:'Location and visitors'}[field]+'</legend>'+
       options.map(([id,label])=>'<label><input data-month-audience="'+field+'" type="checkbox" value="'+id+'"'+
         checked(batch.layers[selectedLayer].audience[field].includes(id))+'>'+esc(label)+'</label>').join('')+'</fieldset>').join('');
     const destinations=(mode,label)=>'<fieldset class="annual-destinations"><legend>'+label+'</legend>'+
       PUBLISHING_DESTINATIONS.map(c=>'<label><input type="checkbox" data-month-destination="'+mode+'" value="'+c.id+'"'+
-        checked(batch.delivery[mode].includes(c.id))+'>'+esc(c.label)+(c.status==='proposed'?' (future)':'')+'</label>').join('')+'</fieldset>';
+        checked(batch.delivery[mode].includes(c.id))+'>'+esc(c.label)+(c.status==='proposed'?' (proposed)':'')+'</label>').join('')+'</fieldset>';
     return '<section class="annual-batch" aria-label="Monthly batch controls">'+
-      '<div class="annual-batch-head"><h2>Monthly batch · '+monthName(selectedMonth)+'</h2>'+
-      '<span>'+((settings.monthOverrides||{})[selectedMonth]?'Saved month-specific rules':'Using annual defaults')+
-      (batchDirty?' · unsaved trial changes':'')+'</span></div>'+
-      '<p>Set the entire month together. The suggestions below change immediately, while saved and published posts remain untouched.</p>'+
-      '<div class="annual-limits"><label>Video target % <input type="number" min="0" max="100" step="1" data-month-video value="'+batch.videoShare+'"></label>'+
-      limits+'</div>'+
-      '<details class="annual-batch-layer-options"><summary>Category layers, frequency and audience</summary>'+
-      '<div class="annual-pattern-table"><table><thead><tr><th>Pattern</th><th>Generate</th><th>Show</th><th>Per week</th></tr></thead><tbody>'+
-      rows+'</tbody></table></div>'+
-      '<div class="annual-audience"><label>Targeting settings for <select data-month-select-layer>'+
-      CAMPAIGN_LAYERS.map(p=>'<option value="'+p.id+'"'+(selectedLayer===p.id?' selected':'')+'>'+esc(p.label)+'</option>').join('')+'</select></label>'+
-      audience+'</div></details>'+
-      '<details class="annual-batch-platform-options"><summary>Platform and paid-ad production</summary>'+
+      '<header class="annual-batch-head"><div><span class="annual-eyebrow">🎛️ CREATE THE MONTH</span>'+
+      '<h2>Tune '+monthName(selectedMonth)+'</h2></div>'+
+      '<span class="annual-batch-status">'+((settings.monthOverrides||{})[selectedMonth]?'Custom month':'Annual defaults')+
+      (batchDirty?' · unsaved changes':'')+'</span></header>'+
+      '<div class="annual-slider-grid">'+range('Video share','🎬','video',batch.videoShare,100,'%')+limits.join('')+'</div>'+
+      '<details class="annual-batch-layer-options"><summary><span>🐟 Topics, frequency and audiences</span><small>16 adjustable categories</small></summary>'+
+      '<div class="annual-topic-grid">'+layers+'</div>'+
+      '<div class="annual-audience"><label>Audience settings for <select data-month-select-layer>'+
+      CAMPAIGN_LAYERS.map(layer=>'<option value="'+layer.id+'"'+(selectedLayer===layer.id?' selected':'')+'>'+esc(layer.label)+'</option>').join('')+
+      '</select></label>'+audience+'</div></details>'+
+      '<details class="annual-batch-platform-options"><summary><span>📱 Publishing formats and ad ideas</span><small>5 destinations</small></summary>'+
       destinations('organic','Organic destinations')+
-      '<label class="annual-batch-check"><input type="checkbox" data-month-paid-planning'+checked(batch.delivery.paidPlanning)+'> Include paid creative suggestions (no ad purchases)</label>'+
+      '<label class="annual-batch-check"><input type="checkbox" data-month-paid-planning'+checked(batch.delivery.paidPlanning)+'> Include paid creative suggestions</label>'+
       destinations('paid','Paid creative destinations')+'</details>'+
-      '<div class="annual-actions"><button type="button" class="button" data-month-apply'+(busy?' disabled':'')+'>Apply and save '+monthName(selectedMonth)+'</button>'+
+      '<div class="annual-actions"><button type="button" class="button" data-month-apply'+(busy?' disabled':'')+'>✓ Save '+monthName(selectedMonth)+'</button>'+
       '<button type="button" class="button outline" data-month-copy-next'+(busy?' disabled':'')+'>Copy to next month</button>'+
-      '<button type="button" class="button outline" data-month-reset'+(busy?' disabled':'')+'>Reset this month</button></div>'+
-      '<p class="annual-small">All changes are suggestions until an officer deliberately opens and saves a post. No SMS, email, publishing, or advertising is triggered.</p></section>';
+      '<button type="button" class="button outline" data-month-reset'+(busy?' disabled':'')+'>Reset month</button></div>'+
+      '<p class="annual-small">Monthly changes update suggested content only. Existing posts are not overwritten.</p></section>';
   }
 
   function preview(){
-    if(!loaded)return '<p>Loading committee campaign settings…</p>';
-    let plan;try{plan=generateCampaignYear(startMonth,previewSettings());}catch(e){return '<p role="alert">'+esc(e.message)+'</p>';}
-    lastPreview=plan;
+    if(!loaded)return '<p class="annual-loading" role="status">Preparing your calendar…</p>';
     const months=Array.from({length:12},(_,i)=>nextMonth(startMonth,i));
-    if(!months.includes(selectedMonth))selectedMonth=months[0];
-    const visible=plan.posts.filter(p=>p.layerIds.some(id=>monthSettingsFor(previewSettings(),p.date).layers[id]?.visible));
-    const current=visible.filter(p=>p.date.startsWith(selectedMonth));
-    const days=new Map(plan.days.map(day=>[day.date,day]));
-    const nsw=plan.days.filter(day=>day.nswHoliday&&!day.holiday).length;
-    const paidIdeas=plan.posts.filter(p=>p.creativeVariants.some(v=>v.distribution==='paid')).length;
-    const masterLibrary='<details class="annual-master-library"><summary>Master asset production presets ('+MASTER_ASSET_PRESETS.length+')</summary>'+
-      '<p>Use high-quality masters and create independent crops or edits for each placement; never enlarge an existing low-resolution export.</p><ul>'+
+    if(!months.includes(selectedMonth)){selectedMonth=months[0];monthDraft=null;batchMonth='';}
+    const scoped=previewSettings();
+    let plan;try{plan=generateCampaignYear(startMonth,scoped);}catch(e){return '<p role="alert">'+esc(e.message)+'</p>';}
+    lastPreview=plan;
+    const allVisible=plan.posts.filter(p=>p.layerIds.some(id=>monthSettingsFor(scoped,p.date).layers[id]?.visible));
+    visiblePosts=topicFilter==='all'?allVisible:allVisible.filter(p=>p.layerIds.includes(topicFilter));
+    const current=visiblePosts.filter(p=>p.date.startsWith(selectedMonth));
+    const monthDays=plan.days.filter(day=>day.date.startsWith(selectedMonth));
+    const qld=monthDays.filter(day=>day.holiday).length,nsw=monthDays.filter(day=>day.nswHoliday).length;
+    const videoCount=current.filter(p=>p.durationSeconds).length,composites=current.filter(p=>p.composite).length;
+    const i=months.indexOf(selectedMonth);
+    const choice=months.map(m=>'<option value="'+m+'"'+(m===selectedMonth?' selected':'')+'>'+monthName(m)+'</option>').join('');
+    const stat=(icon,value,label)=>'<div class="annual-stat-card"><span class="annual-stat-icon" aria-hidden="true">'+icon+'</span>'+
+      '<div><strong>'+value+'</strong><span>'+esc(label)+'</span></div></div>';
+    const master='<details class="annual-master-library"><summary>📐 Production sizes and export standards</summary>'+
+      '<p>Export from high-resolution source assets. Format guidance is version '+esc(CREATIVE_SPEC_VERSION.id)+'.</p><ul>'+
       MASTER_ASSET_PRESETS.map(a=>'<li><strong>'+esc(a.label)+'</strong> · '+a.width+' × '+a.height+' · '+esc(a.ratio)+'</li>').join('')+
-      '</ul></details>';
+      '</ul><p><a href="'+esc(placementSources.meta)+'" target="_blank" rel="noopener noreferrer">Meta</a> · '+
+      '<a href="'+esc(placementSources.googleAds)+'" target="_blank" rel="noopener noreferrer">Google Ads</a> · '+
+      '<a href="'+esc(placementSources.tiktok)+'" target="_blank" rel="noopener noreferrer">TikTok</a> · '+
+      '<a href="'+esc(placementSources.noticeboard)+'" target="_blank" rel="noopener noreferrer">Noticeboard</a></p></details>';
     return '<div class="annual-preview">'+
-      '<p class="annual-small">Placement spec version <strong>'+esc(CREATIVE_SPEC_VERSION.id)+'</strong> · reviewed '+esc(CREATIVE_SPEC_VERSION.reviewedOn)+'. Working exports, not upload minimums. Verify again before advertising.</p>'+
-      masterLibrary+
-      '<div class="annual-month-choose"><label>Year begins <input type="month" data-annual-start min="2026-01" max="2028-02" value="'+startMonth+'"></label>'+
-      '<label>View month <select data-annual-month>'+months.map(m=>'<option value="'+m+'"'+(selectedMonth===m?' selected':'')+'>'+monthName(m)+'</option>').join('')+'</select></label></div>'+
-      monthControls()+'<div class="annual-stats"><strong>'+plan.totals.posts+' suggestions</strong><strong>'+plan.totals.videos+' videos ('+
-        Math.round(100*plan.totals.videos/Math.max(1,plan.totals.posts))+'%)</strong><strong>'+plan.totals.combined+
-        ' composite posts</strong><span>'+nsw+' NSW-only visitor days</span><span>'+plan.totals.omitted+' ideas over daily limits</span><span>'+paidIdeas+' ideas with ad creative suggestions (unapproved)</span></div>'+
-      '<div class="annual-month-grid">'+months.map(m=>'<button type="button" data-annual-go="'+m+'" aria-pressed="'+(selectedMonth===m)+'">'+monthName(m)+
-        '<span>'+visible.filter(p=>p.date.startsWith(m)).length+' visible suggestions</span></button>').join('')+'</div>'+
-      '<h3>'+monthName(selectedMonth)+' · '+current.length+' visible suggestions</h3>'+
-      (current.length?'<ol class="annual-post-list">'+current.map(p=>{
-        const d=days.get(p.date),region=d?.holiday&&d?.nswHoliday?'QLD + NSW school holidays':d?.holiday?'QLD school holidays':d?.nswWesternOnly?'Western NSW summer extension':d?.nswHoliday?'NSW school holidays':'';
-        return '<li><div><strong>'+esc(csvDate(p.date))+' · '+esc(p.title)+'</strong><small>'+
-          esc(p.layerIds.join(' + '))+' · '+esc(p.format)+' · '+esc(p.size)+' ('+esc(p.aspectRatio)+') · '+
-          esc(p.suggestedTime)+' AEST'+(region?' · '+esc(region):'')+'</small>'+
-          '<p>'+esc(p.brief)+'</p><p><strong>Audience:</strong> '+esc(audienceText(p.audience))+
-          ' · <strong>CTA:</strong> '+esc(p.cta)+'</p>'+
-          (p.storyboard.length?'<p><strong>30-second video:</strong> '+esc(p.storyboard.join(' | '))+'</p>':'')+
-          '<details class="annual-placement-detail"><summary>'+p.creativeVariants.length+' placement-specific creative exports</summary><ul>'+
-          p.creativeVariants.map(v=>'<li><strong>'+esc(v.platform)+' · '+esc(v.placement)+'</strong> · '+esc(v.asset)+
-            ' · '+esc(v.size)+' · '+esc(v.ratio)+' · '+(v.distribution==='paid'?'Paid ad template / unapproved':'Organic')+
-            (v.provisional?' · PROPOSED ONLY':'')+
-            '<small><strong>File:</strong> '+esc(v.fileFormats.join(', '))+
-            (v.maximumDurationSeconds?' · maximum documented duration '+v.maximumDurationSeconds+'s':'')+
-            (v.recommendedDurationSeconds?' · suggested edit '+v.recommendedDurationSeconds+'s':'')+'</small>'+
-            (v.thumbnail?'<small><strong>Thumbnail:</strong> '+esc(v.thumbnail.label)+' '+v.thumbnail.width+' × '+v.thumbnail.height+'</small>':'')+
-            '<small><strong>Safe zones:</strong> '+esc(v.safeZone.label)+
-            (v.safeZone.topPixels?' ('+v.safeZone.topPixels+'px top, '+v.safeZone.bottomPixels+'px bottom, '+v.safeZone.sidePixels+'px sides)':'')+'</small>'+
-            (v.carousel?'<small><strong>Carousel:</strong> '+v.carousel.min+'–'+v.carousel.max+' slides; '+(v.carousel.requiresMusic?'music required':'check music rules')+'</small>':'')+
-            '<small><strong>Checklist:</strong> '+esc(v.checklist.join(' · '))+'</small>'+
-            '<small><strong>Approval:</strong> '+esc(v.approval)+'</small>'+
-            '<small>'+esc(v.note)+' · <a href="'+esc(v.sourceUrl)+'" target="_blank" rel="noopener noreferrer">Specification reference</a></small></li>').join('')+
-          '</ul></details></div>'+
-          '<button type="button" class="button outline small" data-annual-use="'+esc(p.id)+'">Use as draft</button></li>';
-      }).join('')+'</ol>':'<p>No suggestions in the visible layers for this month.</p>')+
-      '<p class="annual-small">Suggestions only: no draft or post is saved until you choose Use as draft and save it in the existing planner. Verify weather and tides shortly before publishing, and confirm all event, raffle, fundraising, species and licensing details.</p>'+
-      '<p class="annual-small">Placement references: <a href="'+esc(placementSources.meta)+'" target="_blank" rel="noopener noreferrer">Meta Ads Guide</a> · <a href="'+esc(placementSources.googleAds)+'" target="_blank" rel="noopener noreferrer">Google Ads</a> · <a href="'+esc(placementSources.tiktok)+'" target="_blank" rel="noopener noreferrer">TikTok Ads</a> · <a href="'+esc(placementSources.noticeboard)+'" target="_blank" rel="noopener noreferrer">Noticeboard pilot</a>.</p>'+
-      '<p class="annual-small">Official holidays: <a href="https://education.qld.gov.au/about-us/calendar/future-dates" target="_blank" rel="noopener noreferrer">Queensland</a> · <a href="https://education.nsw.gov.au/schooling/calendars/future-and-past-nsw-term-and-vacation-dates" target="_blank" rel="noopener noreferrer">NSW (Eastern/Western)</a>.</p></div>';
+      '<div class="annual-month-toolbar"><div><span class="annual-eyebrow">YOUR CONTENT STUDIO · 365-DAY PLAN</span>'+
+      '<h2>'+monthName(selectedMonth)+'</h2><p>Choose a day to see what you could share.</p></div>'+
+      '<div class="annual-month-navigation"><button type="button" data-annual-step="-1" aria-label="Previous month"'+(i===0?' disabled':'')+'>‹</button>'+
+      '<label class="sr-only" for="annual-month-picker">Choose a month</label>'+
+      '<select id="annual-month-picker" data-annual-month>'+choice+'</select>'+
+      '<button type="button" data-annual-step="1" aria-label="Next month"'+(i===months.length-1?' disabled':'')+'>›</button></div></div>'+
+      '<div class="annual-visual-stats">'+stat('🗓️',current.length,'Post ideas')+
+      stat('🎬',videoCount+' / '+current.length,'Video ideas')+
+      stat('🔗',composites,'Combined topics')+
+      stat('🏖️',qld+(nsw?' + '+nsw:''),'QLD / NSW holiday days')+'</div>'+
+      '<section class="annual-calendar-shell" aria-label="Click-to-open monthly calendar">'+
+      '<div class="annual-calendar-header"><div><h3>📅 Calendar</h3><p>Tap any date for a quick brief. Open a post to edit or explore.</p></div>'+
+      '<label class="annual-calendar-filter">Topic <select data-annual-topic>'+
+      '<option value="all">All topics</option>'+CAMPAIGN_LAYERS.map(l=>'<option value="'+l.id+'"'+(topicFilter===l.id?' selected':'')+'>'+
+      esc((LAYER_ICONS[l.id]||'📌')+' '+l.label)+'</option>').join('')+'</select></label></div>'+
+      renderMonthCalendar({month:selectedMonth,days:plan.days,posts:current,esc})+
+      '<div class="annual-calendar-legend"><span><i class="qld"></i> Queensland holidays</span>'+
+      '<span><i class="nsw"></i> NSW holidays</span><span>🎬 Video &nbsp; 🐟 Topic icons</span></div></section>'+
+      monthControls()+
+      '<details class="annual-year-overview"><summary>🗓️ Browse all 12 months <small>'+plan.totals.posts+' planned suggestions</small></summary>'+
+      '<div class="annual-month-grid">'+months.map(m=>'<button type="button" data-annual-go="'+m+'" aria-pressed="'+(selectedMonth===m)+'">'+
+      monthName(m)+'<span>'+allVisible.filter(p=>p.date.startsWith(m)).length+' ideas</span></button>').join('')+'</div>'+
+      '<label class="annual-start-choice">Year begins <input type="month" data-annual-start min="2026-01" max="2028-02" value="'+startMonth+'"></label></details>'+
+      master+
+      '<p class="annual-small annual-footer-guidance">Ideas are drafts. Check dates, permissions, fishing rules and current conditions before publishing.</p></div>';
   }
+
   function markup(){return '<section class="annual-root" data-annual-root aria-label="12-month social pattern planner"><details class="annual-planner" open>'+
       '<summary><strong>Annual pattern calendar</strong> · QLD + NSW holiday waves, 67% video-first</summary>'+
       '<p>Independent layer switches, frequency, audience and daily density. '+(reviewOnly?'This page is an isolated visual preview; it does not use member data, save to Cloudflare, or publish.':'Saving changes only the committee settings, never social accounts.')+'</p>'+
