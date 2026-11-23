@@ -55,7 +55,7 @@ export function renderAnalyticsPanel({summary=[],patterns=[],unlinked=[],recordC
     const rate=item.views?((item.interactions/item.views)*100).toFixed(1):'—';
     const max=Math.max(...summary.map(x=>x.views),1);
     return '<article class="annual-metric-card"><div><strong>'+esc(item.platform)+'</strong><span>'+item.posts+' linked posts</span></div>'+
-      '<div><strong>'+item.views.toLocaleString('en-AU')+'</strong><span>Views / reach as reported</span></div>'+
+      '<div><strong>'+item.views.toLocaleString('en-AU')+'</strong><span>Reported visibility</span></div>'+
       '<div><strong>'+item.interactions.toLocaleString('en-AU')+'</strong><span>Interactions</span></div>'+
       '<div><strong>'+rate+(rate==='—'?'':'%')+'</strong><span>Interactions / views*</span></div>'+
       '<div class="annual-metric-bar"><i style="width:'+Math.round(item.views/max*100)+'%"></i></div></article>';
@@ -69,7 +69,7 @@ export function renderAnalyticsPanel({summary=[],patterns=[],unlinked=[],recordC
     '<p class="annual-small">*Platform definitions of reach, impressions, views and interactions differ. Compare trends within each platform; do not treat percentages as equivalent audience measurements.</p>'+
     (patterns.length?'<details class="annual-pattern-insights"><summary>🔎 Content patterns from imported reports</summary>'+
       '<p>Observed averages for categories with at least two linked posts, grouped by platform. Small samples are descriptive, not proof of the best publishing approach.</p>'+
-      '<div class="annual-insights-table-wrap"><table><thead><tr><th>Platform</th><th>PLFC content category</th><th>Posts</th><th>Avg. reported views</th></tr></thead><tbody>'+
+      '<div class="annual-insights-table-wrap"><table><thead><tr><th>Platform</th><th>PLFC content category</th><th>Posts</th><th>Avg. visibility metric</th></tr></thead><tbody>'+
       patterns.slice(0,24).map(x=>'<tr><td>'+esc(x.platform)+'</td><td>'+esc(x.layer.replace(/([A-Z])/g,' $1'))+
         '</td><td>'+x.posts+'</td><td>'+x.averageViews.toLocaleString('en-AU')+'</td></tr>').join('')+
       '</tbody></table></div><p>Use the observations to adjust future timing or topics manually, with real editorial judgement.</p></details>':'')+
