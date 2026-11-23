@@ -191,8 +191,16 @@ export function setupAnnualCampaigns({mount,api,esc,isActive,onUse,reviewOnly=fa
       return {id:item.dataset.dailyItem,layerId:read('layerId'),time:read('time'),
         format:read('format'),title:read('title').trim(),brief:read('brief').trim()};
     });
-    if(!items.length){notice='Keep at least one post on each day.';return false;}
-    if(items.some(item=>!validSlot(item))){notice='Check each post’s title, time, topic and format.';return false;}
+    if(!items.length){
+      notice='Keep at least one post on each day.';
+      const status=root()?.querySelector('[data-annual-notice]');if(status)status.textContent=notice;
+      return false;
+    }
+    if(items.some(item=>!validSlot(item))){
+      notice='Check each post’s title, time, topic and format.';
+      const status=root()?.querySelector('[data-annual-notice]');if(status)status.textContent=notice;
+      return false;
+    }
     draftPlans()[focusDay]={patternId:existing.patternId||'',items};
     dayFormTouched=false;return true;
   }
@@ -504,6 +512,7 @@ export function setupAnnualCampaigns({mount,api,esc,isActive,onUse,reviewOnly=fa
     if(!isActive()||!loaded||!event.target.closest('[data-annual-root]'))return;
     const e=event.target;
     if(e.closest?.('[data-day-editor]')){dayFormTouched=true;return;}
+    if(e.hasAttribute('data-day-pattern')||e.hasAttribute('data-week-pattern'))return;
     const batch=e.hasAttribute('data-month-video')||e.hasAttribute('data-month-limit')||
       e.hasAttribute('data-month-enabled')||e.hasAttribute('data-month-visible')||
       e.hasAttribute('data-month-weekly')||e.hasAttribute('data-month-audience')||
