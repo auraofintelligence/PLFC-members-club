@@ -2,6 +2,8 @@ const ids=['fish','bait','weather','safety','events','holidays','nswHolidays','c
 const memberships=['all','adult','cadet','junior','social','casual','lifetime','prospect'];
 const genders=['all','women','men','self-described'];
 const places=['all','local','tourist','regional'];
+const destinations=['facebook','instagram','youtube','tiktok','noticeboard'];
+const validDestinations=values=>Array.isArray(values)&&values.length<=destinations.length&&new Set(values).size===values.length&&values.every(id=>destinations.includes(id));
 function validAudience(values,allowed){
   return Array.isArray(values) && values.length>=1 && values.length<=allowed.length &&
     values.every(v=>allowed.includes(v)) && new Set(values).size===values.length &&
@@ -10,8 +12,11 @@ function validAudience(values,allowed){
 export function validateCampaignSettings(value,fail){
   const bad=()=>fail('Check the campaign pattern settings and audience choices.');
   if(!value || typeof value!=='object'||Array.isArray(value)||
-    Object.keys(value).sort().join(',')!=='layers,limits,videoShare')bad();
+    Object.keys(value).sort().join(',')!=='delivery,layers,limits,videoShare')bad();
   if(!Number.isInteger(value.videoShare)||value.videoShare<0||value.videoShare>100)bad();
+  if(!value.delivery||Object.keys(value.delivery).sort().join(',')!=='organic,paid,paidPlanning'||
+    typeof value.delivery.paidPlanning!=='boolean'||!validDestinations(value.delivery.organic)||
+    !validDestinations(value.delivery.paid))bad();
   if(!value.limits||Object.keys(value.limits).sort().join(',')!=='friday,holiday,weekday,weekend'||
     Object.values(value.limits).some(n=>!Number.isInteger(n)||n<0||n>12))bad();
   if(!value.layers||typeof value.layers!=='object'||Array.isArray(value.layers)||
