@@ -43,7 +43,7 @@ export function renderTimingPanel(settings,esc=fallbackEsc,editingId=''){
     '<button type="button" class="button small" data-signal-save>Save timing patterns</button>'+
     '<p class="annual-small">A future scheduler can consume planned dates and Brisbane times from the CSV export.</p></details>';
 }
-export function renderAnalyticsPanel({summary=[],unlinked=[],recordCount=0,headers=[],mapping={},platform='facebook',filename='',notice='',esc=fallbackEsc,posts=[]}){
+export function renderAnalyticsPanel({summary=[],patterns=[],unlinked=[],recordCount=0,headers=[],mapping={},platform='facebook',filename='',notice='',esc=fallbackEsc,posts=[]}){
   const fields=[['postId','PLFC post ID'],['externalId','Platform post ID'],['postUrl','Platform post URL'],
     ['publishedAt','Published date'],['views','Views / impressions'],['likes','Likes / reactions'],
     ['comments','Comments'],['shares','Shares'],['saves','Saves'],['clicks','Clicks']];
@@ -66,7 +66,13 @@ export function renderAnalyticsPanel({summary=[],unlinked=[],recordCount=0,heade
   return '<details class="annual-analytics"><summary>📊 Learn from actual social results <small>Import, compare and export</small></summary>'+
     '<p>Keep your content plans and platform results together. Import CSV reports locally; nothing is uploaded or connected to social accounts.</p>'+
     '<h3>Platform comparison</h3>'+metricCards+
-    '<p class="annual-small">*Platform definitions of reach, impressions, views and interactions differ. Compare trends within each platform; do not treat the percentages as equivalent audience measurements.</p>'+
+    '<p class="annual-small">*Platform definitions of reach, impressions, views and interactions differ. Compare trends within each platform; do not treat percentages as equivalent audience measurements.</p>'+
+    (patterns.length?'<details class="annual-pattern-insights"><summary>🔎 Content patterns from imported reports</summary>'+
+      '<p>Observed averages for categories with at least two linked posts, grouped by platform. Small samples are descriptive, not proof of the best publishing approach.</p>'+
+      '<div class="annual-insights-table-wrap"><table><thead><tr><th>Platform</th><th>PLFC content category</th><th>Posts</th><th>Avg. reported views</th></tr></thead><tbody>'+
+      patterns.slice(0,24).map(x=>'<tr><td>'+esc(x.platform)+'</td><td>'+esc(x.layer.replace(/([A-Z])/g,' $1'))+
+        '</td><td>'+x.posts+'</td><td>'+x.averageViews.toLocaleString('en-AU')+'</td></tr>').join('')+
+      '</tbody></table></div><p>Use the observations to adjust future timing or topics manually, with real editorial judgement.</p></details>':'')+
     '<div class="annual-analytics-import"><h3>Import a platform CSV</h3><div class="annual-metric-import-controls">'+
     '<label>Platform<select data-metric-platform>'+['youtube','facebook','instagram','tiktok','noticeboard'].map(name=>
       '<option value="'+name+'"'+(name===platform?' selected':'')+'>'+name+'</option>').join('')+'</select></label>'+
