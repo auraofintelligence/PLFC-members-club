@@ -52,7 +52,7 @@ export function renderMonthCalendar({month,days,posts,esc,today=brisbaneToday(),
         (data?.publicHolidayName?'; '+data.publicHolidayName:'')+
         (longWeekend?'; long weekend':'')+
         (data?.partialPublicHoliday?'; '+data.partialPublicHoliday:'')+
-        (data?.minimum?'; '+data.minimum+' to '+data.maximum+' suggested posts per day':'');
+        (data?.manualPlan?'; individually planned posts':data?.minimum?'; '+data.minimum+' to '+data.maximum+' suggested posts per day':'');
       html+='<button type="button" class="annual-calendar-day '+temporal+(items.length?' has-posts':'')+
         (qld?' qld':'')+(nsw?' nsw':'')+(publicHoliday?' public-holiday':'')+
         (longWeekend?' long-weekend':'')+'" data-calendar-day="'+date+'"'+(date===today?' aria-current="date"':'')+
@@ -164,7 +164,7 @@ export function renderCalendarDialog({day,view,postId,posts,plan,esc,getEdit,rev
   }
   return '<dialog class="annual-day-dialog" data-annual-day-dialog aria-label="Posts for '+esc(formatted)+'">'+headline+
     '<p class="annual-dialog-lead">'+today.length+' post '+(today.length===1?'idea':'ideas')+' planned for this day. '+
-    (dayData?.minimum?'Posting target: '+dayData.minimum+'–'+dayData.maximum+' ideas. ':'')+
+    (dayData?.manualPlan?'Individually planned posts. ':dayData?.minimum?'Posting target: '+dayData.minimum+'–'+dayData.maximum+' ideas. ':'')+
     'Select one to review or edit.</p>'+
     hourlyGuide(today,getEdit,esc)+
     '<div class="annual-day-posts">'+(today.length?today.map(post=>{
