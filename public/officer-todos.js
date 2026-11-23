@@ -1,4 +1,4 @@
-import {regularDuties} from './officer-duties.js?v=20261121-fundraising';
+import {regularDuties} from './officer-duties.js?v=20261123-monthly-social';
 
 const endpoint='/api/committee/todos';
 const dayFormat=new Intl.DateTimeFormat('en-AU',{timeZone:'Australia/Brisbane',day:'numeric',month:'short',year:'numeric'});
