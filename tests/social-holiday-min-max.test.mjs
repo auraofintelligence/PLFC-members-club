@@ -68,3 +68,16 @@ test('invalid range values are rejected while older limits load with new default
   assert.equal(old.monthOverrides['2027-04'].limits.publicHolidayMin,2);
   assert.equal(normaliseDailyLimits({weekday:2,friday:3,weekend:4,holiday:5}).weekday,4);
 });
+
+test('new plans start with multiple daily ideas without rewriting previously saved minimums',()=>{
+  const defaults=defaultCampaignSettings();
+  assert.deepEqual(Object.fromEntries(POSTING_DAY_TYPES.map(type=>[type.id,defaults.limits[type.id+'Min']])),{
+    weekday:2,friday:2,weekend:2,longWeekend:3,publicHoliday:3,holiday:2
+  });
+  const prior=defaultCampaignSettings();
+  prior.limits.weekdayMin=1;
+  prior.limits.weekendMin=1;
+  validateCampaignSettings(prior,()=>{throw new Error('Existing custom minimum should remain valid');});
+  assert.equal(normaliseDailyLimits(prior.limits).weekdayMin,1);
+  assert.equal(normaliseDailyLimits(prior.limits).weekendMin,1);
+});

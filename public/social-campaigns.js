@@ -1,6 +1,7 @@
 import {CAMPAIGN_LAYERS,POSTING_DAY_TYPES,dayPostingBounds,normaliseDailyLimits,defaultCampaignSettings,generateCampaignYear,monthSettingsFor,copyMonthSettings,weekStart,settingsForDate,scopeSettingsFor} from './social-campaign-engine.js?v=20261124-itemised';
 import {BUILTIN_DAY_PATTERNS,allDayPresets,patternFor,planFromPattern,planFromPosts,newDaySlot,validSlot} from './social-day-patterns.js?v=20261124-itemised';
 import {renderItemisedDay,renderWeekItemised,mondayOf,nextDay} from './social-day-ui.js?v=20261124-office-signatures';
+import {renderSaveFeedback,renderCampaignHistory} from './social-save-history.js?v=20261123-history';
 import {PUBLISHING_DESTINATIONS,placementSources,CREATIVE_SPEC_VERSION,MASTER_ASSET_PRESETS} from './social-placements.js?v=20261123-formats';
 import {renderDestinationChoices,renderAssetGuide} from './social-format-guide.js?v=20261123-formats';
 import {LAYER_ICONS,renderMonthCalendar,renderCalendarDialog,postLabel,postBrief,postTime,isMinuteTime,brisbaneToday} from './social-visual-ui.js?v=20261124-office-signatures';
@@ -23,6 +24,7 @@ const csvDate=value=>value.slice(0,10);
 export function setupAnnualCampaigns({mount,api,esc,isActive,onUse,reviewOnly=false}){
   let settings=defaultCampaignSettings(),saved=JSON.stringify(settings),version=0,loaded=false,busy=false,notice='';
   let sharedSettingsReady=true;
+  let saveState='idle',saveMessage='',latestSave=null,historyRows=null,historyError='',historyLoading=false;
   const offlineKey='plfc-social-studio-offline-draft-v1';
   const normaliseSettings=value=>{
     const config=value&&typeof value==='object'?value:defaultCampaignSettings();
@@ -285,6 +287,7 @@ export function setupAnnualCampaigns({mount,api,esc,isActive,onUse,reviewOnly=fa
       '<div class="annual-actions"><button type="button" class="button" data-month-apply'+(busy?' disabled':'')+'>✓ Save '+esc(scopeLabel())+(sharedSettingsReady?'':' in this browser')+'</button>'+
       '<button type="button" class="button outline" data-month-copy-next'+(busy?' disabled':'')+'>Copy to next '+planningScope+'</button>'+
       '<button type="button" class="button outline" data-month-reset'+(busy?' disabled':'')+'>Reset '+planningScope+'</button></div>'+
+      (saveMessage?'<p class="annual-month-save-message" role="status">'+esc(saveMessage)+'</p>':'')+
       '<p class="annual-small">Monthly patterns are suggestions. Saved individual day plans and approved club posts are not overwritten.</p>'+
       '</div></details></section>';
   }
@@ -365,10 +368,12 @@ export function setupAnnualCampaigns({mount,api,esc,isActive,onUse,reviewOnly=fa
       posts:visiblePosts,plan:lastPreview,esc,getEdit,reviewOnly,metricsForPost});
     return '<section class="annual-root" data-annual-root aria-label="12-month social workbench">'+
       '<details class="annual-planner" open><summary><strong>📅 Social media workbench</strong> · 12-month plan</summary>'+
+      (loaded?renderSaveFeedback({status:saveState,message:saveMessage,latest:latestSave,reviewOnly,esc}):'')+
       (loaded&&!sharedSettingsReady?'<div class="annual-storage-warning" role="alert"><strong>Shared settings are unavailable</strong>'+
         '<p>Your planning calendar still works. Changes here stay in this browser only and are not shared with PLFC officers.</p>'+
         '<button type="button" class="button outline small" data-annual-reconnect>Retry connection</button></div>':'')+
-      visual+(loaded?signals+analytics:'')+
+      visual+(loaded?renderCampaignHistory({history:historyRows,loading:historyLoading,
+        error:historyError,reviewOnly,esc})+signals+analytics:'')+
       (loaded?'<details class="annual-default-settings"><summary>⚙️ Global annual defaults</summary>'+controls()+'</details>':'')+
       '</details><p class="annual-small" data-annual-notice role="status" aria-live="polite">'+esc(notice)+'</p>'+
       popup+'</section>';
@@ -377,7 +382,7 @@ export function setupAnnualCampaigns({mount,api,esc,isActive,onUse,reviewOnly=fa
     const pane=root();if(!pane)return;
     const states={};
     for(const cls of ['annual-planner','annual-month-bulk-options','annual-batch-layer-options','annual-batch-platform-options',
-      'annual-default-settings','annual-year-overview','annual-master-library','annual-signals','annual-analytics']){
+      'annual-default-settings','annual-year-overview','annual-master-library','annual-history','annual-signals','annual-analytics']){
       states[cls]=pane.querySelector('.'+cls)?.open??(cls==='annual-planner');
     }
     const temp=document.createElement('div');temp.innerHTML=markup();
@@ -401,17 +406,25 @@ export function setupAnnualCampaigns({mount,api,esc,isActive,onUse,reviewOnly=fa
       const local=!reviewOnly?browserDraft():null;
       settings=local||remote;saved=JSON.stringify(remote);sharedSettingsReady=true;
       loaded=true;monthDraft=null;batchMonth='';workingDayPlans=null;dayFormTouched=false;loadEdits();importMetrics();
-      notice=local?'Shared settings connected. Your browser-only changes are loaded for review; select Save to share them with the committee.':
-        reviewOnly?'Temporary preview settings loaded. No database or live club data is connected.':
-        row.updatedAt?'Loaded saved settings from '+row.updatedAt.slice(0,10)+'.':'Default settings loaded; not yet shared.';
+      latestSave={version:row.version,updatedAt:row.updatedAt,updatedByName:row.updatedByName,updatedOffice:row.updatedOffice};
+      historyRows=null;historyError='';
+      saveState=local||reviewOnly?'local':row.version>0?'shared':'idle';
+      saveMessage=local?'Browser-only changes loaded. Review them before sharing with the committee.':
+        reviewOnly?'Trial settings are kept in this browser between refreshes; no club data is changed.':
+        row.updatedAt?'Shared settings loaded from the PLFC database.':'No committee settings saved yet.';
+      notice=saveMessage;
     }catch(e){
       if(!isActive())return;
       if(e.status>=500){
         settings=browserDraft()||normaliseSettings(defaultCampaignSettings());
         saved=JSON.stringify(settings);loaded=true;sharedSettingsReady=false;
         version=0;monthDraft=null;batchMonth='';workingDayPlans=null;dayFormTouched=false;loadEdits();importMetrics();
-        notice='Shared settings could not be reached. The calendar is open in browser-only mode; no committee changes will be shared until the connection is restored.';
-      }else notice='Could not load committee settings: '+e.message;
+        latestSave=null;saveState='local';historyRows=null;
+        saveMessage='The club database is unavailable. Changes can be kept in this browser, but not shared yet.';
+        notice=saveMessage;
+      }else{
+        saveState='error';saveMessage='Could not load committee settings: '+e.message;notice=saveMessage;
+      }
     }finally{busy=false;draw();}
   }
   async function save(){
@@ -419,26 +432,59 @@ export function setupAnnualCampaigns({mount,api,esc,isActive,onUse,reviewOnly=fa
     if(!sharedSettingsReady){
       if(saveBrowserDraft()){
         saved=JSON.stringify(settings);
-        notice='Saved in this browser only. Not shared with the committee; use Retry connection to restore shared saving.';
-      }else notice='The browser could not save these settings. Copy your plan before leaving this page.';
-      draw();return;
+        saveState='local';saveMessage='Saved on this browser only. Retry the connection before treating this as shared with PLFC.';
+      }else{
+        saveState='error';saveMessage='This browser could not store the settings. Nothing is confirmed as saved.';
+      }
+      notice=saveMessage;draw();return;
     }
-    busy=true;notice='Saving committee settings…';draw();
+    busy=true;saveState='saving';saveMessage='Saving and checking the result…';draw();
     try{
       const row=await api(endpoint,{method:'POST',body:JSON.stringify({version,settings})});
       if(!isActive())return;
       version=row.version;settings=normaliseSettings(row.settings);
       saved=JSON.stringify(settings);workingDayPlans=null;dayFormTouched=false;
+      latestSave={version:row.version,updatedAt:row.updatedAt,
+        updatedByName:row.updatedByName,updatedOffice:row.updatedOffice};
+      historyRows=null;historyError='';
       try{localStorage.removeItem(offlineKey);}catch{}
-      notice=reviewOnly?'Trial settings updated in this browser tab only; refreshing will reset them. No posts were published.':'Shared settings saved. No posts were published.';
+      saveState=reviewOnly?'local':'shared';
+      saveMessage=reviewOnly?'Saved on this browser. These settings survive a refresh here; nothing is shared with PLFC.':
+        'Saved to the shared PLFC database as version '+row.version+'. You can refresh without losing these settings.';
+      notice=saveMessage;
     }catch(e){
-      if(e.status>=500){
-        sharedSettingsReady=false;
-        const savedHere=saveBrowserDraft();
-        notice=savedHere?'The club could not save shared settings. Your changes are kept in this browser only; retry the connection before treating them as shared.':
-          'The club could not save shared settings; this browser also refused local storage. Your changes are not confirmed.';
-      }else notice=e.status===409?'Someone else edited these settings. Reload the saved version before retrying.':e.message;
+      const draftKept=saveBrowserDraft();
+      if(e.status>=500)sharedSettingsReady=false;
+      saveState=draftKept?'local':'error';
+      saveMessage=(e.status===409?'Another officer saved a newer version. ':
+        e.message?e.message+'. ':'The save was not confirmed. ')+
+        (draftKept?'Your settings are preserved only in this browser, not shared with PLFC.':
+          'Your settings could not be stored. Do not leave this page without copying them.');
+      notice=saveMessage;
     }finally{busy=false;draw();}
+  }
+  async function loadHistory(){
+    if(historyLoading||!loaded)return;
+    historyLoading=true;historyError='';draw();
+    try{
+      const result=await api(endpoint+'?history=1',{cache:'no-store'});
+      if(!isActive())return;
+      historyRows=result.history||[];
+    }catch(e){historyError='Could not load the change history: '+e.message;}
+    finally{historyLoading=false;draw();}
+  }
+  async function exportHistoryVersion(value){
+    const number=Number(value);
+    if(!Number.isInteger(number)||number<1)return;
+    try{
+      const result=await api(endpoint+'?version='+number,{cache:'no-store'});
+      if(!isActive())return;
+      const blob=new Blob([JSON.stringify(result.revision,null,2)],{type:'application/json'});
+      const url=URL.createObjectURL(blob),link=document.createElement('a');
+      link.href=url;link.download='plfc-social-settings-version-'+number+'.json';link.click();
+      setTimeout(()=>URL.revokeObjectURL(url),5000);
+      notice='Downloaded version '+number+' for comparison. Nothing was restored or overwritten.';
+    }catch(e){historyError='Could not download version '+number+': '+e.message;draw();}
   }
   function updateAudience(field,id,on){
     const existing=settings.layers[selectedLayer].audience[field];
@@ -606,6 +652,8 @@ export function setupAnnualCampaigns({mount,api,esc,isActive,onUse,reviewOnly=fa
   });
   mount.addEventListener('click',event=>{
     const b=event.target.closest('button');if(!b||!b.closest('[data-annual-root]')||!isActive())return;
+    if(b.hasAttribute('data-history-load')){void loadHistory();return;}
+    if(b.hasAttribute('data-history-export')){void exportHistoryVersion(b.dataset.historyExport);return;}
     if(b.hasAttribute('data-signal-save')){void save();return;}
     if(b.hasAttribute('data-milestone-cancel')){editingMilestone='';draw();return;}
     if(b.hasAttribute('data-signal-edit')){
@@ -898,7 +946,9 @@ export function setupAnnualCampaigns({mount,api,esc,isActive,onUse,reviewOnly=fa
   mount.addEventListener('close',event=>{
     if(event.target.matches('[data-annual-day-dialog]')){modalDay=null;modalPostId=null;modalView='day';}
   },true);
-  return {markup,open,reset(){loaded=false;busy=false;sharedSettingsReady=true;workingDayPlans=null;dayFormTouched=false;settings=defaultCampaignSettings();saved=JSON.stringify(settings);
+  return {markup,open,reset(){loaded=false;busy=false;sharedSettingsReady=true;saveState='idle';saveMessage='';
+    latestSave=null;historyRows=null;historyError='';historyLoading=false;workingDayPlans=null;dayFormTouched=false;
+    settings=defaultCampaignSettings();saved=JSON.stringify(settings);
     version=0;notice='';lastPreview=null;modalDay=null;modalPostId=null;modalView='day';planningScope='month';monthDraft=null;batchMonth='';}};
 
 }

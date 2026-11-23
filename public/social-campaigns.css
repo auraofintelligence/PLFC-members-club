@@ -555,3 +555,41 @@
  .annual-day-signature{padding:.65rem;margin:.55rem 0}
  .annual-week-owner .annual-owner-inline{font-size:.7rem}
 }
+
+
+/* Honest, immediately visible save status and signed officer revision history */
+.annual-save-feedback{display:flex;flex-wrap:wrap;align-items:center;gap:.3rem .8rem;
+  padding:.63rem .9rem;border:1px solid #d7e7dc;border-radius:11px;background:#f4faf6;
+  margin:0 0 .9rem;font-size:.82rem;color:#305e4e}
+.annual-save-feedback strong{font-weight:800;white-space:nowrap;color:#195f50}
+.annual-save-feedback span{flex:1 1 260px;line-height:1.5}
+.annual-save-feedback small{font-size:.71rem;color:#668174}
+.annual-save-feedback.local{background:#fffaf0;border-color:#ead9af;color:#735626}
+.annual-save-feedback.local strong{color:#8a641b}
+.annual-save-feedback.error{background:#fff3f0;border-color:#e5b7b0;color:#a13f2d}
+.annual-save-feedback.error strong{color:#a13f2d}
+.annual-save-feedback.saving{background:#eef5fb;border-color:#c8deed}
+.annual-month-save-message{font-size:.8rem;line-height:1.55;color:#286d59;
+  border-left:3px solid #92c7ae;padding:.35rem .65rem;margin:0}
+.annual-history{background:#fff;border:1px solid #d8e8df;border-radius:14px;margin:1rem 0;overflow:hidden}
+.annual-history>summary{padding:.9rem 1.1rem;cursor:pointer;font-weight:800;color:#196654;
+  display:flex;align-items:center;flex-wrap:wrap;justify-content:space-between;gap:.4rem}
+.annual-history>summary small{font-size:.74rem;color:#678477;font-weight:550}
+.annual-history[open]>summary{border-bottom:1px solid #deece3;background:#f2faf4}
+.annual-history-body{padding:.85rem 1rem}
+.annual-history-body>p{margin:.2rem 0 .8rem;font-size:.83rem;color:#577367}
+.annual-history-error{color:#9e3f34!important}
+.annual-history-list{list-style:none;padding:0;margin:.85rem 0 0;display:grid;gap:.7rem}
+.annual-history-entry{padding:.75rem;border:1px solid #deebe2;border-radius:11px;background:#fafdfa}
+.annual-history-entry-top{display:flex;align-items:center;flex-wrap:wrap;justify-content:space-between;gap:.6rem}
+.annual-history-entry-top strong{display:block;font-size:.88rem;color:#245c4d}
+.annual-history-entry-top span{display:block;font-size:.73rem;color:#6c8277;margin-top:.25rem}
+.annual-history-entry>details{margin-top:.65rem}
+.annual-history-entry>details>summary{font-size:.79rem;font-weight:750;cursor:pointer;color:#206a58}
+.annual-history-diffs{list-style:none;padding:0;margin:.5rem 0;display:grid;gap:.4rem}
+.annual-history-diffs li{border:1px solid #e5eee7;background:#fff;border-radius:9px;padding:.6rem}
+.annual-history-diffs li>strong{font-size:.76rem;color:#245e50;overflow-wrap:anywhere}
+.annual-history-diffs li>div{display:flex;gap:.6rem;align-items:flex-start;margin:.25rem 0;font-size:.74rem}
+.annual-history-diffs li>div span{flex:0 0 50px;color:#708379}
+.annual-history-diffs li>div code{font:500 .74rem/1.5 ui-monospace,monospace;overflow-wrap:anywhere;white-space:pre-wrap}
+@media(max-width:640px){.annual-save-feedback{align-items:flex-start}.annual-history-body{padding:.65rem}.annual-history>summary{padding:.8rem}}
