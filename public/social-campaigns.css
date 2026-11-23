@@ -363,3 +363,7 @@
 .annual-pattern-insights table{width:100%;border-collapse:collapse;font-size:.79rem;min-width:420px}
 .annual-pattern-insights th,.annual-pattern-insights td{text-align:left;border-bottom:1px solid #dbe9df;padding:.45rem .5rem}
 .annual-pattern-insights th{background:#e5f2e9;color:#255d4e;font-weight:750}
+
+.annual-calendar-signal{font-size:.58rem;font-weight:800;color:#7b5d15;line-height:1.15}
+.annual-calendar-day:has(.annual-calendar-signal){border-color:#deb96c}
+@media(max-width:640px){.annual-calendar-signal{font-size:.49rem}}
