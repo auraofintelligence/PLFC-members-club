@@ -1,6 +1,7 @@
 import {CAMPAIGN_LAYERS,POSTING_DAY_TYPES,dayPostingBounds,normaliseDailyLimits,defaultCampaignSettings,generateCampaignYear,monthSettingsFor,copyMonthSettings,weekStart,settingsForDate,scopeSettingsFor} from './social-campaign-engine.js?v=20261124-itemised';
 import {BUILTIN_DAY_PATTERNS,allDayPresets,patternFor,planFromPattern,planFromPosts,newDaySlot,validSlot} from './social-day-patterns.js?v=20261124-itemised';
 import {renderItemisedDay,renderWeekItemised,mondayOf,nextDay} from './social-day-ui.js?v=20261124-office-signatures';
+import {renderSaveFeedback,renderCampaignHistory} from './social-save-history.js?v=20261123-history';
 import {PUBLISHING_DESTINATIONS,placementSources,CREATIVE_SPEC_VERSION,MASTER_ASSET_PRESETS} from './social-placements.js?v=20261123-formats';
 import {renderDestinationChoices,renderAssetGuide} from './social-format-guide.js?v=20261123-formats';
 import {LAYER_ICONS,renderMonthCalendar,renderCalendarDialog,postLabel,postBrief,postTime,isMinuteTime,brisbaneToday} from './social-visual-ui.js?v=20261124-office-signatures';
@@ -23,6 +24,7 @@ const csvDate=value=>value.slice(0,10);
 export function setupAnnualCampaigns({mount,api,esc,isActive,onUse,reviewOnly=false}){
   let settings=defaultCampaignSettings(),saved=JSON.stringify(settings),version=0,loaded=false,busy=false,notice='';
   let sharedSettingsReady=true;
+  let saveState='idle',saveMessage='',latestSave=null,historyRows=null,historyError='',historyLoading=false;
   const offlineKey='plfc-social-studio-offline-draft-v1';
   const normaliseSettings=value=>{
     const config=value&&typeof value==='object'?value:defaultCampaignSettings();
@@ -285,6 +287,7 @@ export function setupAnnualCampaigns({mount,api,esc,isActive,onUse,reviewOnly=fa
       '<div class="annual-actions"><button type="button" class="button" data-month-apply'+(busy?' disabled':'')+'>✓ Save '+esc(scopeLabel())+(sharedSettingsReady?'':' in this browser')+'</button>'+
       '<button type="button" class="button outline" data-month-copy-next'+(busy?' disabled':'')+'>Copy to next '+planningScope+'</button>'+
       '<button type="button" class="button outline" data-month-reset'+(busy?' disabled':'')+'>Reset '+planningScope+'</button></div>'+
+      (saveMessage?'<p class="annual-month-save-message" role="status">'+esc(saveMessage)+'</p>':'')+
       '<p class="annual-small">Monthly patterns are suggestions. Saved individual day plans and approved club posts are not overwritten.</p>'+
       '</div></details></section>';
   }
@@ -365,10 +368,12 @@ export function setupAnnualCampaigns({mount,api,esc,isActive,onUse,reviewOnly=fa
       posts:visiblePosts,plan:lastPreview,esc,getEdit,reviewOnly,metricsForPost});
     return '<section class="annual-root" data-annual-root aria-label="12-month social workbench">'+
       '<details class="annual-planner" open><summary><strong>📅 Social media workbench</strong> · 12-month plan</summary>'+
+      (loaded?renderSaveFeedback({status:saveState,message:saveMessage,latest:latestSave,reviewOnly,esc}):'')+
       (loaded&&!sharedSettingsReady?'<div class="annual-storage-warning" role="alert"><strong>Shared settings are unavailable</strong>'+
         '<p>Your planning calendar still works. Changes here stay in this browser only and are not shared with PLFC officers.</p>'+
         '<button type="button" class="button outline small" data-annual-reconnect>Retry connection</button></div>':'')+
-      visual+(loaded?signals+analytics:'')+
+      visual+(loaded?renderCampaignHistory({history:historyRows,loading:historyLoading,
+        error:historyError,reviewOnly,esc})+signals+analytics:'')+
       (loaded?'<details class="annual-default-settings"><summary>⚙️ Global annual defaults</summary>'+controls()+'</details>':'')+
       '</details><p class="annual-small" data-annual-notice role="status" aria-live="polite">'+esc(notice)+'</p>'+
       popup+'</section>';
@@ -377,7 +382,7 @@ export function setupAnnualCampaigns({mount,api,esc,isActive,onUse,reviewOnly=fa
     const pane=root();if(!pane)return;
     const states={};
     for(const cls of ['annual-planner','annual-month-bulk-options','annual-batch-layer-options','annual-batch-platform-options',
-      'annual-default-settings','annual-year-overview','annual-master-library','annual-signals','annual-analytics']){
+      'annual-default-settings','annual-year-overview','annual-master-library','annual-history','annual-signals','annual-analytics']){
       states[cls]=pane.querySelector('.'+cls)?.open??(cls==='annual-planner');
     }
     const temp=document.createElement('div');temp.innerHTML=markup();
