@@ -89,8 +89,9 @@ export function validateCampaignSettings(value,fail){
     for(const [key,config] of Object.entries(entries)){
       if(!valid(key)||!config||typeof config!=='object'||Array.isArray(config)||
         Object.keys(config).sort().join(',')!=='delivery,layers,limits,postingTime,videoShare')bad();
-      validateCampaignSettings({...config,monthOverrides:{},weekOverrides:{},dayOverrides:{},
+      const validated=validateCampaignSettings({...config,monthOverrides:{},weekOverrides:{},dayOverrides:{},
         timingSignals:value.timingSignals,milestones:value.milestones},fail);
+      config.limits=validated.limits;
     }
   }
   return value;
