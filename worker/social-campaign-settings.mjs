@@ -1,3 +1,4 @@
+import {describeCampaignChanges,ensureSocialHistory,revisionStatement,readSocialHistory} from './social-campaign-history.mjs';
 const ids=['fish','bait','weather','safety','events','holidays','nswHolidays','camping','competition','newsletter','membership','raffles','fundraisers','wishes','community','surprise'];
 const memberships=['all','adult','cadet','junior','social','casual','lifetime','prospect'];
 const genders=['all','women','men','self-described'];
@@ -174,11 +175,24 @@ export function validateCampaignSettings(value,fail){
 export async function socialCampaignSettingsEndpoint(request,env,identity,{json,requireRole,requireDb,bodyJson,HttpError}){
   requireRole(identity,['committee']);
   if(!['GET','POST'].includes(request.method))throw new HttpError(405,'Only loading or saving campaign settings is supported.','method_not_allowed');
-  if(new URL(request.url).search)throw new HttpError(400,'Unexpected campaign settings options.','invalid_campaign_settings');
+  const params=new URL(request.url).searchParams;
+  const keys=[...params.keys()];
+  const readHistory=request.method==='GET'&&keys.length===1&&keys[0]==='history'&&params.get('history')==='1';
+  const readVersion=request.method==='GET'&&keys.length===1&&keys[0]==='version'&&
+    /^(?:[1-9]\d{0,8})$/.test(params.get('version')||'');
+  if(keys.length&&!readHistory&&!readVersion)
+    throw new HttpError(400,'Unexpected campaign settings options.','invalid_campaign_settings');
   const binding=requireDb(env),db=binding.withSession?binding.withSession('first-primary'):binding;
-  const query=db.prepare('SELECT version,settings_json AS settings,updated_at AS updatedAt,updated_by AS updatedBy FROM committee_social_campaign_settings WHERE id=1');
-  const toPublic=row=>row?{version:row.version,settings:JSON.parse(row.settings),updatedAt:row.updatedAt,updatedBy:row.updatedBy}:
-    {version:0,settings:null,updatedAt:null,updatedBy:null};
+  const query=db.prepare(`SELECT s.version,s.settings_json AS settings,s.updated_at AS updatedAt,
+    s.updated_by AS updatedBy,a.login AS updatedByName,a.role AS updatedByRole
+    FROM committee_social_campaign_settings s LEFT JOIN club_accounts a ON a.id=s.updated_by
+    WHERE s.id=1`);
+  const toPublic=row=>{
+    if(!row)return {version:0,settings:null,updatedAt:null,updatedBy:null,updatedByName:null,updatedOffice:null};
+    const office=officeSignature({name:row.updatedByName,administrator:row.updatedByRole==='administrator'}).office;
+    return {version:row.version,settings:JSON.parse(row.settings),updatedAt:row.updatedAt,updatedBy:row.updatedBy,
+      updatedByName:row.updatedByName||row.updatedBy,updatedOffice:office};
+  };
   // Automatic Git deployment updates Worker code, but does not run D1 migrations.
   // Only repair this particular absent table. Never hide unrelated DB failures.
   const readSettings=async()=>{
@@ -197,6 +211,14 @@ export async function socialCampaignSettingsEndpoint(request,env,identity,{json,
     }
   };
   const current=await readSettings();
+  if(readHistory||readVersion){
+    await ensureSocialHistory(db,current);
+    const item=readVersion?await readSocialHistory(db,{version:Number(params.get('version'))}):null;
+    if(readVersion&&!item)throw new HttpError(404,'This version is not in the saved history.','history_not_found');
+    return json(readVersion?{revision:item}:{
+      version:current?.version||0,history:await readSocialHistory(db)
+    });
+  }
   if(request.method==='GET')return json(toPublic(current));
   const body=await bodyJson(request,1500000);
   const invalid=message=>{throw new HttpError(400,message,'invalid_campaign_settings');};
@@ -207,13 +229,26 @@ export async function socialCampaignSettingsEndpoint(request,env,identity,{json,
   // previous database record. Never trust identities supplied by the browser.
   const previous=current?JSON.parse(current.settings):null;
   stampDayPlanSignatures(settings,previous,identity,now);
+  // History is append-only and signed from the authenticated account, including
+  // the Webmaster administrator. It is committed atomically with the settings.
+  await ensureSocialHistory(db,current);
+  const actor=officeSignature(identity,now);
+  const changes=describeCampaignChanges(previous,settings);
   const write=body.version===0?
     db.prepare('INSERT INTO committee_social_campaign_settings(id,version,settings_json,updated_at,updated_by) VALUES(1,1,?,?,?) ON CONFLICT(id) DO NOTHING')
       .bind(JSON.stringify(settings),now,identity.id):
     db.prepare('UPDATE committee_social_campaign_settings SET version=version+1,settings_json=?,updated_at=?,updated_by=? WHERE id=1 AND version=?')
       .bind(JSON.stringify(settings),now,identity.id,body.version);
-  const [result,,last]=await db.batch([write,
-    db.prepare('INSERT INTO audit_log SELECT ?,?,?,?,?,? WHERE changes()=1').bind(crypto.randomUUID(),identity.id,identity.accountRole||identity.role,'social_campaign_settings_saved','social-campaign-settings',now),query]);
+  const [result,revisionResult,,last]=await db.batch([write,
+    revisionStatement(db,{
+      version:body.version+1,actorId:identity.id,actorName:actor.by,
+      actorOffice:actor.office,actorRole:identity.accountRole||identity.role,
+      savedAt:now,changes,settings
+    }),
+    db.prepare('INSERT INTO audit_log SELECT ?,?,?,?,?,? WHERE changes()=1').bind(
+      crypto.randomUUID(),identity.id,identity.accountRole||identity.role,
+      'social_campaign_settings_saved','social-campaign-settings',now),query]);
   if(result.meta.changes!==1)throw new HttpError(409,'Another officer updated the campaign patterns. Reload their settings before saving.','campaign_conflict');
-  return json(toPublic(last.results[0]));
+  if(revisionResult.meta.changes!==1)throw new HttpError(500,'The campaign revision was not recorded. Please retry.','history_write_failed');
+  return json({...toPublic(last.results[0]),lastChange:changes});
 }
