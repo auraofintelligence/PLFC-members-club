@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {CAMPAIGN_LAYERS,defaultCampaignSettings,generateCampaignYear} from '../public/social-campaign-engine.js';
+import {CAMPAIGN_LAYERS,defaultCampaignSettings,generateCampaignYear,holidayInfluences} from '../public/social-campaign-engine.js';
 import {validateCampaignSettings} from '../worker/social-campaign-settings.mjs';
 
 const defaults=()=>defaultCampaignSettings();
@@ -57,5 +57,28 @@ test('settings validation refuses unknown fields, extra audiences and invalid va
     s=>s.layers.fish.audience.place=['local','unknown'],
     s=>s.layers.unauthorised={}
   ]){const settings=defaults();mutate(settings);assert.throws(()=>validateCampaignSettings(settings,invalid));}
-  assert.equal(CAMPAIGN_LAYERS.length,15);
+  assert.equal(CAMPAIGN_LAYERS.length,16);
+});
+
+test('NSW summer, autumn, winter and spring generate an independent smaller visitor wave',()=>{
+  const year=generateCampaignYear('2027-01');
+  const qldOnly=holidayInfluences('2027-03-29');
+  const nswOnly=holidayInfluences('2027-04-19');
+  const both=holidayInfluences('2027-07-06');
+  const western=holidayInfluences('2027-02-01');
+  assert.deepEqual([qldOnly.qld,qldOnly.nswEastern],[true,false]);
+  assert.deepEqual([nswOnly.qld,nswOnly.nswEastern],[false,true]);
+  assert.deepEqual([both.qld,both.nswEastern],[true,true]);
+  assert.deepEqual([western.nswEastern,western.nswWestern],[false,true]);
+  assert.ok(year.posts.some(p=>p.date>='2027-04-12'&&p.date<='2027-04-23'&&p.layerIds.includes('nswHolidays')));
+  assert.ok(year.posts.some(p=>p.date==='2027-04-11'&&p.layerIds.includes('nswHolidays')),'NSW-specific lead-in is generated');
+  assert.ok(year.posts.filter(p=>p.layerIds.includes('nswHolidays')).every(p=>p.audience.place.includes('tourist')));
+  assert.ok(year.posts.filter(p=>p.layerIds.includes('weather')).every(p=>[4,5,6].includes(weekday(p.date))));
+});
+test('NSW holiday layer can be independently switched off without changing Queensland breaks',()=>{
+  const cfg=defaults();cfg.layers.nswHolidays.enabled=false;
+  const year=generateCampaignYear('2027-01',cfg);
+  assert.equal(year.posts.filter(p=>p.layerIds.includes('nswHolidays')).length,0);
+  assert.ok(year.posts.some(p=>p.date==='2027-03-25'&&p.layerIds.includes('holidays')));
+  assert.ok(year.days.some(p=>p.date==='2027-04-12'&&p.nswHoliday&&!p.holiday));
 });
