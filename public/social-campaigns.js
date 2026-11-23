@@ -173,7 +173,8 @@ export function setupAnnualCampaigns({mount,api,esc,isActive,onUse,reviewOnly=fa
     let plan;try{plan=generateCampaignYear(startMonth,scoped);}catch(e){return '<p role="alert">'+esc(e.message)+'</p>';}
     lastPreview=plan;
     prepareMetricLookup();
-    const allVisible=plan.posts.filter(p=>p.layerIds.includes('daily')||p.layerIds.some(id=>settingsForDate(scoped,p.date).layers[id]?.visible));
+    const allVisible=plan.posts.filter(p=>!getEdit(p.id).hidden &&
+      (p.layerIds.includes('daily')||p.layerIds.some(id=>settingsForDate(scoped,p.date).layers[id]?.visible)));
     visiblePosts=topicFilter==='all'?allVisible:allVisible.filter(p=>p.layerIds.includes(topicFilter));
     const current=visiblePosts.filter(p=>p.date.startsWith(selectedMonth));
     const monthDays=plan.days.filter(day=>day.date.startsWith(selectedMonth));
@@ -209,7 +210,8 @@ export function setupAnnualCampaigns({mount,api,esc,isActive,onUse,reviewOnly=fa
       '<div class="annual-calendar-legend"><span class="annual-legend-today">● Today</span>'+
       '<span class="annual-legend-past">◐ Past</span><span class="annual-legend-future">○ Future</span>'+
       '<span><i class="qld"></i> QLD holidays</span><span><i class="nsw"></i> NSW holidays</span></div></section>'+
-      '<div class="annual-schedule-export"><span>🕒 Every day has a plan. Open a date to set exact posting times.</span>'+
+      '<div class="annual-schedule-export"><span>🕒 Every day starts with a suggested post. Click a date to edit, add or remove ideas.</span>'+
+      (Object.values(postEdits).some(e=>e.hidden)?'<button type="button" class="button outline small" data-calendar-restore>Restore removed suggestions</button>':'')+
       '<button type="button" class="button outline small" data-calendar-export>⬇ Export this month’s schedule CSV</button></div>'+
       monthControls()+
       '<details class="annual-year-overview"><summary>🗓️ Browse all 12 months <small>'+plan.totals.posts+' planned suggestions</small></summary>'+
@@ -514,6 +516,26 @@ export function setupAnnualCampaigns({mount,api,esc,isActive,onUse,reviewOnly=fa
       }return;
     }
     if(b.hasAttribute('data-calendar-export')){exportSchedule();return;}
+    if(b.hasAttribute('data-calendar-restore')){
+      for(const record of Object.values(postEdits))delete record.hidden;
+      persistEdits();notice='Restored removed calendar suggestions.';draw();return;
+    }
+    if(b.hasAttribute('data-calendar-add')){
+      const day=b.dataset.calendarAdd;
+      if(!/^20\d\d-\d\d-\d\d$/.test(day))return;
+      root()?.querySelector('[data-annual-day-dialog]')?.close();
+      modalDay=null;modalPostId=null;modalView='day';
+      onUse({title:'',body:'',channels:[],plannedDate:day});return;
+    }
+    if(b.hasAttribute('data-calendar-dismiss')){
+      const id=b.dataset.calendarDismiss;
+      if(!visiblePosts.some(post=>post.id===id&&post.date===modalDay))return;
+      if(!window.confirm('Remove this generated suggestion from your browser view? Club-saved posts are unaffected.'))return;
+      postEdits[id]={...getEdit(id),hidden:true};
+      persistEdits();modalView='day';modalPostId=null;
+      notice='Removed a suggested idea from this browser. Restore removed suggestions if needed.';
+      draw();return;
+    }
     if(b.hasAttribute('data-calendar-close')){
       root()?.querySelector('[data-annual-day-dialog]')?.close();
       modalDay=null;modalPostId=null;modalView='day';return;
