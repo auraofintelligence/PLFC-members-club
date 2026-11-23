@@ -13,7 +13,7 @@ const monthName=value=>new Intl.DateTimeFormat('en-AU',{timeZone:'UTC',month:'sh
 const audienceText=selection=>Object.values(selection||{}).map(values=>values.join(', ')).join(' · ');
 const csvDate=value=>value.slice(0,10);
 
-export function setupAnnualCampaigns({mount,api,esc,isActive,onUse}){
+export function setupAnnualCampaigns({mount,api,esc,isActive,onUse,reviewOnly=false}){
   let settings=defaultCampaignSettings(),saved=JSON.stringify(settings),version=0,loaded=false,busy=false,notice='';
   let selectedLayer='nswHolidays',startMonth=new Date(Date.now()+36000000).toISOString().slice(0,7),selectedMonth=startMonth;
   let lastPreview=null;
@@ -53,7 +53,7 @@ export function setupAnnualCampaigns({mount,api,esc,isActive,onUse}){
       '</select></label>'+audience+'</div>'+
       '<p class="annual-small">NSW visits form a separate, smaller wave: two suggestions per week by default versus three for QLD breaks. Western NSW summer extensions receive up to one suggestion per week. Overlap never doubles the daily cap.</p>'+
       '<p class="annual-small">Audience categories guide content, not who can view public posts. Gender is voluntary and never inferred. No automated publishing is enabled.</p>'+
-      '<div class="annual-actions"><button type="button" class="button" data-annual-save'+(busy?' disabled':'')+'>Save committee settings</button>'+
+      '<div class="annual-actions"><button type="button" class="button" data-annual-save'+(busy?' disabled':'')+'>'+(reviewOnly?'Keep trial settings in this tab':'Save committee settings')+'</button>'+
       '<button type="button" class="button outline" data-annual-reload'+(busy?' disabled':'')+'>Reload saved settings</button></div></div>';
   }
   function preview(){
@@ -113,7 +113,7 @@ export function setupAnnualCampaigns({mount,api,esc,isActive,onUse}){
   }
   function markup(){return '<section class="annual-root" data-annual-root aria-label="12-month social pattern planner"><details class="annual-planner" open>'+
       '<summary><strong>Annual pattern calendar</strong> · QLD + NSW holiday waves, 67% video-first</summary>'+
-      '<p>Independent layer switches, frequency, audience and daily density. Saving changes only the committee settings, never social accounts.</p>'+
+      '<p>Independent layer switches, frequency, audience and daily density. '+(reviewOnly?'This page is an isolated visual preview; it does not use member data, save to Cloudflare, or publish.':'Saving changes only the committee settings, never social accounts.')+'</p>'+
       (loaded?controls():'<p>Loading committee settings…</p>')+preview()+
       '</details><p class="annual-small" data-annual-notice role="status" aria-live="polite">'+esc(notice)+'</p></section>';}
   function draw(){const pane=root();if(!pane)return;const isOpen=pane.querySelector('details')?.open??true;
@@ -126,7 +126,7 @@ export function setupAnnualCampaigns({mount,api,esc,isActive,onUse}){
     try{const row=await api(endpoint,{cache:'no-store'});
       if(!isActive())return;
       version=row.version;settings=row.settings||defaultCampaignSettings();saved=JSON.stringify(settings);loaded=true;
-      notice=row.updatedAt?'Loaded saved settings from '+row.updatedAt.slice(0,10)+'.':'Default settings loaded; not yet shared.';
+      notice=reviewOnly?'Temporary preview settings loaded. No database or live club data is connected.':row.updatedAt?'Loaded saved settings from '+row.updatedAt.slice(0,10)+'.':'Default settings loaded; not yet shared.';
     }catch(e){notice='Could not load settings: '+e.message;}finally{busy=false;draw();}
   }
   async function save(){
@@ -135,7 +135,7 @@ export function setupAnnualCampaigns({mount,api,esc,isActive,onUse}){
     try{const row=await api(endpoint,{method:'POST',body:JSON.stringify({version,settings})});
       if(!isActive())return;
       version=row.version;settings=row.settings;saved=JSON.stringify(settings);
-      notice='Shared settings saved. No posts were published.';
+      notice=reviewOnly?'Trial settings updated in this browser tab only; refreshing will reset them. No posts were published.':'Shared settings saved. No posts were published.';
     }catch(e){notice=e.status===409?'Someone else edited these settings. Reload the saved version before retrying.':e.message;}finally{busy=false;draw();}
   }
   function updateAudience(field,id,on){
@@ -161,7 +161,7 @@ export function setupAnnualCampaigns({mount,api,esc,isActive,onUse}){
     else if(e.hasAttribute('data-annual-audience'))updateAudience(e.dataset.annualAudience,e.value,e.checked);
     else if(e.hasAttribute('data-annual-start') && /^20\d{2}-(0[1-9]|1[0-2])$/.test(e.value))startMonth=e.value;
     else if(e.hasAttribute('data-annual-month'))selectedMonth=e.value;
-    notice=changed()?'Unsaved changes. Select Save committee settings to share them.':'Settings match the saved version.';
+    notice=changed()?(reviewOnly?'Trial changes are unsaved. Keep them in this tab to try another layout.':'Unsaved changes. Select Save committee settings to share them.'):'Settings match the saved version.';
     draw();
   });
   mount.addEventListener('click',event=>{
