@@ -12,8 +12,9 @@ function validAudience(values,allowed){
 export function validateCampaignSettings(value,fail){
   const bad=()=>fail('Check the campaign pattern settings and audience choices.');
   if(!value || typeof value!=='object'||Array.isArray(value)||
-    Object.keys(value).sort().join(',')!=='delivery,layers,limits,monthOverrides,videoShare')bad();
+    Object.keys(value).sort().join(',')!=='dayOverrides,delivery,layers,limits,milestones,monthOverrides,postingTime,timingSignals,videoShare,weekOverrides')bad();
   if(!Number.isInteger(value.videoShare)||value.videoShare<0||value.videoShare>100)bad();
+  if(value.postingTime!=='auto' && (typeof value.postingTime!=='string'||!/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(value.postingTime)))bad();
   if(!value.delivery||Object.keys(value.delivery).sort().join(',')!=='organic,paid,paidPlanning'||
     typeof value.delivery.paidPlanning!=='boolean'||!validDestinations(value.delivery.organic)||
     !validDestinations(value.delivery.paid))bad();
@@ -29,13 +30,48 @@ export function validateCampaignSettings(value,fail){
     if(!a||Object.keys(a).sort().join(',')!=='gender,membership,place'||
       !validAudience(a.membership,memberships)||!validAudience(a.gender,genders)||!validAudience(a.place,places))bad();
   }
-  const months=value.monthOverrides;
-  if(!months||typeof months!=='object'||Array.isArray(months)||Object.keys(months).length>24)bad();
-  for(const [month,override] of Object.entries(months)){
-    if(!/^20\d\d-(0[1-9]|1[0-2])$/.test(month)||!override||typeof override!=='object'||Array.isArray(override)||
-      Object.keys(override).sort().join(',')!=='delivery,layers,limits,videoShare')bad();
-    // Validate the independent monthly snapshot without allowing nested overrides.
-    validateCampaignSettings({...override,monthOverrides:{}},fail);
+  const signalKinds=['holidays','nswHolidays','event','meeting','season_open','season_close'];
+  if(!value.timingSignals||typeof value.timingSignals!=='object'||Array.isArray(value.timingSignals)||
+    Object.keys(value.timingSignals).sort().join(',')!==signalKinds.slice().sort().join(','))bad();
+  for(const kind of signalKinds){
+    const signal=value.timingSignals[kind];
+    if(!signal||Object.keys(signal).sort().join(',')!=='enabled,leadDays'||
+      typeof signal.enabled!=='boolean'||!Array.isArray(signal.leadDays)||
+      signal.leadDays.length>12||new Set(signal.leadDays).size!==signal.leadDays.length||
+      signal.leadDays.some(n=>!Number.isInteger(n)||n<1||n>365))bad();
+  }
+  if(!Array.isArray(value.milestones)||value.milestones.length>80)bad();
+  const milestoneIds=new Set();
+  for(const item of value.milestones){
+    if(!item||typeof item!=='object'||Array.isArray(item)||
+      Object.keys(item).sort().join(',')!=='confirmed,date,id,kind,sourceUrl,title'||
+      typeof item.id!=='string'||!/^m-[a-zA-Z0-9-]{6,50}$/.test(item.id)||
+      milestoneIds.has(item.id)||!signalKinds.slice(2).includes(item.kind)||
+      typeof item.title!=='string'||item.title.trim().length<4||item.title.length>140||
+      typeof item.confirmed!=='boolean'||typeof item.sourceUrl!=='string'||item.sourceUrl.length>400 ||
+      (item.sourceUrl && !/^https:\/\/[^\s]+$/.test(item.sourceUrl)))bad();
+    milestoneIds.add(item.id);
+    if(!/^20\d\d-(0[1-9]|1[0-2])-([0-2]\d|3[01])$/.test(item.date) ||
+      Number.isNaN(Date.parse(item.date+'T00:00:00Z')) ||
+      new Date(item.date+'T00:00:00Z').toISOString().slice(0,10)!==item.date)bad();
+  }
+  const validMonth=s=>/^20\d\d-(0[1-9]|1[0-2])$/.test(s);
+  const validDay=s=>/^20\d\d-(0[1-9]|1[0-2])-([0-2]\d|3[01])$/.test(s)&&
+    !Number.isNaN(Date.parse(s+'T00:00:00Z'))&&new Date(s+'T00:00:00Z').toISOString().slice(0,10)===s;
+  const overrides=[
+    ['monthOverrides',24,validMonth],
+    ['weekOverrides',80,key=>validDay(key)&&new Date(key+'T00:00:00Z').getUTCDay()===1],
+    ['dayOverrides',366,validDay]
+  ];
+  for(const [kind,max,valid] of overrides){
+    const entries=value[kind];
+    if(!entries||typeof entries!=='object'||Array.isArray(entries)||Object.keys(entries).length>max)bad();
+    for(const [key,config] of Object.entries(entries)){
+      if(!valid(key)||!config||typeof config!=='object'||Array.isArray(config)||
+        Object.keys(config).sort().join(',')!=='delivery,layers,limits,postingTime,videoShare')bad();
+      validateCampaignSettings({...config,monthOverrides:{},weekOverrides:{},dayOverrides:{},
+        timingSignals:value.timingSignals,milestones:value.milestones},fail);
+    }
   }
   return value;
 }
@@ -48,7 +84,7 @@ export async function socialCampaignSettingsEndpoint(request,env,identity,{json,
   const toPublic=row=>row?{version:row.version,settings:JSON.parse(row.settings),updatedAt:row.updatedAt,updatedBy:row.updatedBy}:
     {version:0,settings:null,updatedAt:null,updatedBy:null};
   if(request.method==='GET')return json(toPublic(await query.first()));
-  const body=await bodyJson(request,125000);
+  const body=await bodyJson(request,1500000);
   const invalid=message=>{throw new HttpError(400,message,'invalid_campaign_settings');};
   if(!body||Object.keys(body).sort().join(',')!=='settings,version'||!Number.isInteger(body.version)||body.version<0||body.version>2147483645)invalid('Reload the saved campaign settings.');
   const settings=validateCampaignSettings(body.settings,invalid);

@@ -242,3 +242,128 @@
   .annual-dialog-hint{margin:.2rem 1rem 1rem!important}
 }
 @media(prefers-reduced-motion:reduce){.annual-calendar-day{transition:none}.annual-calendar-day:hover{transform:none}}
+
+
+/* Time-aware calendar: seven dates and one weekly summary per row. */
+.annual-calendar-weekdays{grid-template-columns:repeat(7,minmax(0,1fr)) minmax(88px,.9fr)}
+.annual-calendar-days{display:flex;flex-direction:column;gap:6px}
+.annual-calendar-week-row{display:grid;grid-template-columns:repeat(7,minmax(0,1fr)) minmax(88px,.9fr);gap:6px}
+.annual-calendar-day.past{background:#f3f5f4;border-color:#dde2df;color:#72857c}
+.annual-calendar-day.past .annual-calendar-count{background:#899e95}
+.annual-calendar-day.future{background:#f1faf5;border-color:#badbc9}
+.annual-calendar-day.today{background:#d4f4e2;border:2px solid #09745e;box-shadow:0 0 0 3px #a2dac226;position:relative}
+.annual-calendar-day.today .annual-calendar-day-top strong{font-size:1.14rem;color:#075c50}
+.annual-calendar-day.today .annual-calendar-count{background:#006c57}
+.annual-today-label{font-size:.55rem;letter-spacing:.04em;color:#076251;font-weight:900;line-height:1.1}
+.annual-calendar-performance{font-size:.6rem;color:#28795f;font-weight:750;line-height:1.2}
+.annual-calendar-week-total{background:#e9f3ef;border:1px solid #cadfd6;border-radius:11px;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;padding:.5rem .25rem;min-width:0;gap:.3rem}
+.annual-calendar-week-total span{font-size:.65rem;font-weight:700;color:#537d6e}
+.annual-calendar-week-total strong{font:800 clamp(.85rem,1.5vw,1.1rem)/1.15 Manrope,sans-serif;color:#126758}
+.annual-calendar-week-total span:last-child{font-size:.6rem;font-weight:500}
+.annual-legend-today{color:#08725b;font-weight:800}
+.annual-legend-past{color:#788b80;font-weight:650}
+.annual-legend-future{color:#17845b;font-weight:650}
+.annual-scope-toolbar{display:flex;flex-wrap:wrap;justify-content:space-between;gap:.75rem;align-items:center}
+.annual-scope-buttons{display:inline-flex;gap:3px;padding:4px;background:#e4f1e8;border:1px solid #c9e1d5;border-radius:12px}
+.annual-scope-buttons button{background:transparent;border:0;color:#467066;min-height:40px;min-width:66px;border-radius:9px;font-weight:750;padding:.45rem .85rem;cursor:pointer}
+.annual-scope-buttons button[aria-pressed=true]{background:#08696b;color:#fff;box-shadow:0 2px 8px #0c554a2b}
+.annual-scope-toolbar>label{display:flex;flex-direction:row;align-items:center;gap:.5rem;font-size:.84rem;font-weight:700}
+.annual-scope-toolbar input{width:165px;min-height:40px;padding:.4rem .6rem}
+.annual-time-default{background:#fff;border:1px solid #d2e5dc;border-radius:12px;padding:.8rem;display:flex;align-items:end;gap:.65rem;flex-wrap:wrap}
+.annual-time-default>label{font-size:.83rem;font-weight:800;min-width:200px}
+.annual-time-default input{width:185px;min-height:42px;padding:.35rem .65rem}
+.annual-time-default>span{font-size:.77rem;color:#587a6d;flex:1 1 210px}
+.annual-hour-guide{margin:.2rem 1.4rem 1rem;background:#f4faf6;border:1px solid #d4e7da;border-radius:12px;padding:.7rem}
+.annual-hour-guide>summary{font-size:.85rem;color:#116a5d;font-weight:800;cursor:pointer}
+.annual-hour-overview{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:.25rem;margin-top:.65rem}
+.annual-hour-overview>span{display:flex;flex-direction:column;align-items:center;background:#f1f4f1;border:1px solid #e1e6e0;border-radius:6px;padding:.3rem .1rem;min-width:0}
+.annual-hour-overview span.has-posts{background:#dcefe4;border-color:#9bcdb6}
+.annual-hour-overview strong{font-size:.68rem;font-weight:700;color:#44645c}
+.annual-hour-overview b{font-size:.78rem;color:#076955}
+.annual-hour-guide p{margin:.7rem 0 0;font-size:.78rem;color:#56776b}
+.annual-time-editor{background:#eaf6ee;border:1px solid #b9dfc9;padding:.75rem;border-radius:10px;display:grid;gap:.55rem}
+.annual-time-editor>label{font-weight:800}
+.annual-time-editor input{max-width:210px}
+.annual-time-editor p{font-size:.75rem;color:#4e7267}
+.annual-time-presets,.annual-hour-pick{display:flex;gap:.3rem;flex-wrap:wrap}
+.annual-time-presets button,.annual-hour-pick button{border:1px solid #b5d8c4;background:#fff;color:#116a5b;border-radius:7px;min-height:31px;padding:.3rem .5rem;font-size:.74rem;font-weight:650;cursor:pointer}
+.annual-hour-pick button{min-width:36px}
+.annual-hour-pick button[aria-pressed=true],.annual-time-presets button:hover,.annual-hour-pick button:hover{background:#116a5b;color:#fff}
+.annual-schedule-export{display:flex;align-items:center;justify-content:space-between;gap:.6rem;flex-wrap:wrap;padding:.5rem .75rem;background:#f6faf7;border-radius:11px;margin:-.2rem 0 1.1rem;color:#4a7267;font-size:.78rem}
+.annual-result-pills{display:flex;gap:.45rem;flex-wrap:wrap}
+.annual-result-pills span{padding:.5rem .7rem;background:#e9f5ef;color:#206e59;font-size:.78rem;font-weight:700;border-radius:7px}
+.annual-performance-note{font-size:.75rem!important;color:#197658!important;font-weight:750!important}
+.annual-signals,.annual-analytics{background:#fff;border:1px solid #d8e8de;border-radius:15px;margin:1.1rem 0;padding:0;box-shadow:0 3px 12px #0b514008}
+.annual-signals>summary,.annual-analytics>summary{padding:1rem 1.1rem;font-weight:800;color:#216859;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:.5rem}
+.annual-signals>summary small,.annual-analytics>summary small{font-size:.73rem;font-weight:500;color:#708779;text-align:right}
+.annual-signals[open]>summary,.annual-analytics[open]>summary{border-bottom:1px solid #e2eee6}
+.annual-signals>p,.annual-analytics>p{margin:.8rem 1.1rem;font-size:.86rem;color:#54736a}
+.annual-signals>h3,.annual-analytics h3{font-size:1.02rem;font-weight:800;letter-spacing:-.03em;margin:.9rem 1.1rem .4rem}
+.annual-signal-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(265px,1fr));gap:.7rem;margin:.85rem 1.1rem}
+.annual-signal-card{padding:1rem;border:1px solid #e0ebe4;border-radius:12px;background:#f8fbf8;min-width:0;display:grid;gap:.7rem}
+.annual-signal-heading{display:flex;align-items:center;gap:.6rem}
+.annual-signal-heading>span{font-size:1.5rem}
+.annual-signal-heading>div{flex:1;min-width:0}
+.annual-signal-heading strong{display:block;font-size:.86rem;line-height:1.4}
+.annual-signal-heading small{font-size:.75rem;color:#6a8275;line-height:1.4;display:block}
+.annual-signal-switch{display:flex!important;flex-direction:row!important;align-items:center;gap:.25rem;font-size:.75rem!important}
+.annual-signal-card label{font-size:.78rem;font-weight:700}
+.annual-signal-card label input[type=text]{padding:.45rem .6rem;font-size:.85rem}
+.annual-signal-card>small{font-size:.73rem;color:#6a8175}
+.annual-signals>.button{margin:.6rem 1.1rem}
+.annual-milestone-form{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:.6rem;margin:.8rem 1.1rem;align-items:end}
+.annual-milestone-form>label{font-size:.8rem;font-weight:650}
+.annual-milestone-form input,.annual-milestone-form select{font-size:.86rem;min-height:40px;padding:.4rem .6rem}
+.annual-signal-confirm{display:flex!important;flex-direction:row!important;gap:.4rem;align-items:center;padding:.6rem}
+.annual-milestone-list{margin:.7rem 1.1rem 1rem;padding:0;list-style:none;display:grid;gap:.35rem}
+.annual-milestone-list li{padding:.6rem .75rem;border:1px solid #e0ebe3;border-radius:8px;background:#f8fbf8;display:flex;justify-content:space-between;align-items:center;gap:.6rem;flex-wrap:wrap}
+.annual-milestone-list li small{display:block;font-size:.75rem;color:#71847a}
+.annual-milestone-actions{display:flex;gap:.3rem}
+.annual-milestone-actions button{border:1px solid #b7d3c4;border-radius:7px;padding:.35rem .65rem;background:#fff;color:#236a5a;cursor:pointer}
+.annual-metrics-platforms{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:.55rem;margin:.7rem 1.1rem}
+.annual-metric-card{padding:.8rem;background:#f5faf6;border:1px solid #d6e8db;border-radius:11px;display:grid;gap:.45rem}
+.annual-metric-card>div:not(.annual-metric-bar){display:flex;justify-content:space-between;align-items:center;gap:.5rem}
+.annual-metric-card strong{font-size:.87rem;color:#1c6555}
+.annual-metric-card span{font-size:.74rem;color:#6a7c73}
+.annual-metric-bar{height:7px;background:#deebe1;border-radius:5px;overflow:hidden}
+.annual-metric-bar i{height:100%;display:block;background:#0c9570;border-radius:5px}
+.annual-analytics-import,.annual-metric-reconcile,.annual-analytics-export{margin:1rem 1.1rem;border-top:1px solid #e6eee7;padding-top:.75rem}
+.annual-analytics-import p,.annual-metric-reconcile p,.annual-analytics-export p{font-size:.81rem;color:#637c70;margin:.3rem 0 .8rem}
+.annual-metric-import-controls,.annual-metric-link{display:flex;align-items:end;flex-wrap:wrap;gap:.7rem}
+.annual-metric-import-controls>label,.annual-metric-link>label{flex:1 1 175px}
+.annual-metric-mapping{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:.5rem;margin:1rem 0}
+.annual-metric-mapping label{font-size:.78rem}
+.annual-metric-mapping select{font-size:.82rem;padding:.4rem .55rem;min-height:40px}
+.annual-metric-link select{font-size:.83rem}
+.annual-analytics-export>.button{margin:.4rem 0}
+@media(max-width:640px){
+  .annual-calendar-weekdays,.annual-calendar-week-row{grid-template-columns:repeat(7,minmax(0,1fr)) minmax(44px,.85fr);gap:3px}
+  .annual-calendar-weekdays span{font-size:.57rem;letter-spacing:0}
+  .annual-calendar-week-total{padding:3px;border-radius:6px}
+  .annual-calendar-week-total strong{font-size:.72rem}
+  .annual-calendar-week-total span{font-size:.55rem}
+  .annual-calendar-week-total span:last-child{display:none}
+  .annual-calendar-day{min-height:76px}
+  .annual-calendar-day.today .annual-calendar-day-top strong{font-size:.89rem}
+  .annual-today-label{font-size:.5rem}
+  .annual-calendar-performance{font-size:.5rem}
+  .annual-hour-overview{grid-template-columns:repeat(6,minmax(0,1fr))}
+  .annual-hour-guide{margin:.25rem .8rem}
+  .annual-scope-toolbar>label{width:100%;justify-content:space-between}
+  .annual-signals>summary,.annual-analytics>summary{flex-direction:column;align-items:flex-start}
+  .annual-signals>summary small,.annual-analytics>summary small{text-align:left}
+  .annual-signal-grid,.annual-metrics-platforms{margin:.7rem .75rem}
+  .annual-milestone-form,.annual-milestone-list,.annual-metric-reconcile,.annual-analytics-import,.annual-analytics-export{margin:.7rem .75rem}
+}
+
+.annual-pattern-insights{margin:.8rem 1rem;padding:.6rem .8rem;border:1px solid #b8ddca;border-radius:10px;background:#f4faf6}
+.annual-pattern-insights summary{font-size:.88rem;font-weight:800;color:#176853;cursor:pointer}
+.annual-pattern-insights p{font-size:.79rem;color:#5f786b;line-height:1.5;margin:.6rem 0}
+.annual-insights-table-wrap{overflow-x:auto}
+.annual-pattern-insights table{width:100%;border-collapse:collapse;font-size:.79rem;min-width:420px}
+.annual-pattern-insights th,.annual-pattern-insights td{text-align:left;border-bottom:1px solid #dbe9df;padding:.45rem .5rem}
+.annual-pattern-insights th{background:#e5f2e9;color:#255d4e;font-weight:750}
+
+.annual-calendar-signal{font-size:.58rem;font-weight:800;color:#7b5d15;line-height:1.15}
+.annual-calendar-day:has(.annual-calendar-signal){border-color:#deb96c}
+@media(max-width:640px){.annual-calendar-signal{font-size:.49rem}}
