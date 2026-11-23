@@ -1,3 +1,4 @@
+import {renderDaySignature} from './social-day-signatures.js?v=20261124-office-signatures';
 import {DAY_ARCHETYPE_LABELS,DAILY_FORMATS,allDayPresets} from './social-day-patterns.js';
 const dateName=day=>new Intl.DateTimeFormat('en-AU',{weekday:'long',day:'numeric',month:'short',timeZone:'UTC'}).format(new Date(day+'T00:00:00Z'));
 const timeLabel=day=>new Intl.DateTimeFormat('en-AU',{weekday:'short',day:'numeric',month:'short',timeZone:'UTC'}).format(new Date(day+'T00:00:00Z'));
@@ -25,6 +26,7 @@ export function renderItemisedDay({day,type,dayPlan,savedPatterns,esc,layers}){
   const savedCustom=(savedPatterns[type]||[]).find(x=>x.id===dayPlan.patternId);
   return '<section class="annual-batch annual-itemised-planner" id="annual-plan-settings" aria-label="Item-by-item social day planner">'+
     scopeHeader('day',day,day.slice(0,7),esc)+
+    renderDaySignature(dayPlan.signature,esc)+
     '<p class="annual-day-lead"><strong>'+esc(DAY_ARCHETYPE_LABELS[type]||'Daily content')+'</strong> · '+
     items.length+' planned '+(items.length===1?'item':'items')+'. Set the exact time, type and subject of each post. '+
     'No monthly sliders on this screen.</p>'+
@@ -63,12 +65,13 @@ export function renderItemisedDay({day,type,dayPlan,savedPatterns,esc,layers}){
 }
 const shift=(date,days)=>new Date(Date.parse(date+'T00:00:00Z')+days*86400000).toISOString().slice(0,10);
 export function renderWeekItemised({day,startDate,dates,savedPatterns,esc}){
-  const days=dates.map(({date,type,items,curated,inside,patternId=''})=>{
+  const days=dates.map(({date,type,items,curated,inside,patternId='',signature=null})=>{
     const patterns=allDayPresets(type,savedPatterns);
     return '<article class="annual-week-day'+(inside?'':' outside')+'" data-week-day="'+date+'">'+
       '<div class="annual-week-day-main"><div><span class="annual-week-day-kicker">'+esc(DAY_ARCHETYPE_LABELS[type]||'Day')+'</span>'+
       '<h3>'+esc(timeLabel(date))+'</h3></div>'+
       '<span class="annual-week-day-count">'+(inside?items.length+' '+(items.length===1?'post':'posts'):'Outside 12-month plan')+'</span></div>'+
+      (signature?'<div class="annual-week-owner">'+renderDaySignature(signature,esc,true)+'</div>':'')+
       (inside?
       '<div class="annual-week-day-items">'+(items.length?items.map(item=>
         '<span><strong>'+esc(item.time)+'</strong> · '+esc(item.title)+'</span>').join(''):
