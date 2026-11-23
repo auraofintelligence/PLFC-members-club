@@ -311,7 +311,8 @@ export function generateCampaignYear(startMonth,settings=defaultCampaignSettings
     dayCards.push({date:day,holiday:inHoliday(day),nswHoliday:inNSWHoliday(day),nswWesternOnly:inNSWWesternExtension(day),
       publicHoliday:bounds.publicHoliday,publicHolidayName:bounds.publicHolidayName,
       partialPublicHoliday:bounds.partialPublicHoliday,longWeekend:bounds.longWeekend,
-      postingCategory:bounds.category,minimum:bounds.min,maximum:bounds.max,manualPlan:manual,omitted,count:chosen.length});
+      postingCategory:bounds.category,minimum:bounds.min,maximum:bounds.max,
+      manualPlan:manual,signature:manual?(dayPlan.signature||null):null,omitted,count:chosen.length});
     posts.push(...chosen);
   }
   const composites=posts.filter(p=>p.composite);
