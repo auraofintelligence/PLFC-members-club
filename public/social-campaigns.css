@@ -458,3 +458,63 @@
  .annual-calendar-holiday{font-size:.5rem}
 }
 @media(max-width:390px){.annual-day-limit-grid{grid-template-columns:1fr}}
+
+
+/* Itemised day editing; a week is seven archetype-driven day plans. Monthly sliders remain separate. */
+.annual-itemised-planner,.annual-week-itemised{background:linear-gradient(155deg,#edf8f0,#f8fbf7);border:1px solid #bcd9c9;padding:clamp(.75rem,2.3vw,1.15rem)}
+.annual-itemised-planner .annual-batch-head,.annual-week-itemised .annual-batch-head{margin-bottom:.75rem}
+.annual-day-lead{font-size:.87rem;color:#466e60;line-height:1.6;padding:.7rem 0;margin:0}
+.annual-day-lead strong{color:#106553}
+.annual-day-pattern-toolbar{display:flex;align-items:end;flex-wrap:wrap;gap:.7rem;padding:.9rem 1rem;background:#fff;border:1px solid #d3e5d9;border-radius:12px;margin:.65rem 0 1.1rem}
+.annual-day-pattern-picker{display:flex!important;flex-direction:column!important;gap:.4rem;flex:1 1 260px;font-size:.82rem;font-weight:750;color:#305d51}
+.annual-day-pattern-picker select{min-height:44px;max-width:none;width:100%;border-radius:9px;padding:.4rem .6rem}
+.annual-day-pattern-toolbar>.button{min-height:44px}
+.annual-itemised-stack{display:grid;gap:.8rem}
+.annual-itemised-post{border-radius:15px;padding:1rem;background:#fff;border:1px solid #dce9df;box-shadow:0 6px 22px #184d4010;display:grid;gap:.8rem}
+.annual-itemised-post>header{display:flex;align-items:center;gap:.6rem;border-bottom:1px solid #edf2ed;padding-bottom:.65rem}
+.annual-itemised-post>header strong{color:#1b6051;font-size:.98rem}
+.annual-itemised-post>header .button{margin-left:auto;font-size:.78rem;padding:.35rem .7rem;min-height:35px}
+.annual-itemised-post-number{display:grid;place-items:center;width:31px;height:31px;border-radius:11px;background:#156d60;color:#fff;font-weight:800;font-size:.9rem}
+.annual-itemised-post label{display:flex!important;flex-direction:column!important;gap:.35rem;font-size:.78rem;font-weight:750;color:#2b5a50;min-width:0}
+.annual-itemised-post input[type=text],.annual-itemised-post input[type=time],.annual-itemised-post select,.annual-itemised-post textarea{background:#fdfefd;border:1px solid #b7d1c4;border-radius:8px;padding:.6rem .7rem;width:100%;min-width:0;font-size:.92rem;line-height:1.5;min-height:43px;color:#1b4c42}
+.annual-itemised-post textarea{resize:vertical;min-height:70px}
+.annual-itemised-post-fields{display:grid;grid-template-columns:minmax(145px,.75fr) repeat(2,minmax(0,1.1fr));gap:.7rem}
+.annual-day-operations{display:flex;flex-wrap:wrap;gap:.6rem;padding:.75rem 0}
+.annual-day-operations>.button{min-height:43px}
+.annual-day-save{display:flex;align-items:center;gap:.7rem 1.2rem;flex-wrap:wrap;background:#fff;border:1px solid #cbe1d4;border-radius:12px;padding:.85rem 1rem}
+.annual-day-save .button{min-height:44px}
+.annual-day-save p{font-size:.78rem;line-height:1.55;color:#59756a;margin:0;flex:1 1 230px}
+.annual-day-presets{margin:.8rem 0 0;border:1px solid #d2e4d9;background:#fff;border-radius:12px;padding:.8rem 1rem}
+.annual-day-presets summary{font-weight:800;font-size:.88rem;color:#116654;cursor:pointer}
+.annual-day-presets p{font-size:.81rem;margin:.55rem 0;color:#627e70}
+.annual-day-preset-save{display:flex;gap:.7rem;align-items:end;flex-wrap:wrap}
+.annual-day-preset-save label{flex:1 1 250px;font-size:.82rem;font-weight:700}
+.annual-day-preset-save input{min-height:44px}
+.annual-day-preset-save button{min-height:44px}
+.annual-week-summary{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.6rem;color:#2b6756;background:#e0f1e5;border-radius:10px;padding:.7rem .9rem;margin:.4rem 0 .85rem}
+.annual-week-summary strong{font-size:.98rem}
+.annual-week-summary span{font-size:.75rem;color:#557a6a}
+.annual-week-days{display:grid;gap:.7rem}
+.annual-week-day{background:#fff;border:1px solid #d5e7dc;border-radius:12px;padding:.85rem;box-shadow:0 4px 16px #174b3e08}
+.annual-week-day.outside{opacity:.6;background:#f6f8f6}
+.annual-week-day-main{display:flex;align-items:center;justify-content:space-between;gap:.8rem;border-bottom:1px solid #edf2ec;padding-bottom:.5rem}
+.annual-week-day-kicker{font-size:.72rem;color:#548074;font-weight:800;letter-spacing:.01em}
+.annual-week-day-main h3{margin:.2rem 0;font-weight:800;font-size:1.12rem;letter-spacing:-.03em;color:#204f48}
+.annual-week-day-count{color:#135b4d;font-size:.78rem;font-weight:800;background:#e8f6ed;padding:.32rem .6rem;border-radius:20px;white-space:nowrap}
+.annual-week-day-items{display:flex;flex-wrap:wrap;gap:.35rem .55rem;margin:.65rem 0;font-size:.78rem;color:#517569}
+.annual-week-day-items span{border:1px solid #e4eee5;background:#f7fbf8;padding:.32rem .55rem;border-radius:7px}
+.annual-week-day-items strong{color:#176657}
+.annual-week-day-actions{display:flex;align-items:end;flex-wrap:wrap;gap:.5rem}
+.annual-week-day-actions label{display:flex!important;flex-direction:column!important;gap:.25rem;flex:1 1 210px;font-size:.76rem;font-weight:750}
+.annual-week-day-actions select{min-height:40px;width:100%;border-radius:8px;padding:.4rem .6rem;font-size:.85rem}
+.annual-week-day-actions .button{min-height:40px;font-size:.78rem;padding:.45rem .7rem}
+.annual-week-itemised>.annual-day-operations{margin-top:.8rem}
+@media(max-width:680px){
+ .annual-itemised-post-fields{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .annual-itemised-post-fields label:first-child{grid-column:1/-1}
+ .annual-itemised-post{padding:.7rem}
+ .annual-week-day{padding:.7rem}
+ .annual-week-day-actions label{flex-basis:100%}
+ .annual-week-day-actions .button{flex:1 1 auto}
+ .annual-day-pattern-toolbar{padding:.7rem}
+}
