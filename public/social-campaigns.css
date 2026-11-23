@@ -616,3 +616,66 @@
   .annual-cal-notation{font-size:.52rem;padding:1px 2px}
   .annual-calendar-holiday-name{display:none}
 }
+
+
+/* Committee annual calendar anchors: editable imports without automatic promotion. */
+.annual-calendar-import{background:#fff;border:1px solid #d3e5da;border-radius:14px;margin:1rem 0;overflow:hidden}
+.annual-calendar-import>summary{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;
+  gap:.4rem .8rem;padding:.95rem 1.1rem;color:#155e50;font-weight:800;cursor:pointer}
+.annual-calendar-import>summary small{font-weight:600;color:#637f72;font-size:.75rem}
+.annual-calendar-import[open]>summary{background:#eef8f1;border-bottom:1px solid #dcebe1}
+.annual-calendar-import-content{padding:.95rem 1rem;display:grid;gap:.8rem}
+.annual-calendar-import-content>p{font-size:.82rem;line-height:1.55;margin:0;color:#5f7c6d}
+.annual-calendar-import-sources{display:flex;align-items:center;gap:.6rem;flex-wrap:wrap}
+.annual-calendar-import-sources span{font-size:.76rem;color:#668276}
+.annual-calendar-import-sources a{text-decoration:underline;color:#12634e}
+.annual-calendar-import-csv{display:flex;align-items:end;flex-wrap:wrap;gap:.7rem;
+  padding:.75rem;background:#f5faf6;border:1px solid #dfece2;border-radius:10px}
+.annual-calendar-import-csv>label{display:grid;gap:.35rem;flex:1 1 200px;font-size:.79rem;font-weight:750;color:#2f6656}
+.annual-calendar-import-csv input[type=file]{max-width:100%;padding:.48rem .2rem;font-size:.8rem}
+.annual-calendar-import-csv .button{min-height:39px;font-size:.77rem}
+.annual-calendar-import-heading{display:flex;align-items:center;justify-content:space-between;gap:.45rem;flex-wrap:wrap}
+.annual-calendar-import-heading>strong{font-weight:800;color:#1d6352;font-size:.89rem}
+.annual-calendar-import-heading>span{font-size:.72rem;color:#6b8276}
+.annual-calendar-import-list{display:grid;gap:.5rem;max-height:410px;overflow:auto;
+  border:1px solid #dfe9e0;border-radius:12px;padding:.65rem;background:#f8fbf8}
+.annual-calendar-import-event{display:flex;align-items:flex-start;gap:.75rem;
+  background:#fff;border:1px solid #e1ebe3;border-radius:10px;padding:.75rem}
+.annual-calendar-import-select{padding:.25rem .15rem;flex:0 0 auto}
+.annual-calendar-import-select input,.annual-calendar-import-verified input{width:18px;height:18px;accent-color:#126b58}
+.annual-calendar-import-detail{flex:1;min-width:0;display:grid;gap:.28rem}
+.annual-calendar-import-detail>strong{font-size:.86rem;color:#245b4d;overflow-wrap:anywhere}
+.annual-calendar-import-detail>span{font-size:.76rem;color:#4c7565}
+.annual-calendar-import-detail>small{font-size:.73rem;color:#718779}
+.annual-import-existing{font-weight:750!important;color:#3d785c!important}
+.annual-calendar-import-verified{display:flex!important;align-items:center;flex-direction:row!important;gap:.5rem;
+  padding:.5rem .65rem;margin-top:.25rem;background:#edf7f0;border-radius:9px;
+  color:#215d4b;font-weight:700;font-size:.76rem;line-height:1.4}
+.annual-calendar-import-actions{display:flex;flex-wrap:wrap;gap:.55rem}
+.annual-calendar-import-actions .button{min-height:41px;font-size:.78rem}
+.annual-import-notice{font-size:.81rem!important;color:#1a6e55!important;font-weight:650}
+.annual-import-error{font-size:.81rem!important;color:#a33d2c!important;font-weight:700}
+.annual-calendar-event-mark{display:inline-flex;flex-wrap:wrap;align-items:center;
+  background:#e0ecfa;border:1px solid #a9c6e7;border-radius:5px;
+  padding:1px 4px;font-weight:850;color:#295e89;font-size:.61rem;line-height:1.3}
+.annual-calendar-tentative{font-weight:750;color:#8f622b;font-size:.61rem}
+.annual-calendar-recap{font-weight:750;color:#6175a1;font-size:.61rem}
+.annual-date-event-anchors{background:#edf4fe;border:1px solid #c5d9ed;border-radius:10px;
+  padding:.65rem .85rem;margin:.65rem 1.4rem;font-size:.78rem;color:#24577a}
+.annual-date-event-anchors>strong{font-size:.83rem}
+.annual-date-event-anchors ul{list-style:none;margin:.4rem 0 0;padding:0;display:grid;gap:.35rem}
+.annual-date-event-anchors li{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:.4rem;
+  border-top:1px solid #d6e3f0;padding:.4rem 0}
+.annual-date-event-anchors li span{font-weight:750;color:#245878}
+.annual-date-event-anchors li small{font-size:.7rem;color:#8b6236}
+.annual-surprise-button{border-color:#cfb8de!important;background:#fbf8fe!important;color:#71489c!important;
+  font-weight:800!important}
+.annual-surprise-button:hover{background:#f2e9fc!important}
+@media(max-width:640px){
+ .annual-calendar-import-content{padding:.7rem}
+ .annual-calendar-import>summary{padding:.8rem}
+ .annual-calendar-import-event{padding:.55rem;gap:.45rem}
+ .annual-calendar-import-actions .button{flex:1 1 auto}
+ .annual-calendar-event-mark,.annual-calendar-tentative,.annual-calendar-recap{font-size:.5rem}
+ .annual-date-event-anchors{margin:.6rem 1rem}
+}
