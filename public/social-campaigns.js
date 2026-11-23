@@ -2,7 +2,7 @@ import {CAMPAIGN_LAYERS,defaultCampaignSettings,generateCampaignYear,monthSettin
 import {PUBLISHING_DESTINATIONS,placementSources,CREATIVE_SPEC_VERSION,MASTER_ASSET_PRESETS} from './social-placements.js';
 import {LAYER_ICONS,renderMonthCalendar,renderCalendarDialog,postLabel,postBrief,postTime,isMinuteTime,brisbaneToday} from './social-visual-ui.js';
 import {renderTimingPanel,renderAnalyticsPanel} from './social-insights-ui.js';
-import {parseDelimited,suggestedMapping,metricFromRow,linkMetrics,latestMetrics,summarizeMetrics,planMetricsCSV} from './social-performance.js';
+import {parseDelimited,suggestedMapping,metricFromRow,linkMetrics,latestMetrics,summarizeMetrics,compareContentPatterns,planMetricsCSV} from './social-performance.js';
 
 const endpoint='/api/committee/social-campaign-settings';
 const choices={
@@ -220,6 +220,7 @@ export function setupAnnualCampaigns({mount,api,esc,isActive,onUse,reviewOnly=fa
     const current=visiblePosts.filter(p=>p.date.startsWith(selectedMonth));
     const analytics=renderAnalyticsPanel({
       summary:summarizeMetrics(performanceRows,current),
+      patterns:compareContentPatterns(performanceRows,current),
       unlinked:performanceRows.filter(m=>!m.matchedPostId),
       recordCount:metrics.length,headers:pendingReport?.headers||[],
       mapping:pendingReport?.mapping||{},platform:metricsPlatform,filename:pendingReport?.filename||'',
