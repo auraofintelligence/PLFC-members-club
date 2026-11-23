@@ -57,6 +57,15 @@ const dayBeforeHoliday = day => QLD_SCHOOL_HOLIDAYS.some(([a])=>iso(dayMs(a)-MS)
 const dayBeforeNSW = day => NSW_SCHOOL_HOLIDAYS_EASTERN.some(([a])=>iso(dayMs(a)-MS)===day);
 export const defaultCampaignSettings = () => ({
   monthOverrides:{},weekOverrides:{},dayOverrides:{},
+  timingSignals:{
+    holidays:{enabled:true,leadDays:[84,56,42,28,14,7]},
+    nswHolidays:{enabled:true,leadDays:[84,42,14,7]},
+    event:{enabled:true,leadDays:[28,14,7,3,1]},
+    meeting:{enabled:true,leadDays:[14,7,1]},
+    season_open:{enabled:true,leadDays:[42,28,14,7]},
+    season_close:{enabled:true,leadDays:[28,14,7,1]}
+  },
+  milestones:[],
   videoShare:67, postingTime:'auto', limits:{weekday:2,friday:3,weekend:4,holiday:5},
   delivery:{
     organic:['youtube','facebook','instagram','tiktok','noticeboard'],
@@ -127,6 +136,51 @@ function assignSegment(days,settings,postsByDay){
     for(const day of chosen){const post=basePost(layer,day,key,chosen.indexOf(day));post.audience=preference.audience;postsByDay.get(day).push(post);}
   }
 }
+const signalTitles={
+  holidays:'QLD school holiday',
+  nswHolidays:'NSW school holiday',
+  event:'Confirmed club event',
+  meeting:'Confirmed club meeting',
+  season_open:'Confirmed fishing season opening',
+  season_close:'Confirmed fishing season closing'
+};
+function insertTimingSignals(settings,postsByDay){
+  const rules=settings.timingSignals||{};
+  const events=[
+    ...QLD_SCHOOL_HOLIDAYS.map(([date])=>({kind:'holidays',date,title:'Queensland school holidays'})),
+    ...NSW_SCHOOL_HOLIDAYS_EASTERN.map(([date])=>({kind:'nswHolidays',date,title:'NSW school holidays'})),
+    ...(settings.milestones||[]).filter(e=>e.confirmed===true)
+  ];
+  for(const event of events){
+    const rule=rules[event.kind];
+    if(!rule?.enabled)continue;
+    for(const leadDays of rule.leadDays){
+      const date=iso(dayMs(event.date)-leadDays*MS);
+      if(!postsByDay.has(date))continue;
+      const selected=settingsForDate(settings,date);
+      const layer=event.kind==='holidays'?'holidays':event.kind==='nswHolidays'?'nswHolidays':
+        event.kind==='meeting'?'events':event.kind.startsWith('season_')?'fish':'events';
+      if(!selected.layers[layer]?.enabled)continue;
+      const topic=event.title||signalTitles[event.kind]||'Confirmed milestone';
+      const label=leadDays>=7?Math.round(leadDays/7)+' weeks':leadDays+' days';
+      const title=event.kind==='holidays'||event.kind==='nswHolidays'?
+        'Holiday inspiration: '+label+' before '+topic:
+        label+' until '+topic+': prepare an informative club update';
+      const brief=event.kind==='holidays'||event.kind==='nswHolidays'?
+        'Early visitor inspiration and trip-planning ideas. Verify travel, bookings and local conditions; do not imply confirmed club events.':
+        'A lead-in idea linked to a user-confirmed milestone. Verify dates, permissions, rules and the source again before posting.';
+      postsByDay.get(date).push({
+        id:'signal-'+event.kind+'-'+event.date+'-'+leadDays+'-'+(event.id||'standard'),
+        date,layerIds:[layer],title,brief,
+        cta:event.kind==='holidays'||event.kind==='nswHolidays'?'Explore Straddie visitor information':'Check confirmed club information',
+        audience:selected.layers[layer].audience,priority:leadDays<=7?10:6,sections:[title],
+        composite:false,status:'suggestion',
+        timingSignal:{kind:event.kind,title:topic,targetDate:event.date,leadDays,sourceUrl:event.sourceUrl||''}
+      });
+    }
+  }
+}
+
 function combine(candidates,cap){
   if(!cap)return {posts:[],omitted:candidates.length};
   const selected=candidates.slice(0,cap);
@@ -174,6 +228,7 @@ export function generateCampaignYear(startMonth,settings=defaultCampaignSettings
       brief:'Verify NSW term dates and any current ferry, weather and fishing information before publishing.',cta:'Explore the visitor fishing guide',
       audience:monthSettings.layers.nswHolidays.audience,priority:9,sections:['NSW holiday lead-in'],composite:false,status:'suggestion'});
   }
+  insertTimingSignals(settings,postsByDay);
   const dayCards=[],posts=[];
   for(const [day,candidates] of postsByDay){
     candidates.sort((a,b)=>b.priority-a.priority||numberHash(a.id)-numberHash(b.id));
