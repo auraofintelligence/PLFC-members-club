@@ -9,7 +9,7 @@ const LABELS={
 };
 const escMap=Object.fromEntries([['&','&amp;'],['<','&lt;'],['>','&gt;'],['"','&quot;'],["'",'&#39;']]);
 const fallbackEsc=value=>String(value??'').replace(/[&<>"']/g,x=>escMap[x]);
-export function renderTimingPanel(settings,esc=fallbackEsc){
+export function renderTimingPanel(settings,esc=fallbackEsc,editingId=''){
   const rules=settings.timingSignals||{};
   const timing=Object.entries(LABELS).map(([kind,[icon,title,subtitle]])=>{
     const rule=rules[kind]||{enabled:false,leadDays:[]};
@@ -19,24 +19,29 @@ export function renderTimingPanel(settings,esc=fallbackEsc){
       '<label>Lead-in days before target <input data-signal-leads="'+kind+'" type="text" maxlength="64" value="'+rule.leadDays.join(', ')+'" placeholder="84, 56, 42, 28, 14, 7" aria-label="Lead-in days for '+esc(title)+'"></label>'+
       '<small>Example: 84, 56, 42 = 12, 8 and 6 weeks before</small></article>';
   }).join('');
+  const editing=(settings.milestones||[]).find(item=>item.id===editingId);
   const milestones=(settings.milestones||[]).slice().sort((a,b)=>a.date.localeCompare(b.date)).map(item=>
     '<li><span><strong>'+esc(item.title)+'</strong><small>'+esc(item.date)+' · '+esc(LABELS[item.kind]?.[1]||item.kind)+
     (item.confirmed?' · Confirmed':' · Unconfirmed')+'</small></span>'+
-    '<button type="button" data-signal-remove="'+esc(item.id)+'" aria-label="Remove milestone '+esc(item.title)+'">Remove</button></li>').join('');
+    '<span class="annual-milestone-actions"><button type="button" data-signal-edit="'+esc(item.id)+'">Edit</button>'+
+    '<button type="button" data-signal-remove="'+esc(item.id)+'" aria-label="Remove milestone '+esc(item.title)+'">Remove</button></span></li>').join('');
   return '<details class="annual-signals"><summary>📣 Timing signals and lead-in campaigns <small>School holidays, meetings, events and seasons</small></summary>'+
     '<p>Turn lead-ins on or off, then choose how many days ahead to spark interest. Holiday windows are planning ideas, not verified booking behaviour.</p>'+
     '<div class="annual-signal-grid">'+timing+'</div>'+
     '<h3>Confirmed dates and milestones</h3>'+
     '<p>Only confirmed dates generate event, meeting or seasonal countdowns. Enter source details and confirm against the relevant authority before using season dates.</p>'+
     '<div class="annual-milestone-form"><label>Type <select data-milestone-kind>'+
-    Object.entries(LABELS).filter(([k])=>!['holidays','nswHolidays'].includes(k)).map(([k,v])=>'<option value="'+k+'">'+esc(v[1])+'</option>').join('')+'</select></label>'+
-    '<label>Title <input data-milestone-title maxlength="140" placeholder="E.g. confirmed club fishing meet"></label>'+
-    '<label>Target date <input data-milestone-date type="date"></label>'+
-    '<label>Official or club reference (optional) <input data-milestone-source type="url" maxlength="400" placeholder="https://…"></label>'+
-    '<label class="annual-signal-confirm"><input type="checkbox" data-milestone-confirm> Date and details verified</label>'+
-    '<button type="button" class="button small" data-milestone-add>Add milestone</button></div>'+
+    Object.entries(LABELS).filter(([k])=>!['holidays','nswHolidays'].includes(k)).map(([k,v])=>
+      '<option value="'+k+'"'+(editing?.kind===k?' selected':'')+'>'+esc(v[1])+'</option>').join('')+'</select></label>'+
+    '<label>Title <input data-milestone-title maxlength="140" value="'+esc(editing?.title||'')+'" placeholder="E.g. confirmed club fishing meet"></label>'+
+    '<label>Target date <input data-milestone-date type="date" value="'+esc(editing?.date||'')+'"></label>'+
+    '<label>Official or club reference (optional) <input data-milestone-source type="url" maxlength="400" value="'+esc(editing?.sourceUrl||'')+'" placeholder="https://…"></label>'+
+    '<label class="annual-signal-confirm"><input type="checkbox" data-milestone-confirm'+(editing?.confirmed?' checked':'')+'> Date and details verified</label>'+
+    '<button type="button" class="button small" data-milestone-add>'+(editing?'Save milestone':'Add milestone')+'</button>'+
+    (editing?'<button type="button" class="button outline small" data-milestone-cancel>Cancel edit</button>':'')+'</div>'+
     '<ul class="annual-milestone-list">'+(milestones||'<li>No custom milestones yet. Holiday lead-ins are generated from published school calendars.</li>')+'</ul>'+
-    '<p class="annual-small">Save annual timing settings below. A future scheduler can consume the planned dates and exact Brisbane times from the CSV export.</p></details>';
+    '<button type="button" class="button small" data-signal-save>Save timing patterns</button>'+
+    '<p class="annual-small">A future scheduler can consume planned dates and Brisbane times from the CSV export.</p></details>';
 }
 export function renderAnalyticsPanel({summary=[],unlinked=[],recordCount=0,headers=[],mapping={},platform='facebook',filename='',notice='',esc=fallbackEsc,posts=[]}){
   const fields=[['postId','PLFC post ID'],['externalId','Platform post ID'],['postUrl','Platform post URL'],
