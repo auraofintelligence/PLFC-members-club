@@ -65,9 +65,21 @@ export function renderMonthCalendar({month,days,posts,esc,today=brisbaneToday()}
   }
   return html+'</div>';
 }
+function hourlyGuide(posts,getEdit,esc){
+  const hourCount=Array.from({length:24},(_,hour)=>({
+    hour,count:posts.filter(p=>Number(postTime(p,getEdit(p.id)).slice(0,2))===hour).length
+  }));
+  return '<details class="annual-hour-guide"><summary>🕒 Hour-by-hour plan · Brisbane AEST</summary>'+
+    '<div class="annual-hour-overview">'+hourCount.map(({hour,count})=>{
+      const time=String(hour).padStart(2,'0')+':00';
+      return '<span class="'+(count?'has-posts':'')+'"><strong>'+time+'</strong>'+
+        (count?'<b>'+count+'</b>':'')+'</span>';
+    }).join('')+'</div><p>Choose a post and select Edit to set its exact hour and minute.</p></details>';
+}
 export function renderCalendarDialog({day,view,postId,posts,plan,esc,getEdit,reviewOnly}){
   if(!day)return '';
-  const formatted=formatDate(day),today=posts.filter(post=>post.date===day);
+  const formatted=formatDate(day),today=posts.filter(post=>post.date===day)
+    .sort((a,b)=>postTime(a,getEdit(a.id)).localeCompare(postTime(b,getEdit(b.id))));
   const dayData=plan?.days?.find(x=>x.date===day);
   const flags=[dayData?.holiday?'QLD school holidays':null,dayData?.nswHoliday?'NSW school holidays':null].filter(Boolean);
   const headline='<header class="annual-dialog-header"><div><p class="annual-dialog-kicker">'+
@@ -75,10 +87,19 @@ export function renderCalendarDialog({day,view,postId,posts,plan,esc,getEdit,rev
     '<h2>'+esc(formatted)+'</h2></div><button type="button" class="annual-dialog-close" data-calendar-close aria-label="Close popup">✕</button></header>';
   const post=today.find(x=>x.id===postId),edit=post?getEdit(post.id):null;
   if(view==='edit'&&post){
-    const title=postLabel(post,edit),brief=postBrief(post,edit);
+    const title=postLabel(post,edit),brief=postBrief(post,edit),time=postTime(post,edit);
     return '<dialog class="annual-day-dialog" data-annual-day-dialog aria-label="Edit post">'+headline+
       '<p class="annual-dialog-lead">Edit this post without changing the rest of the month.</p>'+
       '<div class="annual-edit-form">'+
+      '<div class="annual-time-editor"><label>🕒 Scheduled time (Brisbane AEST, to the minute)'+
+      '<input data-post-time type="time" step="60" required value="'+esc(time)+'" aria-label="Exact local posting time"></label>'+
+      '<p>Tap an hour below, then adjust the minutes in the time field.</p>'+
+      '<div class="annual-time-presets">'+[['07:30','Morning'],['12:15','Midday'],['16:45','Afternoon'],['19:15','Evening']].map(([at,label])=>
+        '<button type="button" data-calendar-time-preset="'+at+'">'+label+' · '+at+'</button>').join('')+'</div>'+
+      '<div class="annual-hour-pick" aria-label="Choose posting hour">'+Array.from({length:24},(_,h)=>{
+        const value=String(h).padStart(2,'0');
+        return '<button type="button" data-calendar-hour="'+value+'" aria-pressed="'+(time.startsWith(value+':'))+'">'+value+'</button>';
+      }).join('')+'</div></div>'+
       '<label>Post title<input type="text" data-post-title maxlength="180" value="'+esc(title)+'"></label>'+
       '<label>Production brief<textarea data-post-brief rows="5" maxlength="4000">'+esc(brief)+'</textarea></label>'+
       '<label>Working notes<textarea data-post-notes rows="3" maxlength="2000" placeholder="Footage, script, images, people to ask…">'+esc(edit?.notes||'')+'</textarea></label>'+
@@ -95,7 +116,7 @@ export function renderCalendarDialog({day,view,postId,posts,plan,esc,getEdit,rev
       '<div class="annual-dialog-post-icon" aria-hidden="true">'+layerIcon(post.layerIds[0])+'</div>'+
       '<h3 class="annual-dialog-post-title">'+esc(postLabel(post,edit))+'</h3>'+
       '<div class="annual-post-tags"><span>'+(isVideo(post)?'🎬 30-sec video':'🖼️ Image or link')+'</span>'+
-      '<span>'+esc(post.suggestedTime)+' AEST</span><span>'+esc(edit?.status||'Idea')+'</span></div>'+
+      '<span>'+esc(postTime(post,edit))+' AEST</span><span>'+esc(edit?.status||'Idea')+'</span></div>'+
       '<section class="annual-dialog-section"><h4>Creative brief</h4><p>'+esc(postBrief(post,edit))+'</p></section>'+
       (edit?.notes?'<section class="annual-dialog-section"><h4>Your notes</h4><p>'+esc(edit.notes)+'</p></section>':'')+
       '<section class="annual-dialog-section"><h4>Audience and invitation</h4><p>'+esc(Object.values(post.audience||{}).map(a=>a.join(', ')).join(' · '))+
@@ -111,17 +132,19 @@ export function renderCalendarDialog({day,view,postId,posts,plan,esc,getEdit,rev
   }
   return '<dialog class="annual-day-dialog" data-annual-day-dialog aria-label="Posts for '+esc(formatted)+'">'+headline+
     '<p class="annual-dialog-lead">'+today.length+' post '+(today.length===1?'idea':'ideas')+' planned for this day. Select one to review or edit.</p>'+
+    hourlyGuide(today,getEdit,esc)+
     '<div class="annual-day-posts">'+(today.length?today.map(post=>{
       const edit=getEdit(post.id);
       const brief=postBrief(post,edit);
       const summary=brief.length>145?brief.slice(0,142).trimEnd()+'…':brief;
       return '<article class="annual-day-post"><div class="annual-day-post-icon" aria-hidden="true">'+layerIcon(post.layerIds[0])+'</div>'+
         '<div class="annual-day-post-content"><div class="annual-post-tags"><span>'+(isVideo(post)?'🎬 Video':'🖼️ Graphic')+
-        '</span><span>'+esc(post.suggestedTime)+' AEST</span>'+
+        '</span><span>'+esc(postTime(post,edit))+' AEST</span>'+
         (edit?.status&&edit.status!=='Idea'?'<span>'+esc(edit.status)+'</span>':'')+'</div>'+
         '<h3>'+esc(postLabel(post,edit))+'</h3><p>'+esc(summary)+'</p>'+
         '<div class="annual-day-post-actions"><button class="button small" type="button" data-calendar-detail="'+esc(post.id)+'">View details</button>'+
         '<button class="button outline small" type="button" data-calendar-edit="'+esc(post.id)+'">✏️ Edit</button></div></div></article>';
     }).join(''):'<p class="annual-dialog-empty">No suggestions on this date. Try another day or increase the monthly frequency.</p>')+
-    '</div><footer class="annual-dialog-actions"><button class="button outline" type="button" data-calendar-close>Close</button></footer></dialog>';
+    '</div><footer class="annual-dialog-actions"><button class="button" type="button" data-calendar-plan-day="'+esc(day)+'">🎛️ Plan this day</button>'+
+    '<button class="button outline" type="button" data-calendar-close>Close</button></footer></dialog>';
 }
