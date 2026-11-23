@@ -4,7 +4,7 @@ import {renderItemisedDay,renderWeekItemised,mondayOf,nextDay} from './social-da
 import {renderSaveFeedback,renderCampaignHistory} from './social-save-history.js?v=20261123-history';
 import {PUBLISHING_DESTINATIONS,placementSources,CREATIVE_SPEC_VERSION,MASTER_ASSET_PRESETS} from './social-placements.js?v=20261123-formats';
 import {renderDestinationChoices,renderAssetGuide} from './social-format-guide.js?v=20261123-formats';
-import {LAYER_ICONS,renderMonthCalendar,renderCalendarDialog,postLabel,postBrief,postTime,isMinuteTime,brisbaneToday} from './social-visual-ui.js?v=20261124-office-signatures';
+import {LAYER_ICONS,renderMonthCalendar,renderCalendarDialog,postLabel,postBrief,postTime,isMinuteTime,brisbaneToday} from './social-visual-ui.js?v=20261123-all-icons-ph';
 import {renderTimingPanel,renderAnalyticsPanel} from './social-insights-ui.js?v=20261123-timing-reports';
 import {parseDelimited,suggestedMapping,metricFromRow,linkMetrics,latestMetrics,summarizeMetrics,compareContentPatterns,planMetricsCSV} from './social-performance.js?v=20261123-timing-reports';
 
@@ -336,7 +336,8 @@ export function setupAnnualCampaigns({mount,api,esc,isActive,onUse,reviewOnly=fa
       renderMonthCalendar({month:selectedMonth,days:plan.days,posts:current,esc,metricsForPost})+
       '<div class="annual-calendar-legend"><span class="annual-legend-today">● Today</span>'+
       '<span class="annual-legend-past">◐ Past</span><span class="annual-legend-future">○ Future</span>'+
-      '<span class="annual-legend-holiday">🎉 Public holiday</span><span class="annual-legend-long">🧳 Long weekend</span>'+
+      '<span class="annual-legend-holiday"><span class="annual-cal-notation ph">PH</span> Public holiday</span>'+
+      '<span class="annual-legend-long"><span class="annual-cal-notation lw">LW</span> Long weekend</span>'+
       '<span><i class="qld"></i> QLD school holidays</span><span><i class="nsw"></i> NSW school holidays</span></div></section>'+
       '<div class="annual-schedule-export"><span>🕒 Every day starts with a suggested post. Click a date to edit, add or remove ideas.</span>'+
       (Object.values(postEdits).some(e=>e.hidden)?'<button type="button" class="button outline small" data-calendar-restore>Restore removed suggestions</button>':'')+
