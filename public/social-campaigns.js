@@ -1,7 +1,7 @@
 import {CAMPAIGN_LAYERS,defaultCampaignSettings,generateCampaignYear,monthSettingsFor,copyMonthSettings,weekStart,settingsForDate,scopeSettingsFor} from './social-campaign-engine.js?v=20261123-timing-reports';
 import {PUBLISHING_DESTINATIONS,placementSources,CREATIVE_SPEC_VERSION,MASTER_ASSET_PRESETS} from './social-placements.js?v=20261123-formats';
 import {renderDestinationChoices,renderAssetGuide} from './social-format-guide.js?v=20261123-formats';
-import {LAYER_ICONS,renderMonthCalendar,renderCalendarDialog,postLabel,postBrief,postTime,isMinuteTime,brisbaneToday} from './social-visual-ui.js?v=20261123-timing-reports';
+import {LAYER_ICONS,renderMonthCalendar,renderCalendarDialog,postLabel,postBrief,postTime,isMinuteTime,brisbaneToday} from './social-visual-ui.js?v=20261123-main-studio';
 import {renderTimingPanel,renderAnalyticsPanel} from './social-insights-ui.js?v=20261123-timing-reports';
 import {parseDelimited,suggestedMapping,metricFromRow,linkMetrics,latestMetrics,summarizeMetrics,compareContentPatterns,planMetricsCSV} from './social-performance.js?v=20261123-timing-reports';
 
