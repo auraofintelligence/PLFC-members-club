@@ -84,8 +84,8 @@ export function importCalendarAnchors(milestones,candidates,selectedIds,verified
     const verified=verifiedIds.includes(event.id);
     // A title/date changed upstream requires deliberate reconfirmation. Do not
     // silently carry over yesterday's approval for a different event date.
-    const confirmed=changed?false:verified||Boolean(prior?.confirmed);
-    if(changed&&prior.confirmed)verificationReset++;
+    const confirmed=verified||Boolean(!changed&&prior?.confirmed);
+    if(changed&&prior.confirmed&&!verified)verificationReset++;
     const target={id:event.id,kind:event.kind,title:event.title,date:event.date,
       sourceUrl:'',confirmed};
     if(!prior)added++;
