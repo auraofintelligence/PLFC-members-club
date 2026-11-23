@@ -6,8 +6,11 @@ import {handleRequest} from '../worker/index.mjs';
 import {defaultCampaignSettings} from '../public/social-campaign-engine.js';
 
 const origin='https://club.example',endpoint='/api/committee/social-campaign-settings';
-async function fixture(t){
-  const db=database(t,['0000_clubhouse.sql','0001_access_and_meetings.sql','0005_meeting_register.sql','0007_members_and_conversation.sql','0022_committee_social_planner.sql','0059_social_campaign_settings.sql']);
+async function fixture(t,{campaignSchema=true}={}){
+  const files=['0000_clubhouse.sql','0001_access_and_meetings.sql','0005_meeting_register.sql',
+    '0007_members_and_conversation.sql','0022_committee_social_planner.sql'];
+  if(campaignSchema)files.push('0059_social_campaign_settings.sql');
+  const db=database(t,files);
   const env={DB:db,PRIVATE_AUTH_KEY:'local-test'},tokens={};
   for(const [name,role] of [['secretary','committee'],['president','committee'],['member','member']]){
     const token=randomBytes(32).toString('hex');
@@ -54,4 +57,21 @@ test('invalid audience categories and video ratios are rejected',async t=>{
   assert.equal((await call('secretary',{version:0,settings:s})).status,400);
   s.videoShare=67;s.layers.nswHolidays.audience.place=['tourist','unknown'];
   assert.equal((await call('secretary',{version:0,settings:s})).status,400);
+});
+
+test('a missing campaign settings table is recovered without altering existing club tables',async t=>{
+  const {call,db}=await fixture(t,{campaignSchema:false}),settings=defaultCampaignSettings();
+  assert.equal((await call('member')).status,403,'member cannot trigger schema repair');
+  assert.equal((await call('secretary')).status,200,'committee GET restores only missing campaign table');
+  const empty=await db.prepare('SELECT count(*) AS n FROM committee_social_campaign_settings').first();
+  assert.equal(empty.n,0);
+  const created=await call('secretary',{version:0,settings});
+  assert.equal(created.status,200,'committee POST can save after repair');
+  const row=await created.json();
+  assert.equal(row.version,1);
+  assert.equal(row.settings.videoShare,67);
+  const read=await(await call('president')).json();
+  assert.equal(read.version,1);
+  const clubs=await db.prepare('SELECT count(*) AS n FROM club_accounts').first();
+  assert.equal(clubs.n,3,'existing accounts are untouched');
 });
