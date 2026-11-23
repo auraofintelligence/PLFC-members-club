@@ -81,15 +81,22 @@ function basePost(layer,day,weekKey,index){
     audience:null,priority:layer.priority,composite:false,sections:[topic],status:'suggestion'};
 }
 function assignWeek(days,settings,postsByDay){
-  // A week can straddle two months with different committee-approved layer patterns.
-  // Group by the effective configuration, with a proportional weekly frequency for split weeks.
-  const groups=[];
+  // First generate the ordinary week untouched. Overridden months replace only
+  // their own dates, including across a month boundary. Neighbour months remain identical.
+  const overrides=settings.monthOverrides||{};
+  const chosen=[...new Set(days.map(day=>day.slice(0,7)))].filter(month=>overrides[month]);
+  if(!chosen.length){assignSegment(days,settings,postsByDay);return;}
+  const baseline=new Map(days.map(day=>[day,[]]));
+  assignSegment(days,settings,baseline);
   for(const day of days){
-    const selected=monthSettingsFor(settings,day);
-    if(!groups.length || groups.at(-1).settings!==selected)groups.push({settings:selected,days:[]});
-    groups.at(-1).days.push(day);
+    if(!overrides[day.slice(0,7)])postsByDay.get(day).push(...baseline.get(day));
   }
-  for(const group of groups) assignSegment(group.days,group.settings,postsByDay);
+  for(const month of chosen){
+    const subset=days.filter(day=>day.startsWith(month));
+    const scoped=new Map(subset.map(day=>[day,[]]));
+    assignSegment(subset,overrides[month],scoped);
+    for(const day of subset)postsByDay.get(day).push(...scoped.get(day));
+  }
 }
 function assignSegment(days,settings,postsByDay){
   const key=days[0].slice(0,7)+'-'+days[0];
