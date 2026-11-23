@@ -56,7 +56,7 @@ export function renderMonthCalendar({month,days,posts,esc,today=brisbaneToday(),
         '<span class="annual-calendar-dots">'+(qld?'<i class="qld" title="Queensland school holidays"></i>':'')+
         (nsw?'<i class="nsw" title="NSW school holidays"></i>':'')+'</span>'+
         (temporal==='today'?'<small class="annual-today-label">TODAY</small>':'')+
-        (views?'<small class="annual-calendar-performance">📈 '+(views>=1000?(views/1000).toFixed(1)+'k':views)+' views</small>':'')+
+        (views?'<small class="annual-calendar-performance">📈 '+(views>=1000?(views/1000).toFixed(1)+'k':views)+' reported</small>':'')+
         '</button>';
     }
     if(pos%7===6){
@@ -118,7 +118,7 @@ export function renderCalendarDialog({day,view,postId,posts,plan,esc,getEdit,rev
     const performance=results.length?'<section class="annual-dialog-section annual-dialog-performance">'+
       '<h4>📈 Imported platform results</h4>'+
       '<div class="annual-result-pills">'+results.map(x=>
-        '<span>'+esc(x.platform)+': '+(x.views??0).toLocaleString('en-AU')+' views · '+
+        '<span>'+esc(x.platform)+': '+(x.views??0).toLocaleString('en-AU')+' reported visibility · '+
         ((x.likes??0)+(x.comments??0)+(x.shares??0)+(x.saves??0)).toLocaleString('en-AU')+' interactions</span>').join('')+'</div>'+
       '<p class="annual-small">Imported CSV snapshot, not a live feed. Check platform metric definitions.</p></section>':'';
     const placement=variants.map(v=>'<li><strong>'+esc(v.platform)+' · '+esc(v.placement)+'</strong><span>'+esc(v.size)+
