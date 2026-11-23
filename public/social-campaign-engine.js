@@ -312,6 +312,14 @@ export function generateCampaignYear(startMonth,settings=defaultCampaignSettings
       audience:monthSettings.layers.nswHolidays.audience,priority:9,sections:['NSW holiday lead-in'],composite:false,status:'suggestion'});
   }
   insertTimingSignals(settings,postsByDay);
+  const anchorsByDay=new Map();
+  for(const milestone of settings.milestones||[]){
+    if(!milestone.confirmed&&!String(milestone.id||'').startsWith('m-import-'))continue;
+    if(!anchorsByDay.has(milestone.date))anchorsByDay.set(milestone.date,[]);
+    anchorsByDay.get(milestone.date).push({
+      id:milestone.id,title:milestone.title,kind:milestone.kind,confirmed:milestone.confirmed
+    });
+  }
   const dayCards=[],posts=[];
   for(const [day,candidates] of postsByDay){
     const effective=settingsForDate(settings,day);
@@ -368,6 +376,7 @@ export function generateCampaignYear(startMonth,settings=defaultCampaignSettings
       publicHoliday:bounds.publicHoliday,publicHolidayName:bounds.publicHolidayName,
       partialPublicHoliday:bounds.partialPublicHoliday,longWeekend:bounds.longWeekend,
       postingCategory:bounds.category,minimum:bounds.min,maximum:bounds.max,
+      eventAnchors:anchorsByDay.get(day)||[],
       manualPlan:manual,signature:manual?(dayPlan.signature||null):null,omitted,count:chosen.length});
     posts.push(...chosen);
   }
