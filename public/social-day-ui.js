@@ -11,10 +11,10 @@ const scopeHeader=(mode,day,month,esc)=>{
     '<div class="annual-scope-toolbar"><div class="annual-scope-buttons" aria-label="Choose planning period">'+tabs+'</div>'+
     '<label>Selected day <input type="date" data-scope-day value="'+esc(day)+'" aria-label="Choose a day to plan"></label></div>';
 };
-const patternSelector=(day,type,saved,esc)=>'<label class="annual-day-pattern-picker">'+
+const patternSelector=(day,type,saved,esc,chosen='')=>'<label class="annual-day-pattern-picker">'+
   '<span>Start with a '+esc(DAY_ARCHETYPE_LABELS[type]||'day')+' pattern</span>'+
-  '<select data-day-pattern><option value="">Keep current items</option>'+
-  allDayPresets(type,saved).map(p=>'<option value="'+esc(p.id)+'">'+esc(p.name)+' · '+p.items.length+
+  '<select data-day-pattern><option value=""'+(chosen?'':' selected')+'>Keep current items</option>'+
+  allDayPresets(type,saved).map(p=>'<option value="'+esc(p.id)+'"'+(p.id===chosen?' selected':'')+'>'+esc(p.name)+' · '+p.items.length+
     (p.items.length===1?' post':' posts')+'</option>').join('')+'</select></label>';
 const layerSelect=(item,layers,esc)=>'<select data-day-item-field="layerId" aria-label="Topic">'+
   layers.map(l=>'<option value="'+esc(l.id)+'"'+(item.layerId===l.id?' selected':'')+'>'+esc(l.label)+'</option>').join('')+
@@ -28,7 +28,7 @@ export function renderItemisedDay({day,type,dayPlan,generated=false,posted=[],sa
     '<p class="annual-day-lead"><strong>'+esc(DAY_ARCHETYPE_LABELS[type]||'Daily content')+'</strong> · '+
     items.length+' planned '+(items.length===1?'item':'items')+'. Set the exact time, type and subject of each post. '+
     'No monthly sliders on this screen.</p>'+
-    '<div class="annual-day-pattern-toolbar">'+patternSelector(day,type,savedPatterns,esc)+
+    '<div class="annual-day-pattern-toolbar">'+patternSelector(day,type,savedPatterns,esc,dayPlan.patternId)+
     '<button type="button" class="button outline" data-day-apply-pattern>Use selected pattern</button></div>'+
     '<div class="annual-itemised-stack" data-day-editor="'+esc(day)+'">'+
       items.map((item,index)=>
@@ -57,7 +57,7 @@ export function renderItemisedDay({day,type,dayPlan,generated=false,posted=[],sa
 }
 const shift=(date,days)=>new Date(Date.parse(date+'T00:00:00Z')+days*86400000).toISOString().slice(0,10);
 export function renderWeekItemised({day,startDate,dates,savedPatterns,esc}){
-  const days=dates.map(({date,type,items,curated,inside})=>{
+  const days=dates.map(({date,type,items,curated,inside,patternId=''})=>{
     const patterns=allDayPresets(type,savedPatterns);
     return '<article class="annual-week-day'+(inside?'':' outside')+'" data-week-day="'+date+'">'+
       '<div class="annual-week-day-main"><div><span class="annual-week-day-kicker">'+esc(DAY_ARCHETYPE_LABELS[type]||'Day')+'</span>'+
@@ -68,8 +68,8 @@ export function renderWeekItemised({day,startDate,dates,savedPatterns,esc}){
         '<span><strong>'+esc(item.time)+'</strong> · '+esc(item.title)+'</span>').join(''):
         '<span>No items yet</span>')+'</div>'+
       '<div class="annual-week-day-actions"><label>Daily pattern<select data-week-pattern="'+date+'">'+
-        '<option value="">Choose a pattern…</option>'+
-        patterns.map(p=>'<option value="'+esc(p.id)+'">'+esc(p.name)+'</option>').join('')+'</select></label>'+
+        '<option value=""'+(patternId?'':' selected')+'>Choose a pattern…</option>'+
+        patterns.map(p=>'<option value="'+esc(p.id)+'"'+(patternId===p.id?' selected':'')+'>'+esc(p.name)+'</option>').join('')+'</select></label>'+
         '<button type="button" class="button outline small" data-week-apply="'+date+'">Apply pattern</button>'+
         '<button type="button" class="button outline small" data-week-edit="'+date+'">Edit posts</button>'+
         (curated?'<button type="button" class="button outline small" data-week-reset="'+date+'">Restore suggestions</button>':'')+
