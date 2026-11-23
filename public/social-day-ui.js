@@ -22,6 +22,7 @@ const formatSelect=(item,esc)=>'<select data-day-item-field="format" aria-label=
   DAILY_FORMATS.map(([value,label])=>'<option value="'+value+'"'+(item.format===value?' selected':'')+'>'+esc(label)+'</option>').join('')+'</select>';
 export function renderItemisedDay({day,type,dayPlan,savedPatterns,esc,layers}){
   const items=dayPlan.items||[];
+  const savedCustom=(savedPatterns[type]||[]).find(x=>x.id===dayPlan.patternId);
   return '<section class="annual-batch annual-itemised-planner" id="annual-plan-settings" aria-label="Item-by-item social day planner">'+
     scopeHeader('day',day,day.slice(0,7),esc)+
     '<p class="annual-day-lead"><strong>'+esc(DAY_ARCHETYPE_LABELS[type]||'Daily content')+'</strong> · '+
@@ -33,6 +34,9 @@ export function renderItemisedDay({day,type,dayPlan,savedPatterns,esc,layers}){
       items.map((item,index)=>
         '<article class="annual-itemised-post" data-daily-item="'+esc(item.id)+'">'+
         '<header><span class="annual-itemised-post-number">'+(index+1)+'</span><strong>Post '+(index+1)+'</strong>'+
+        '<div class="annual-itemised-move">'+
+        (index>0?'<button type="button" class="button outline small" data-day-move-up="'+esc(item.id)+'" aria-label="Move post '+(index+1)+' earlier">↑</button>':'')+
+        (index<items.length-1?'<button type="button" class="button outline small" data-day-move-down="'+esc(item.id)+'" aria-label="Move post '+(index+1)+' later">↓</button>':'')+'</div>'+
         '<button type="button" class="button outline small" data-day-remove-item="'+esc(item.id)+'" aria-label="Remove post '+(index+1)+'">Remove</button></header>'+
         '<div class="annual-itemised-post-fields">'+
         '<label>🕒 Post time (Brisbane AEST)<input type="time" data-day-item-field="time" value="'+esc(item.time)+'" step="60"></label>'+
@@ -50,8 +54,11 @@ export function renderItemisedDay({day,type,dayPlan,savedPatterns,esc,layers}){
       '<p>These itemised posts override monthly pattern suggestions for this date. Saving does not authorise or publish them.</p></div>'+
       '<details class="annual-day-presets"><summary>💾 Save this day as a reusable pattern</summary>'+
         '<p>Give the layout a name for future '+esc(DAY_ARCHETYPE_LABELS[type])+' days.</p>'+
-        '<div class="annual-day-preset-save"><label>Pattern name<input data-day-pattern-name maxlength="75" placeholder="e.g. Morning tips and evening questions"></label>'+
-        '<button type="button" class="button outline" data-day-save-pattern>Save reusable pattern</button></div></details>'+
+        '<div class="annual-day-preset-save"><label>Pattern name<input data-day-pattern-name maxlength="75" value="'+esc(savedCustom?.name||'')+'" placeholder="e.g. Morning tips and evening questions"></label>'+
+        '<button type="button" class="button outline" data-day-save-pattern>Save new pattern</button>'+
+        (savedCustom?'<button type="button" class="button outline" data-day-update-pattern>Update this pattern</button>'+
+          '<button type="button" class="button outline" data-day-delete-pattern>Delete saved pattern</button>':'')+
+        '</div></details>'+
     '</section>';
 }
 const shift=(date,days)=>new Date(Date.parse(date+'T00:00:00Z')+days*86400000).toISOString().slice(0,10);
