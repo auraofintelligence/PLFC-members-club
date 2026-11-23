@@ -103,6 +103,24 @@ export function summarizeMetrics(records,posts){
   }
   return [...groups.values()].sort((a,b)=>b.views-a.views);
 }
+export function compareContentPatterns(records,posts){
+  const byId=new Map(posts.map(p=>[p.id,p]));
+  const groups=new Map();
+  for(const m of latestMetrics(records)){
+    const post=byId.get(m.matchedPostId);
+    if(!post || m.views===null || m.views===undefined)continue;
+    const layer=post.layerIds[0],key=m.platform+'|'+layer;
+    if(!groups.has(key))groups.set(key,{platform:m.platform,layer,posts:0,views:0,interactions:0});
+    const group=groups.get(key);
+    group.posts++;
+    group.views+=m.views;
+    group.interactions+=(m.likes??0)+(m.comments??0)+(m.shares??0)+(m.saves??0);
+  }
+  return [...groups.values()].filter(x=>x.posts>=2)
+    .map(x=>({...x,averageViews:Math.round(x.views/x.posts)}))
+    .sort((a,b)=>a.platform.localeCompare(b.platform)||b.averageViews-a.averageViews);
+}
+
 export function planMetricsCSV(posts,postEdits,records){
   const linked=latestMetrics(records);
   const byId=new Map();
