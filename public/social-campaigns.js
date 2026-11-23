@@ -734,6 +734,35 @@ export function setupAnnualCampaigns({mount,api,esc,isActive,onUse,reviewOnly=fa
       draftPlans()[focusDay]={...plan,items:plan.items.filter(item=>item.id!==id)};
       notice='Removed this item from the day’s draft. Save to keep the change.';draw();return;
     }
+    if(b.hasAttribute('data-day-move-up')||b.hasAttribute('data-day-move-down')){
+      if(dayFormTouched&&!captureDayEditor())return;
+      const id=b.dataset.dayMoveUp||b.dataset.dayMoveDown,plan=dayPlanFor(focusDay);
+      const index=plan.items.findIndex(item=>item.id===id);
+      const to=index+(b.hasAttribute('data-day-move-up')?-1:1);
+      if(index<0||to<0||to>=plan.items.length)return;
+      const items=[...plan.items];[items[index],items[to]]=[items[to],items[index]];
+      draftPlans()[focusDay]={...plan,items};
+      notice='Reordered your daily items. Select Save this day’s posts to retain the order.';draw();return;
+    }
+    if(b.hasAttribute('data-day-update-pattern')){
+      if(!captureDayEditor(true))return;
+      const type=currentDayKind(focusDay),plan=dayPlanFor(focusDay);
+      const stored=(settings.dayArchetypes[type]||[]).find(p=>p.id===plan.patternId);
+      if(!stored)return;
+      const name=root()?.querySelector('[data-day-pattern-name]')?.value.trim();
+      if(!name||name.length>75){notice='Enter a pattern name of up to 75 characters.';draw();return;}
+      settings.dayArchetypes[type]=settings.dayArchetypes[type].map(p=>p.id===stored.id?
+        {...p,name,items:structuredClone(plan.items)}:p);
+      saveItemisedPlans('updated daily archetype');return;
+    }
+    if(b.hasAttribute('data-day-delete-pattern')){
+      if(dayFormTouched&&!captureDayEditor())return;
+      const type=currentDayKind(focusDay),plan=dayPlanFor(focusDay),id=plan.patternId;
+      if(!id?.startsWith('custom-')||!window.confirm('Delete this saved archetype? The current day’s posts will remain.'))return;
+      settings.dayArchetypes[type]=(settings.dayArchetypes[type]||[]).filter(p=>p.id!==id);
+      draftPlans()[focusDay]={...plan,patternId:''};
+      saveItemisedPlans('revised daily pattern library');return;
+    }
     if(b.hasAttribute('data-day-save')){
       if(!captureDayEditor(true)){draw();return;}
       saveItemisedPlans('daily posts');return;
