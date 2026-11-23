@@ -81,3 +81,39 @@ test('the planner enforces valid target platforms and dates and atomically rolls
   const plan=await db.prepare('SELECT version,title,plannedDate FROM committee_social_current WHERE id=?').bind(idea.id).first();
   assert.deepEqual(plan,{version:1,title:idea.title,plannedDate:'2028-02-29'});
 });
+
+test('PLFC controls creation, approval and posting independently without publishing',async t=>{
+  const {call}=await fixture(t);
+  const workflow={preparation:'ready-set-coop',publication:'club',approved:false};
+  const draft=newIdea({status:'draft',workflow,body:'Proposed club-approved story'});
+  const made=await call('secretary',draft);
+  assert.equal(made.status,201);
+  const first=(await made.json()).plan;
+  assert.equal(first.workflow.preparation,'ready-set-coop');
+  assert.equal(first.workflow.publication,'club');
+  assert.equal(first.workflow.approved,false);
+  assert.equal((await call('president',{...draft,version:1,status:'ready'})).status,400,
+    'a co-op preparation request cannot authorise publication');
+  const approved={...draft,version:1,status:'ready',workflow:{...workflow,approved:true}};
+  const authorised=await call('president',approved);
+  assert.equal(authorised.status,200);
+  const second=(await authorised.json()).plan;
+  assert.equal(second.workflow.approved,true);
+  assert.ok(second.workflow.approvedAt);
+  assert.equal(second.workflow.publication,'club');
+  const changedAfterApproval=await call('secretary',{...approved,version:2,body:'Updated after approval'});
+  assert.equal(changedAfterApproval.status,400,
+    'substantial changes require returning to draft and fresh club approval');
+  const posting={...approved,version:2,workflow:{...approved.workflow,publication:'ready-set-coop'}};
+  const queued=await call('secretary',posting);
+  assert.equal(queued.status,200);
+  const third=(await queued.json()).plan;
+  assert.equal(third.workflow.preparation,'ready-set-coop');
+  assert.equal(third.workflow.publication,'ready-set-coop');
+  assert.equal(third.workflow.approved,true);
+  assert.equal(third.status,'ready','choosing a provider does not publish the post');
+  const revision=await call('president',{...posting,version:3,status:'draft',
+    body:'Revised by PLFC',workflow:{...posting.workflow,approved:false}});
+  assert.equal(revision.status,200);
+  assert.equal((await revision.json()).plan.workflow.approved,false);
+});
