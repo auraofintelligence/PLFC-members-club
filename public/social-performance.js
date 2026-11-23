@@ -68,8 +68,8 @@ export function linkMetrics(metrics,posts,postEdits){
   for(const [postId,edit] of Object.entries(postEdits||{})){
     if(!known.has(postId))continue;
     for(const ref of edit.externalRefs||[]){
-      const key=ref.platform+'|'+(ref.externalId||ref.postUrl);
-      if(key!==ref.platform+'|')byExternal.set(key,postId);
+      if(ref.externalId)byExternal.set(ref.platform+'|'+ref.externalId,postId);
+      if(ref.postUrl)byExternal.set(ref.platform+'|'+ref.postUrl,postId);
     }
   }
   return metrics.map(item=>{
