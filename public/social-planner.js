@@ -1,5 +1,5 @@
 import {socialChannels} from './social-channels.js';
-import {setupAnnualCampaigns} from './social-campaigns.js?v=20261124-itemised';
+import {setupAnnualCampaigns} from './social-campaigns.js?v=20261124-office-signatures';
 import {setupBrainstorm, starterBrowser, chosenStarter, updateStarterCard, practiceGuide, contributorName} from './social-brainstorm.js?v=20261121-club-funding';
 
 const endpoint = '/api/committee/social-planner';
