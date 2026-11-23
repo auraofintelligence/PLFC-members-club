@@ -10,7 +10,7 @@ export const PUBLISHING_DESTINATIONS=Object.freeze([
   {id:'instagram',label:'Instagram',status:'existing'},
   {id:'youtube',label:'YouTube',status:'existing'},
   {id:'tiktok',label:'TikTok',status:'existing'},
-  {id:'noticeboard',label:'Straddie Noticeboard Network',status:'proposed'}
+  {id:'noticeboard',label:'Straddie Noticeboard Network',status:'proposed',publicUrl:'https://straddie-noticeboard-cloudflare.auraofintelligence.workers.dev/'}
 ]);
 export const MASTER_ASSET_PRESETS=Object.freeze([
   {id:'vertical-short',label:'Vertical short video',width:1080,height:1920,ratio:'9:16',media:'video'},
@@ -30,7 +30,7 @@ export const placementSources=Object.freeze({
   googleAds:'https://support.google.com/google-ads/answer/13547298?hl=en',
   tiktok:'https://ads.tiktok.com/resources/help/article/tiktok-auction-in-feed-ads?lang=en-GB',
   tiktokCarousel:'https://ads.tiktok.com/resources/help/article/specifications-for-carousel-ads?lang=en',
-  noticeboard:'https://github.com/auraofintelligence/straddie-noticeboard-cloudflare'
+  noticeboard:'https://straddie-noticeboard-cloudflare.auraofintelligence.workers.dev/how-it-works.html'
 });
 // Meta full-screen 9:16: intentionally conservative text/logo clearances, not a platform guarantee.
 const metaSafe=Object.freeze({top:.14,bottom:.35,sides:.06,label:'Conservative text/logo safe-zone guide; verify in Meta placement preview'});

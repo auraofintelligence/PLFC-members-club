@@ -1,4 +1,4 @@
-import {regularDuties} from './officer-duties.js?v=20261121-fundraising';
+import {regularDuties} from './officer-duties.js?v=20261123-monthly-social';
 
 const endpoint='/api/committee/todos';
 const dayFormat=new Intl.DateTimeFormat('en-AU',{timeZone:'Australia/Brisbane',day:'numeric',month:'short',year:'numeric'});
@@ -14,7 +14,7 @@ export function todoTiming(task,today) {
   return {light:'green',label:'On track',dateLabel};
 }
 const taskKey=t=>JSON.stringify([t.source,t.meetingId||'',t.id]);
-const routes=new Set(['#committee/meetings','#committee/news','#committee','#stock','#committee/automations','#committee/agm','#committee/access']);
+const routes=new Set(['#committee/meetings','#committee/news','#committee/social','#committee','#stock','#committee/automations','#committee/agm','#committee/access']);
 const letterhead={top:'/assets/club-letterhead-top.png',foot:'/assets/club-letterhead-foot.png'};
 function art(which){
   const img=tag('img');img.src=letterhead[which];img.width=2085;img.height=which==='top'?817:292;
@@ -107,7 +107,7 @@ export function setupOfficerTodos({api,esc}) {
     if(t.noticeId)return '<a class="text-link" data-source-job href="#committee/notices">Open committee notice</a>';
     if(t.source==='event')return '<a class="text-link" data-source-job href="#committee/events">Open event plan</a>';
     if(t.source==='agm')return '<a class="text-link" href="'+href+'">Open AGM jobs</a>';
-    return routes.has(href)?'<a class="text-link" data-source-job href="'+esc(href)+'">'+(t.source==='meeting'?'Open meeting record':'Open newsletter desk')+'</a>':'';
+    return routes.has(href)?'<a class="text-link" data-source-job href="'+esc(href)+'">'+(t.source==='monthly-standard'?'Open Social Studio':t.source==='meeting'?'Open meeting record':'Open newsletter desk')+'</a>':'';
   }
   function jobRow(t){
     const own=officeKey===desk.viewerOffice;

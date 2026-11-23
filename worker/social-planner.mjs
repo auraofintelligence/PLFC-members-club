@@ -4,7 +4,21 @@ const platforms={facebook:['facebook.com','fb.com','fb.watch'],instagram:['insta
 const officeLabels={president:'President',vicepresident:'Vice President',secretary:'Secretary',assistantsecretary:'Assistant Secretary',treasurer:'Treasurer'};
 const stages=['idea','draft','ready','published'];
 const uuid=/^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i;
-const editable=['id','version','title','body','plannedDate','channels','status','links'];
+const editable=['id','version','title','body','plannedDate','channels','status','links','workflow'];
+const validProvider=new Set(['club','ready-set-coop']);
+const defaultWorkflow=()=>({preparation:'club',publication:'club',approved:false,approvedBy:'',approvedAt:''});
+function parseWorkflow(value,invalid){
+  if(!value||typeof value!=='object'||Array.isArray(value)||
+    Object.keys(value).sort().join(',')!=='approved,preparation,publication')invalid('Choose the content and posting responsibilities.');
+  if(!validProvider.has(value.preparation)||!validProvider.has(value.publication)||typeof value.approved!=='boolean')
+    invalid('Choose valid responsibilities and club approval.');
+  return {...defaultWorkflow(),...value};
+}
+function storedWorkflow(links){
+  const info=links?._workflow;
+  if(!info || !validProvider.has(info.preparation)||!validProvider.has(info.publication))return defaultWorkflow();
+  return {...defaultWorkflow(),...info,approved:Boolean(info.approved)};
+}
 
 function parsePlan(input,{dateField,textField,HttpError}) {
   const invalid=message=>{throw new HttpError(400,message,'invalid_social_plan');};
@@ -35,15 +49,20 @@ function parsePlan(input,{dateField,textField,HttpError}) {
       invalid('Use the HTTPS link to the post on its selected platform.');
     links[c]=parsed.href;
   }
-  return {id:input.id.toLowerCase(),version:input.version,title,body,plannedDate,status,channels:selected,links};
+  const workflow=input.workflow===undefined?null:parseWorkflow(input.workflow,invalid);
+  if(workflow&&['ready','published'].includes(status)&&!workflow.approved)
+    invalid('PLFC must approve the content before it is ready to post.');
+  return {id:input.id.toLowerCase(),version:input.version,title,body,plannedDate,status,channels:selected,links,workflow};
 }
 
 function toPlan(row) {
   const {editorId,...plan}=row;
-  return {...plan,channels:JSON.parse(row.channels),links:JSON.parse(row.links)};
+  const links=JSON.parse(row.links),workflow=storedWorkflow(links);
+  delete links._workflow;
+  return {...plan,channels:JSON.parse(row.channels),links,workflow};
 }
-const sameContent=(row,plan)=>row.title===plan.title && row.body===plan.body && row.plannedDate===plan.plannedDate &&
-  row.status===plan.status && row.channels===JSON.stringify(plan.channels) && row.links===JSON.stringify(plan.links);
+const sameContent=(row,plan,packedLinks)=>row.title===plan.title && row.body===plan.body && row.plannedDate===plan.plannedDate &&
+  row.status===plan.status && row.channels===JSON.stringify(plan.channels) && row.links===packedLinks;
 
 export async function socialPlannerEndpoint(request,env,identity,helpers) {
   const {json,requireRole,requireDb,bodyJson,HttpError}=helpers;
@@ -84,9 +103,31 @@ export async function socialPlannerEndpoint(request,env,identity,helpers) {
   const plan=parsePlan(await bodyJson(request,56000),helpers);
   const rowForId=()=>db.prepare('SELECT * FROM committee_social_current WHERE id=?').bind(plan.id);
   const old=await rowForId().first();
-  const retry=row=>row && row.version===plan.version+1 && row.editorId===identity.id && sameContent(row,plan);
+  const oldLinks=old?JSON.parse(old.links):{},previous=storedWorkflow(oldLinks);
+  // The committee authorises the material, not a service provider. Changing
+  // creative material after sign-off requires a fresh club decision.
+  const contentChanged=Boolean(old)&&
+    (old.title!==plan.title||old.body!==plan.body||old.plannedDate!==plan.plannedDate||
+      old.channels!==JSON.stringify(plan.channels));
+  if(plan.workflow?.approved&&previous.approved&&contentChanged)
+    throw new HttpError(400,'Updated content must be saved as a draft, then approved again by PLFC.','social_reapproval_required');
+  if(plan.workflow===null&&previous.approved&&contentChanged&&['ready','published'].includes(plan.status))
+    throw new HttpError(400,'Edited material must return to PLFC for fresh approval.','social_reapproval_required');
+  const approval=plan.workflow===null?
+    (contentChanged?defaultWorkflow():storedWorkflow(oldLinks)):plan.workflow;
+  if(plan.workflow?.approved){
+    if(previous.approved&&!contentChanged){
+      approval.approvedBy=previous.approvedBy;approval.approvedAt=previous.approvedAt;
+    }else{
+      approval.approvedBy=identity.name||'Committee officer';approval.approvedAt=now.toISOString();
+    }
+  }else if(plan.workflow){
+    approval.approvedBy='';approval.approvedAt='';
+  }
+  const packedLinks=JSON.stringify({...plan.links,_workflow:approval});
+  const retry=row=>row && row.version===plan.version+1 && row.editorId===identity.id && sameContent(row,plan,packedLinks);
   const conflict=()=>new HttpError(409,'Another officer saved this post. Open the latest version and check your changes.','social_plan_conflict');
-  if(old && (retry(old) || (old.version===plan.version && sameContent(old,plan)))) return json({...await list(),plan:toPlan(old)});
+  if(old && (retry(old) || (old.version===plan.version && sameContent(old,plan,packedLinks)))) return json({...await list(),plan:toPlan(old)});
   if((old?.version??0)!==plan.version)throw conflict();
   const timestamp=now.toISOString(),next=plan.version+1;
   const head=plan.version===0
@@ -95,7 +136,7 @@ export async function socialPlannerEndpoint(request,env,identity,helpers) {
   const changed=await db.batch([head,
     db.prepare(`INSERT INTO committee_social_revisions(plan_id,version,title,body,planned_date,channels_json,status,links_json,updated_at,updated_by,editor_name)
       SELECT ?,?,?,?,?,?,?,?,?,?,? WHERE changes()=1`).bind(plan.id,next,plan.title,plan.body,plan.plannedDate,JSON.stringify(plan.channels),plan.status,
-        JSON.stringify(plan.links),timestamp,identity.id,name),
+        packedLinks,timestamp,identity.id,name),
     db.prepare('INSERT INTO audit_log SELECT ?,?,?,?,?,? WHERE changes()=1').bind(crypto.randomUUID(),identity.id,identity.accountRole||identity.role,
       !old?'social_plan_created':old.status!==plan.status?'social_plan_marked_'+plan.status:'social_plan_edited',plan.id,timestamp),
     rowForId()]);

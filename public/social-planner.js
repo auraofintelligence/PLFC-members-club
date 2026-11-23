@@ -1,9 +1,12 @@
 import {socialChannels} from './social-channels.js';
-import {setupAnnualCampaigns} from './social-campaigns.js?v=20261123-timing-reports';
+import {setupAnnualCampaigns} from './social-campaigns.js?v=20261123-main-studio';
 import {setupBrainstorm, starterBrowser, chosenStarter, updateStarterCard, practiceGuide, contributorName} from './social-brainstorm.js?v=20261121-club-funding';
 
 const endpoint = '/api/committee/social-planner';
 const statuses = {idea: 'Idea', draft: 'Draft', ready: 'Ready to post', published: 'Published'};
+const defaultWorkflow=()=>({preparation:'club',publication:'club',approved:false});
+const readySetUrl='https://ready-setco.auraofintelligence.workers.dev/media-assets.html#noticeboard-first';
+const platformNames={facebook:'Facebook',instagram:'Instagram',youtube:'YouTube',tiktok:'TikTok'};
 const formatMonth = new Intl.DateTimeFormat('en-AU', {month: 'long', year: 'numeric', timeZone: 'Australia/Brisbane'});
 const formatDay = new Intl.DateTimeFormat('en-AU', {weekday: 'short', day: 'numeric', month: 'short', timeZone: 'Australia/Brisbane'});
 const formatUpdate = new Intl.DateTimeFormat('en-AU', {day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Australia/Brisbane'});
@@ -54,8 +57,9 @@ export function setupSocialPlanner({api, esc}) {
   function list() {
     const dated = desk.plans.filter(p => p.plannedDate);
     const undated = desk.plans.filter(p => !p.plannedDate);
-    return '<header class="social-heading"><div><h1>Social media planner</h1><p>Plan the club’s posts together. When a post is ready, an officer shares it on the club’s social account.</p></div><div class="social-tools"><button type="button" class="button" data-social-new>Plan a post</button><button type="button" class="button outline" data-social-brainstorm>Brainstorm together</button></div></header>' +
-      starterBrowser(esc) + annual.markup() +
+    return '<header class="social-heading"><div><h1>Social Studio</h1><p>Plan the calendar together. PLFC approves each post before anyone publishes it.</p></div><div class="social-tools"><button type="button" class="button" data-social-new>Plan a post</button><button type="button" class="button outline" data-social-brainstorm>Brainstorm together</button></div></header>' +
+      annual.markup() +
+      '<details class="social-idea-extras"><summary>✨ Browse ready-made starting ideas</summary>'+starterBrowser(esc)+'</details>'+
       '<form class="social-month" data-social-month-form><label>Planning month<input type="month" data-social-month name="month" value="' + esc(desk.month) + '" required></label><button class="button outline small" type="submit">Show month</button></form>' +
       '<section class="social-plan-group"><h2>' + esc(formatMonth.format(localDate(desk.month + '-01'))) + '</h2>' +
       (dated.length ? '<ul class="social-plan-list">' + dated.map(row).join('') + '</ul>' : '<p>No posts are planned for this month.</p>') + '</section>' +
@@ -64,12 +68,39 @@ export function setupSocialPlanner({api, esc}) {
       practiceGuide(esc) + '<details class="social-help"><summary>How publishing works</summary><p>The planner keeps the committee’s wording, dates and links together. An officer signs in to each club social account to publish. You can use the planner without connecting an account.</p><p>Automatic posting would need the club to authorise a connection to each platform and grant permission to publish. Saving a plan here keeps it in the committee room.</p></details>';
   }
   function handover() {
-    return '<details class="social-handover"' + (['ready','published'].includes(draft.status) ? ' open' : '') + '><summary>Share on the club accounts</summary>' +
-      '<p>Copy your wording, open each club account and publish there. Once the post is live on all your chosen channels, return here and select Published.</p>' +
+    return '<details class="social-handover"' + (['ready','published'].includes(draft.status) ? ' open' : '') + '><summary>Publication handover after PLFC approval</summary>' +
+      '<p>Only approved PLFC material may be published. Choose the club or the proposed Ready SET Co-op service separately from content preparation. This page never posts automatically.</p>' +
       '<button type="button" class="button outline small" data-social-copy>Copy post wording</button>' +
       '<div data-social-profile-links>' + socialChannels.map(c => '<a class="text-link" data-social-profile="' + c.id + '" href="' + esc(c.url) + '" target="_blank" rel="noopener noreferrer"' + (draft.channels.includes(c.id) ? '' : ' hidden') + '>Open club ' + esc(c.label) + '<span class="sr-only"> in a new tab</span></a>').join('') + '</div>' +
       '<p data-social-profile-hint' + (draft.channels.length ? ' hidden' : '') + '>Choose a channel above to find its club account.</p>' +
       '<div class="social-link-inputs">' + socialChannels.map(c => '<label data-social-link="' + c.id + '"' + (draft.channels.includes(c.id) ? '' : ' hidden') + '>Link to the published ' + esc(c.label) + ' post <small>(optional)</small><input name="link_' + c.id + '" type="url" inputmode="url" placeholder="https://" value="' + esc(draft.links[c.id] || '') + '"' + (draft.channels.includes(c.id) ? '' : ' disabled') + '></label>').join('') + '</div></details>';
+  }
+  function workflowControls(){
+    const workflow=draft.workflow||defaultWorkflow();
+    const ready=workflow.approved;
+    return '<section class="social-approval-flow" aria-label="Content preparation, club approval and posting responsibilities">'+
+      '<div class="social-flow-step"><span class="social-flow-number">1</span><div><h2>Prepare the content</h2>'+
+      '<p>Who prepares initial posts, photos, video, captions and schedules? PLFC can edit, add, remove or reject anything before approval.</p>'+
+      '<label>Content preparation<select name="preparation">'+
+      '<option value="club"'+(workflow.preparation==='club'?' selected':'')+'>PLFC prepares the content</option>'+
+      '<option value="ready-set-coop"'+(workflow.preparation==='ready-set-coop'?' selected':'')+'>Request Ready SET Co-op assistance (proposed)</option>'+
+      '</select></label>'+
+      (workflow.preparation==='ready-set-coop'?'<button type="button" class="button outline small" data-social-handoff="creation">Copy creation brief</button>':'')+
+      '</div></div>'+
+      '<div class="social-flow-step"><span class="social-flow-number">2</span><div><h2>PLFC authorises</h2>'+
+      '<p>PLFC retains editorial control and makes the final publication decision. Updating approved wording or channels requires fresh approval.</p>'+
+      '<label class="social-approval-check"><input type="checkbox" name="clubApproved"'+(ready?' checked':'')+'> PLFC has reviewed and authorised this content</label>'+
+      (ready&&workflow.approvedAt?'<small>Approval recorded by '+esc(workflow.approvedBy||'committee')+' · '+esc(workflow.approvedAt.slice(0,10))+'</small>':'')+
+      '</div></div>'+
+      '<div class="social-flow-step"><span class="social-flow-number">3</span><div><h2>Choose who posts</h2>'+
+      '<p>This is a separate decision after approval. Selecting the co-op is a planning choice, not an active service or publishing authorisation.</p>'+
+      '<label>Posting responsibility<select name="publication"'+(ready?'':' disabled')+'>'+
+      '<option value="club"'+(workflow.publication==='club'?' selected':'')+'>PLFC publishes approved content</option>'+
+      '<option value="ready-set-coop"'+(workflow.publication==='ready-set-coop'?' selected':'')+'>Request Ready SET Co-op posting (proposed)</option>'+
+      '</select></label>'+
+      (ready&&workflow.publication==='ready-set-coop'?'<button type="button" class="button outline small" data-social-handoff="posting">Copy approved posting brief</button>':'')+
+      '<p class="social-flow-service-note"><a href="'+readySetUrl+'" target="_blank" rel="noopener noreferrer">Proposed Ready SET Co-op SNN service</a></p>'+
+      '</div></div></section>';
   }
   function emptyIdea() {
     return draft && !draft.version && !draft.title && !draft.body && !draft.plannedDate && draft.status === 'idea' && !draft.channels.length && !Object.values(draft.links).some(Boolean);
@@ -87,7 +118,7 @@ export function setupSocialPlanner({api, esc}) {
       '<label>Progress<select name="status">' + Object.entries(statuses).map(([value, label]) => '<option value="' + value + '"' + (draft.status === value ? ' selected' : '') + '>' + label + '</option>').join('') + '</select></label></div>' +
       '<fieldset><legend>Where will it go?</legend><div class="social-channels">' + socialChannels.map(c => '<label><input type="checkbox" name="channel" value="' + c.id + '"' + (draft.channels.includes(c.id) ? ' checked' : '') + '>' + esc(c.label) + '</label>').join('') + '</div></fieldset>' +
       '<label>Post wording<textarea name="body" rows="5" maxlength="6000" placeholder="Write the caption or the words that will go with the photo or video.">' + esc(draft.body) + '</textarea></label>' +
-      handover() + practiceGuide(esc, draft.channels) + '<div class="social-editor-actions"><button type="submit" class="button" data-social-save>Save plan</button><button type="button" class="button outline" data-social-cancel>' + (fromBrain ? 'Back to brainstorming' : 'Back to plan') + '</button></div></form>';
+      workflowControls() + handover() + practiceGuide(esc, draft.channels) + '<div class="social-editor-actions"><button type="submit" class="button" data-social-save>Save plan</button><button type="button" class="button outline" data-social-cancel>' + (fromBrain ? 'Back to brainstorming' : 'Back to plan') + '</button></div></form>';
   }
   function render() {
     mount.innerHTML = (draft ? editor() : list()) + '<p class="social-notice" data-social-notice role="status" aria-live="polite"></p><button type="button" class="button outline small" data-social-reload hidden>Open saved version</button>';
@@ -99,12 +130,16 @@ export function setupSocialPlanner({api, esc}) {
     for (const field of ['title','plannedDate','status','body']) draft[field] = form.elements[field].value;
     draft.channels = [...form.querySelectorAll('[name="channel"]:checked')].map(input => input.value);
     draft.links = Object.fromEntries(socialChannels.map(c => [c.id, form.elements['link_' + c.id].value]));
+    draft.workflow={preparation:form.elements.preparation.value,
+      publication:form.elements.publication.value,
+      approved:form.elements.clubApproved.checked};
     const suggestion = find('[data-social-example]');
     if (suggestion) suggestion.hidden = !emptyIdea();
   }
   function edit(plan) {
-    draft = plan ? {id: plan.id, version: plan.version, title: plan.title, plannedDate: plan.plannedDate, status: plan.status, body: plan.body, channels: [...plan.channels], links: {...plan.links}}
-      : {id: crypto.randomUUID(), version: 0, title: '', plannedDate: '', status: 'idea', body: '', channels: [], links: {}};
+    draft = plan ? {id: plan.id, version: plan.version, title: plan.title, plannedDate: plan.plannedDate, status: plan.status, body: plan.body, channels: [...plan.channels], links: {...plan.links},
+      workflow:{...defaultWorkflow(),...(plan.workflow||{})}}
+      : {id: crypto.randomUUID(), version: 0, title: '', plannedDate: '', status: 'idea', body: '', channels: [], links: {},workflow:defaultWorkflow()};
     render();
     readForm();
     initial = JSON.stringify(draft);
@@ -126,7 +161,7 @@ export function setupSocialPlanner({api, esc}) {
     request?.abort();
     const controller = new AbortController();
     request = controller;
-    if (!desk) mount.innerHTML = '<h1>Social media planner</h1><p role="status">Opening the club’s plan…</p>';
+    if (!desk) mount.innerHTML = '<h1>Social Studio</h1><p role="status">Opening the club’s plan…</p>';
     mount.setAttribute('aria-busy', 'true');
     try {
       const query = new URLSearchParams();
@@ -170,6 +205,11 @@ export function setupSocialPlanner({api, esc}) {
     readForm();
     const form = find('[data-social-editor]');
     if (!draft.title.trim()) {announce('Give this post a working title.', true); form.elements.title.focus(); return;}
+    if (['ready','published'].includes(draft.status) && !draft.workflow.approved) {
+      announce('PLFC must approve the post before selecting Ready to post or Published.', true);
+      form.elements.clubApproved.focus();
+      return;
+    }
     if (!draft.channels.length && ['ready','published'].includes(draft.status)) {
       announce('Choose at least one channel for this post.', true);
       form.querySelector('[name="channel"]').focus();
@@ -215,9 +255,33 @@ export function setupSocialPlanner({api, esc}) {
       if (body.isConnected) {body.focus(); body.select(); announce('Your wording is selected. Choose Copy on your device.');}
     }
   }
+  async function copyProviderBrief(kind){
+    readForm();
+    if(kind==='posting' && (!draft.workflow.approved || !['ready','published'].includes(draft.status))){
+      announce('PLFC must approve the content and mark it Ready to post before a posting handover.',true);return;
+    }
+    const provider=kind==='creation'?'Content preparation requested from Ready SET Co-op (proposed)':
+      'Posting requested from Ready SET Co-op (proposed). PLFC-approved content only.';
+    const brief=[provider,'PLFC Social Studio handover',
+      'Title: '+draft.title,'Planned date: '+(draft.plannedDate||'To agree'),
+      'Platforms: '+draft.channels.map(id=>platformNames[id]||id).join(', '),
+      'Current wording:',draft.body,
+      kind==='creation'?'PLFC will review, edit, add, remove and approve content before any publication.':
+        'Publish only the exact material authorised by PLFC. Return publication links for the club records.',
+      'This text is a manual briefing, not an automatically sent request.'].join('\n\n');
+    try{await navigator.clipboard.writeText(brief);announce('Brief copied. Share it only when the club agrees to the arrangement.');}
+    catch{announce('Clipboard unavailable. Select and copy the brief manually.',true);}
+  }
   const discard = () => !dirty() || window.confirm('Leave your unsaved changes to this post?');
   mount.addEventListener('input', event => {
-    if (event.target.closest('[data-social-editor]')) readForm();
+    if (!event.target.closest('[data-social-editor]'))return;
+    const changedField=['title','body','plannedDate','channel'].includes(event.target.name);
+    if(changedField&&initial&&JSON.parse(initial).workflow?.approved){
+      const form=find('[data-social-editor]');
+      form.elements.clubApproved.checked=false;
+      if(['ready','published'].includes(form.elements.status.value))form.elements.status.value='draft';
+    }
+    readForm();
   });
   mount.addEventListener('change', event => {
     if (event.target.matches('[data-starter-picker]')) updateStarterCard(mount, esc);
@@ -225,6 +289,14 @@ export function setupSocialPlanner({api, esc}) {
     readForm();
     if (event.target.name === 'channel') updateChannels();
     if (event.target.name === 'status' && ['published','ready'].includes(draft.status)) find('.social-handover').open = true;
+    if (['preparation','publication','clubApproved'].includes(event.target.name)) {
+      const workflow={...draft.workflow};render();
+      const form=find('[data-social-editor]');
+      form.elements.preparation.value=workflow.preparation;
+      form.elements.publication.value=workflow.publication;
+      form.elements.clubApproved.checked=workflow.approved;
+      readForm();
+    }
   });
   mount.addEventListener('submit', event => {
     event.preventDefault();
@@ -255,6 +327,7 @@ export function setupSocialPlanner({api, esc}) {
       announce('Example added. Change the wording to suit the club, then choose Save plan to keep it.');
     }
     if (button.hasAttribute('data-social-copy')) copyWording();
+    if (button.hasAttribute('data-social-handoff')) void copyProviderBrief(button.dataset.socialHandoff);
     if (button.hasAttribute('data-social-reload') && discard()) load(desk.month, draft.id);
     if (button.hasAttribute('data-social-cancel') && discard()) {
       const previous = draft.id;

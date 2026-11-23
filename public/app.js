@@ -1,7 +1,7 @@
 import {setupClubAccess} from './club-access.js?v=20261123-showcase';
 import {setupFinniusMotion} from './finnius-motion.js';
 import {setupSocialLinks} from './social-channels.js';
-import {setupSocialPlanner} from './social-planner.js?v=20261123-timing-reports';
+import {setupSocialPlanner} from './social-planner.js?v=20261123-main-studio';
 import {setupFundraisingEvents} from './fundraising-events.js?v=20261121-angler';
 import {setupMemberRoom} from './member-room.js?v=20261121-angler';
 import {setupMemberCalendar} from './member-calendar.js';
@@ -30,7 +30,7 @@ import {setupPriceNotices} from './price-notices.js?v=20261121-club-funding';
 import {setupShop} from './shop.js?v=20261121-club-funding';
 import {setupWildlifeHelp} from './wildlife-help.js';
 import {setupMeetingWorkflow} from './meeting-workflow.js?v=20261121-club-funding';
-import {setupOfficerTodos} from './officer-todos.js?v=20261121-club-funding';
+import {setupOfficerTodos} from './officer-todos.js?v=20261123-monthly-social';
 import {setupGrantRegister} from './grant-register.js?v=20261121-practical-wishes';
 import {mountGrantPage,scrollToGrantSection} from './grant-page.js';
 import {setupNoticeEmailProfile} from './notice-email-profile.js';
@@ -96,7 +96,7 @@ function route(){
   if(page==='fishing')enterFishingBoard();
   document.title=guide?guide.title+' | Point Lookout Fishing Club':({home:'Point Lookout Fishing Club | Your people.',events:'What’s on | Point Lookout Fishing Club',sponsors:'Sponsors and supporters | Point Lookout Fishing Club',grants:'Grants and community projects | Point Lookout Fishing Club',fishing:'Your fishing day | Point Lookout Fishing Club',members:'Your club | Point Lookout Fishing Club',shop:'Club shop | Point Lookout Fishing Club',stock:'Treasurer stock book | Point Lookout Fishing Club',committee:'Meeting workspace | Point Lookout Fishing Club'})[page];
   window.dispatchEvent(new CustomEvent('plfc:navigated',{detail:destination}));
-  const featureTitles={'#members/notices':'My club notices','#members/meals':'Share a meal','#members/equipment-wishes':'Equipment wish list','#sponsors':'Sponsors and supporters','#committee/sponsors':'Sponsor offers and introductions','#committee/equipment':'Club assets and loans','#members/recipes':'Members’ recipe book','#committee/returning':'Invite returning members','#stock/returning':'Membership fee waivers','#members/safety':'My access and safety','#committee/safety':'Member age and permissions','#members/profile':'My profile','#members/friends':'Friends and sharing','#members/catch-map':'Catch map','#members/calendar':'Events calendar','#members/leaderboard':'Club leaderboard','#committee/leaderboard':'Results, prizes and sponsors','#committee/events':'Events and fundraising','#committee/social':'Social media planner','#members/social':'Club socials','#committee/member-notice':'Post a notice for members','#committee/grants':'Grant register','#committee/notices':'Committee notices','#committee/todos':'Officer to-do lists','#stock/reports':'Stock and sales reports','#committee/news':'Newsletter desk','#members/news':'Member newsletters','#committee/handover':'Officer handover'};
+  const featureTitles={'#members/notices':'My club notices','#members/meals':'Share a meal','#members/equipment-wishes':'Equipment wish list','#sponsors':'Sponsors and supporters','#committee/sponsors':'Sponsor offers and introductions','#committee/equipment':'Club assets and loans','#members/recipes':'Members’ recipe book','#committee/returning':'Invite returning members','#stock/returning':'Membership fee waivers','#members/safety':'My access and safety','#committee/safety':'Member age and permissions','#members/profile':'My profile','#members/friends':'Friends and sharing','#members/catch-map':'Catch map','#members/calendar':'Events calendar','#members/leaderboard':'Club leaderboard','#committee/leaderboard':'Results, prizes and sponsors','#committee/events':'Events and fundraising','#committee/social':'Social Studio','#members/social':'Club socials','#committee/member-notice':'Post a notice for members','#committee/grants':'Grant register','#committee/notices':'Committee notices','#committee/todos':'Officer to-do lists','#stock/reports':'Stock and sales reports','#committee/news':'Newsletter desk','#members/news':'Member newsletters','#committee/handover':'Officer handover'};
   if(featureTitles[destination.hash]) document.title=featureTitles[destination.hash]+' | Point Lookout Fishing Club';
   if(!$('#info-dialog').open){
     const heading=document.querySelector('#club-access:not([hidden]) h1')??guide?.focusElement??(feature?document.querySelector('[data-committee-feature]:not([hidden]) h1')||document.querySelector('[data-committee-feature]:not([hidden])'):null)??(destination.hash==='#stock/reports'?$('#monthly-reports h1'):destination.hash==='#stock/returning'?$('#stock-returning h1')||$('#stock-returning'):document.querySelector(`[data-view="${page}"] h1`))??$('#main');

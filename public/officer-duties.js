@@ -5,6 +5,7 @@ export const officeGuides = {
       ['Invite a returning member','Check the club register, prepare their welcome-back offer and pass on the private link after the Treasurer approves the waiver.','#committee/returning'],
       ['Prepare the meeting', 'Open the meeting desk. Pick the meeting, add its date and agenda, and check the actions carried forward.', meeting],
       ['Prepare the newsletter', 'Open the monthly edition. Pick the contributions to include and read the member preview before publishing.', news],
+      ['Review monthly social media results', 'Open Social Studio each month. Import available platform CSV results, compare them with the club’s planned topics and posting times, export the content-and-results report and note adjustments for the next month.', '#committee/social'],
       ['File the minutes', 'After the committee approves the minutes, open the meeting again and share the approved copy with members.', meeting]
     ], handover:'Show the next Secretary which meeting is open and which newsletter is waiting for review.'
   },
