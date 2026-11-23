@@ -1,7 +1,6 @@
 import {DAY_ARCHETYPE_LABELS,DAILY_FORMATS,allDayPresets} from './social-day-patterns.js';
 const dateName=day=>new Intl.DateTimeFormat('en-AU',{weekday:'long',day:'numeric',month:'short',timeZone:'UTC'}).format(new Date(day+'T00:00:00Z'));
 const timeLabel=day=>new Intl.DateTimeFormat('en-AU',{weekday:'short',day:'numeric',month:'short',timeZone:'UTC'}).format(new Date(day+'T00:00:00Z'));
-const escapeAttr=escape=>escape;
 const scopeHeader=(mode,day,month,esc)=>{
   const tabs=[['day','Day'],['week','Week'],['month','Month']].map(([value,label])=>
     '<button type="button" data-planning-scope="'+value+'" aria-pressed="'+(mode===value)+'">'+label+'</button>').join('');
@@ -21,7 +20,7 @@ const layerSelect=(item,layers,esc)=>'<select data-day-item-field="layerId" aria
   '</select>';
 const formatSelect=(item,esc)=>'<select data-day-item-field="format" aria-label="Content format">'+
   DAILY_FORMATS.map(([value,label])=>'<option value="'+value+'"'+(item.format===value?' selected':'')+'>'+esc(label)+'</option>').join('')+'</select>';
-export function renderItemisedDay({day,type,dayPlan,generated=false,posted=[],savedPatterns,esc,layers,reviewOnly=false}){
+export function renderItemisedDay({day,type,dayPlan,savedPatterns,esc,layers}){
   const items=dayPlan.items||[];
   return '<section class="annual-batch annual-itemised-planner" id="annual-plan-settings" aria-label="Item-by-item social day planner">'+
     scopeHeader('day',day,day.slice(0,7),esc)+
@@ -75,7 +74,7 @@ export function renderWeekItemised({day,startDate,dates,savedPatterns,esc}){
         (curated?'<button type="button" class="button outline small" data-week-reset="'+date+'">Restore suggestions</button>':'')+
       '</div>':'')+'</article>';
   }).join('');
-  const prefix=shift(day,-((new Date(day+'T00:00:00Z').getUTCDay()+6)%7));
+  const prefix=startDate||mondayOf(day);
   return '<section class="annual-batch annual-week-itemised" id="annual-plan-settings" aria-label="Weekly daily-pattern planner">'+
     scopeHeader('week',day,day.slice(0,7),esc)+
     '<p class="annual-day-lead">Pick a saved daily archetype for each date, or open that day to edit its individual posts. '+
