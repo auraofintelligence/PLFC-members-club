@@ -68,3 +68,177 @@
 .annual-default-settings .annual-settings{margin:1rem 0 0}
 .annual-batch .annual-actions{align-items:center}
 @media(max-width:560px){.annual-batch{padding:.8rem}.annual-batch-head{flex-direction:column}.annual-batch .annual-actions>*{flex:1 1 auto}}
+
+
+/* Calendar-first PLFC social studio, 23 Nov 2026. Accessible controls and compact progressive disclosure. */
+.annual-root{--studio-teal:#08696b;--studio-ink:#163f45;--studio-line:#d8e7e2;--studio-sand:#fff9ef;color:var(--studio-ink);margin:.8rem 0 2rem}
+.annual-root :is(button,input,select,textarea){font-family:inherit}
+.annual-root :is(button,summary,input,select,textarea):focus-visible{outline:3px solid #ec9b45;outline-offset:3px}
+.annual-planner{padding:0;border:0;background:transparent}
+.annual-planner>summary{display:flex;align-items:center;gap:.5rem;min-height:44px;padding:.25rem 0 .7rem;color:var(--studio-teal);font-size:.88rem;line-height:1.4;letter-spacing:0}
+.annual-planner>summary strong{font-size:1.04rem;letter-spacing:-.025em}
+.annual-preview{border:0;padding:0}
+.annual-eyebrow{display:block;color:var(--studio-teal);font-size:.72rem;font-weight:800;letter-spacing:.12em;line-height:1.4}
+.annual-month-toolbar{display:flex;align-items:end;justify-content:space-between;gap:1.2rem;flex-wrap:wrap;margin:0 0 1.25rem}
+.annual-month-toolbar h2{color:var(--studio-ink);font:800 clamp(2rem,4vw,3.05rem)/1.05 Manrope,'DM Sans',sans-serif;letter-spacing:-.06em;margin:.35rem 0}
+.annual-month-toolbar p{font-size:.94rem;color:var(--muted);margin:.35rem 0 0}
+.annual-month-navigation{display:flex;gap:.45rem;align-items:center}
+.annual-month-navigation button{width:44px;height:45px;background:#eaf4ef;color:var(--studio-teal);border:1px solid #bbd5cd;border-radius:11px;font-size:2rem;line-height:1;display:grid;place-items:center}
+.annual-month-navigation button:hover:not(:disabled){background:#d0e8df}
+.annual-month-navigation select{width:min(220px,44vw);min-height:45px;padding:.6rem .75rem;border-radius:11px;background:#fff;color:var(--studio-ink);font-weight:750}
+.annual-visual-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.75rem;margin-bottom:1.05rem}
+.annual-stat-card{display:flex;gap:.7rem;align-items:center;min-height:92px;background:#fff;border:1px solid var(--studio-line);border-radius:16px;padding:.9rem;box-shadow:0 5px 22px #0b454808}
+.annual-stat-card:nth-child(2){background:#eef7f4}
+.annual-stat-card:nth-child(3){background:#f7f7ee}
+.annual-stat-card:nth-child(4){background:#fff8ed}
+.annual-stat-card .annual-stat-icon{display:grid;place-items:center;min-width:41px;height:41px;background:#ffffffbe;border-radius:12px;font-size:1.5rem}
+.annual-stat-card strong{font:800 clamp(1.28rem,2.4vw,1.8rem)/1.25 Manrope,sans-serif;letter-spacing:-.045em;color:var(--studio-ink);display:block;white-space:nowrap}
+.annual-stat-card span:last-child{font-size:.78rem;color:#55736a;font-weight:600;line-height:1.4;display:block}
+.annual-calendar-shell{background:#fff;border:1px solid var(--studio-line);border-radius:19px;box-shadow:0 10px 35px #174c4810;padding:clamp(.75rem,2vw,1.25rem);margin:0 0 1.25rem}
+.annual-calendar-header{display:flex;align-items:end;justify-content:space-between;gap:1rem;flex-wrap:wrap;margin:0 0 1.15rem}
+.annual-calendar-header h3{font:800 1.3rem/1.2 Manrope,sans-serif;letter-spacing:-.035em;color:var(--studio-ink);margin:0 0 .3rem}
+.annual-calendar-header p{font-size:.9rem;color:var(--muted);margin:0}
+.annual-calendar-filter{display:flex;gap:.55rem;align-items:center;flex-direction:row;font-size:.83rem;font-weight:700}
+.annual-calendar-filter select{width:185px;min-height:41px;padding:.5rem .6rem;font-size:.85rem}
+.annual-calendar-weekdays,.annual-calendar-days{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px}
+.annual-calendar-weekdays{margin-bottom:6px}
+.annual-calendar-weekdays span{text-align:center;font-size:.77rem;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:#55756d;padding:.25rem 0}
+.annual-calendar-day{display:flex;flex-direction:column;justify-content:space-between;align-items:stretch;gap:.4rem;min-width:0;min-height:99px;background:#f9fcfa;border:1px solid #d9e8e1;color:#294d4b;border-radius:11px;padding:.53rem .45rem;cursor:pointer;text-align:left;transition:transform .12s,border-color .12s,background-color .12s}
+.annual-calendar-day.has-posts{background:#eef8f4;border-color:#b7d7ca}
+.annual-calendar-day.qld{background:#fff7ed}
+.annual-calendar-day.nsw{box-shadow:inset 0 -3px #9e83c6}
+.annual-calendar-day.qld.nsw{background:#f7f4fc;box-shadow:inset 0 -3px #9e83c6,inset 0 3px #eba853}
+.annual-calendar-day:hover:not(:disabled){transform:translateY(-2px);border-color:#258c78;background:#dcf2e8}
+.annual-calendar-day:disabled{background:#f5f7f5;border-style:dashed;color:#adbbb5;cursor:default}
+.annual-calendar-day-top{display:flex;align-items:flex-start;justify-content:space-between;gap:.25rem}
+.annual-calendar-day-top strong{font:800 1.02rem/1 Manrope,sans-serif}
+.annual-calendar-count{background:var(--studio-teal);color:white;border-radius:7px;font-size:.68rem;font-weight:800;line-height:1.4;padding:.08rem .38rem;min-width:19px;text-align:center}
+.annual-calendar-icons{display:flex;gap:.08rem;align-items:center;justify-content:flex-start;white-space:nowrap;overflow:hidden;min-height:30px}
+.annual-calendar-icons span{font-size:clamp(.98rem,2vw,1.37rem);line-height:1.3}
+.annual-calendar-dots{display:flex;gap:.2rem;align-items:center;min-height:5px}
+.annual-calendar-dots i,.annual-calendar-legend i{display:inline-block;width:8px;height:8px;border-radius:50%;background:#d6e2da}
+.annual-calendar-dots i.qld,.annual-calendar-legend i.qld{background:#eb9f43}
+.annual-calendar-dots i.nsw,.annual-calendar-legend i.nsw{background:#9e83c6}
+.annual-calendar-pad{min-height:1px}
+.annual-calendar-legend{display:flex;flex-wrap:wrap;gap:.5rem 1.15rem;margin-top:1rem;color:#60766f;font-size:.78rem}
+.annual-calendar-legend span{display:inline-flex;align-items:center;gap:.32rem}
+.annual-batch{margin:1.15rem 0;padding:1.1rem;background:linear-gradient(135deg,#eef8f3,#f8fbf8);border:1px solid #bfd9c9;border-radius:18px;gap:1rem}
+.annual-batch-head{align-items:center}
+.annual-batch-head h2{font:800 clamp(1.36rem,3vw,1.85rem)/1.2 Manrope,sans-serif;letter-spacing:-.04em;margin:.25rem 0}
+.annual-batch-status{font-size:.75rem!important;font-weight:750;color:#547268;background:#fff;border:1px solid #d7e7db;border-radius:100px;padding:.35rem .75rem}
+.annual-slider-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(175px,1fr));gap:.65rem}
+.annual-range-card{display:flex!important;flex-direction:column;gap:.9rem;min-width:0;padding:.8rem .85rem;background:#fff;border:1px solid #d3e6d9;border-radius:13px;box-shadow:0 2px 9px #0b494807}
+.annual-range-heading{display:flex;align-items:baseline;justify-content:space-between;gap:.5rem}
+.annual-range-label{font-size:.84rem;font-weight:750;color:#244a47}
+.annual-range-heading output{font:800 1.24rem/1.1 Manrope,sans-serif;color:var(--studio-teal)}
+.annual-root input[type=range]{width:100%;cursor:ew-resize;accent-color:var(--studio-teal);margin:.2rem 0 .1rem;padding:0;min-height:18px;background:transparent;border:0}
+.annual-root input[type=checkbox]{accent-color:var(--studio-teal);width:18px;height:18px;flex-shrink:0}
+.annual-batch>details{padding:.1rem;background:#fff;border:1px solid #d9e8e0;border-radius:12px}
+.annual-batch>details>summary{display:flex;align-items:center;justify-content:space-between;gap:.6rem;padding:.9rem 1rem;font-weight:750;font-size:.92rem;color:#235752;cursor:pointer}
+.annual-batch>details>summary small{color:#688076;font-weight:600}
+.annual-batch>details[open]>summary{border-bottom:1px solid var(--studio-line)}
+.annual-topic-grid{padding:1rem;display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:.7rem}
+.annual-topic-card{background:#fbfdfb;border:1px solid #e0eae3;border-radius:12px;padding:.85rem;display:flex;flex-direction:column;gap:.55rem;min-width:0}
+.annual-topic-top{display:flex;gap:.7rem;align-items:center}
+.annual-topic-top strong{font-size:.86rem;line-height:1.35;color:var(--studio-ink)}
+.annual-topic-icon{display:grid;place-items:center;font-size:1.35rem;width:35px;height:35px;background:#e7f4ec;border-radius:10px;flex-shrink:0}
+.annual-topic-toggles{display:flex;gap:.5rem 1rem;align-items:center;flex-wrap:wrap}
+.annual-topic-toggles label{display:flex!important;align-items:center;flex-direction:row;gap:.38rem;font-size:.79rem;font-weight:700;cursor:pointer}
+.annual-topic-range{display:flex!important;flex-direction:column;gap:.1rem;font-size:.78rem;font-weight:650}
+.annual-topic-range span{display:flex;justify-content:space-between}
+.annual-topic-range output{font-weight:800;color:var(--studio-teal)}
+.annual-batch .annual-audience{padding:0 1rem 1rem}
+.annual-batch .annual-audience fieldset{display:flex;gap:.5rem 1rem}
+.annual-batch .annual-audience fieldset label{display:flex;flex-direction:row;align-items:center;gap:.3rem}
+.annual-batch .annual-destinations{margin:1rem;padding:.8rem}
+.annual-batch .annual-destinations label{display:flex;flex-direction:row}
+.annual-batch .annual-actions{margin:.3rem 0 0}
+.annual-batch .annual-actions .button{min-height:43px;padding:.65rem 1.1rem}
+.annual-batch .annual-small{margin:0}
+.annual-year-overview,.annual-master-library,.annual-default-settings{border:1px solid var(--studio-line);border-radius:13px;margin:.75rem 0;padding:0;background:#fff}
+.annual-year-overview>summary,.annual-master-library>summary,.annual-default-settings>summary{padding:.8rem 1rem;cursor:pointer;font-size:.9rem;font-weight:750;color:#245853}
+.annual-year-overview>summary small{font-size:.76rem;font-weight:500;color:var(--muted);margin-left:.5rem}
+.annual-year-overview>.annual-month-grid{margin:0;padding:1rem}
+.annual-month-grid{grid-template-columns:repeat(auto-fit,minmax(120px,1fr))}
+.annual-month-grid button{min-height:55px;padding:.6rem .7rem;background:#f7fbf8}
+.annual-start-choice{padding:0 1rem 1rem;max-width:235px}
+.annual-master-library p{margin:.65rem 1rem;font-size:.82rem}
+.annual-master-library ul{padding:0 1rem 1rem}
+.annual-default-settings .annual-settings{padding:0 1rem 1rem}
+.annual-footer-guidance{margin:1rem 0;color:#648078}
+.annual-root [data-annual-notice]{padding:.4rem 0;min-height:1.2rem}
+.annual-loading{padding:1rem;color:#52756c}
+/* Day popups: glance → details → individual edit. */
+.annual-day-dialog{position:fixed;margin:auto;padding:0!important;width:min(720px,calc(100vw - 1.4rem));max-width:720px;max-height:min(88vh,900px);overflow-y:auto;overscroll-behavior:contain;background:#fff;border:1px solid #c6ded3;border-radius:20px;box-shadow:0 30px 100px #062f3860;color:var(--studio-ink)}
+.annual-day-dialog::backdrop{background:#072f3691;backdrop-filter:blur(3px)}
+.annual-dialog-header{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;background:#f0f8f3;border-bottom:1px solid #d9e9df;padding:1.3rem 1.4rem 1rem;position:sticky;top:0;z-index:2}
+.annual-dialog-header h2{font:800 clamp(1.22rem,4vw,1.85rem)/1.15 Manrope,sans-serif;letter-spacing:-.035em;margin:.2rem 0 0;color:var(--studio-ink)}
+.annual-dialog-kicker{font-size:.73rem!important;letter-spacing:.09em;text-transform:uppercase;font-weight:800;color:#40766a!important;margin:0!important}
+.annual-dialog-close{flex-shrink:0;width:40px;height:40px;background:#fff;color:#386b61;border:1px solid #d2e5da;border-radius:50%;font-weight:800;font-size:1.15rem}
+.annual-dialog-lead{margin:1rem 1.4rem!important;color:#5f756d!important;font-size:.91rem!important}
+.annual-day-posts{padding:.3rem 1.35rem 1.1rem;display:grid;gap:.75rem}
+.annual-day-post{display:flex;gap:.8rem;align-items:flex-start;background:#fff;border:1px solid #e0ebe4;border-radius:13px;padding:1rem;box-shadow:0 4px 12px #08464208}
+.annual-day-post-icon,.annual-dialog-post-icon{display:grid;place-items:center;font-size:1.5rem;background:#eef7f1;border-radius:12px;min-width:43px;height:43px;flex-shrink:0}
+.annual-day-post-content{flex:1;min-width:0}
+.annual-day-post h3{font:800 1.08rem/1.3 Manrope,sans-serif;letter-spacing:-.025em;margin:.4rem 0 .4rem;color:var(--studio-ink)}
+.annual-day-post p{font-size:.88rem;color:#61776d;line-height:1.55;margin:0 0 .65rem}
+.annual-post-tags{display:flex;align-items:center;flex-wrap:wrap;gap:.3rem .45rem;margin:.2rem 0}
+.annual-post-tags span{font-size:.7rem;font-weight:750;padding:.23rem .5rem;background:#eaf5ee;color:#245e55;border-radius:100px}
+.annual-day-post-actions,.annual-dialog-actions{display:flex;gap:.55rem;align-items:center;flex-wrap:wrap}
+.annual-day-post-actions .button{min-height:36px;font-size:.79rem;padding:.45rem .85rem}
+.annual-dialog-actions{position:sticky;bottom:0;padding:.95rem 1.4rem;border-top:1px solid var(--studio-line);background:#ffffffed;z-index:2}
+.annual-dialog-actions .button{min-height:40px;font-size:.83rem;padding:.6rem .95rem}
+.annual-dialog-post-icon{margin:1.15rem 1.4rem .4rem}
+.annual-dialog-post-title{margin:.45rem 1.4rem .6rem!important;font:800 clamp(1.25rem,3vw,1.65rem)/1.22 Manrope,sans-serif!important;letter-spacing:-.035em}
+.annual-day-dialog>.annual-post-tags{margin:.3rem 1.4rem 1.2rem}
+.annual-dialog-section{padding:.75rem 1.4rem;border-top:1px solid #e9eeeb}
+.annual-dialog-section h4{font:800 .93rem/1.35 Manrope,sans-serif;margin:0 0 .45rem}
+.annual-dialog-section p{color:#516a62;font-size:.9rem;line-height:1.6;margin:.2rem 0 .5rem}
+.annual-dialog-section ol{padding-left:1.1rem;margin:.5rem 0;font-size:.88rem}
+.annual-dialog-section li{margin-bottom:.3rem}
+.annual-dialog-spec{margin:.75rem 1.4rem;padding:.7rem;background:#f7faf7;border:1px solid #dce8e0;border-radius:11px}
+.annual-dialog-spec>summary{font-size:.88rem;font-weight:800;color:var(--studio-teal);cursor:pointer}
+.annual-dialog-spec ul{list-style:none;padding:0;margin:.7rem 0}
+.annual-dialog-spec li{padding:.55rem 0;border-bottom:1px solid #e4ebe5;display:flex;justify-content:space-between;gap:.7rem;font-size:.82rem}
+.annual-dialog-spec li span{color:#57776d;text-align:right}
+.annual-dialog-spec p{font-size:.78rem;color:#6a7b75}
+.annual-dialog-empty{padding:1rem;background:#f1f7f3;border-radius:12px}
+.annual-edit-form{padding:1rem 1.4rem;display:grid;gap:.9rem}
+.annual-edit-form label{font-size:.85rem;font-weight:750}
+.annual-edit-form :is(input,textarea,select){width:100%;border-radius:9px;background:#fff;border:1px solid #b9d3c8;font-size:.94rem;line-height:1.5}
+.annual-dialog-hint{color:#698077!important;font-size:.8rem!important;margin:0 1.4rem 1rem!important}
+@media(max-width:980px){.annual-visual-stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:640px){
+  .annual-month-toolbar{gap:.75rem}
+  .annual-month-toolbar h2{font-size:2rem}
+  .annual-month-navigation{width:100%;justify-content:space-between}
+  .annual-month-navigation select{flex:1;width:auto}
+  .annual-calendar-shell{padding:.65rem;border-radius:13px}
+  .annual-calendar-header{align-items:start}
+  .annual-calendar-filter{flex:1 1 100%;justify-content:space-between}
+  .annual-calendar-filter select{max-width:240px;width:65%}
+  .annual-calendar-weekdays,.annual-calendar-days{gap:3px}
+  .annual-calendar-day{min-height:71px;padding:4px;gap:3px;border-radius:7px}
+  .annual-calendar-day-top strong{font-size:.77rem}
+  .annual-calendar-count{font-size:.58rem;border-radius:5px;padding:1px 3px;min-width:14px}
+  .annual-calendar-icons span{font-size:.94rem}
+  .annual-calendar-icons span:nth-child(n+3){display:none}
+  .annual-calendar-legend{font-size:.73rem}
+  .annual-batch{padding:.8rem}
+  .annual-stat-card{padding:.7rem;min-height:82px}
+  .annual-stat-card strong{font-size:1.3rem}
+  .annual-stat-card .annual-stat-icon{min-width:35px;height:35px;font-size:1.2rem}
+  .annual-topic-grid{grid-template-columns:1fr}
+  .annual-day-dialog{max-height:92vh}
+  .annual-dialog-header{padding:1rem}
+  .annual-day-posts,.annual-edit-form{padding:.7rem 1rem}
+  .annual-dialog-lead{margin:.75rem 1rem!important}
+  .annual-dialog-actions{padding:.75rem 1rem}
+  .annual-dialog-section{padding:.7rem 1rem}
+  .annual-dialog-post-title{margin:.4rem 1rem!important}
+  .annual-dialog-post-icon{margin:1rem 1rem .4rem}
+  .annual-day-dialog>.annual-post-tags{margin:.2rem 1rem}
+  .annual-dialog-spec{margin:.6rem 1rem}
+  .annual-dialog-hint{margin:.2rem 1rem 1rem!important}
+}
+@media(prefers-reduced-motion:reduce){.annual-calendar-day{transition:none}.annual-calendar-day:hover{transform:none}}
