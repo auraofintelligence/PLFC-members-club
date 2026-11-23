@@ -83,7 +83,25 @@ export async function socialCampaignSettingsEndpoint(request,env,identity,{json,
   const query=db.prepare('SELECT version,settings_json AS settings,updated_at AS updatedAt,updated_by AS updatedBy FROM committee_social_campaign_settings WHERE id=1');
   const toPublic=row=>row?{version:row.version,settings:JSON.parse(row.settings),updatedAt:row.updatedAt,updatedBy:row.updatedBy}:
     {version:0,settings:null,updatedAt:null,updatedBy:null};
-  if(request.method==='GET')return json(toPublic(await query.first()));
+  // Automatic Git deployment updates Worker code, but does not run D1 migrations.
+  // Only repair this particular absent table. Never hide unrelated DB failures.
+  const readSettings=async()=>{
+    try{return await query.first();}
+    catch(error){
+      const reason=String(error?.message||error);
+      if(!/no such table:\s*(?:main\.)?committee_social_campaign_settings\b/i.test(reason))throw error;
+      await db.prepare(`CREATE TABLE IF NOT EXISTS committee_social_campaign_settings (
+        id INTEGER PRIMARY KEY CHECK(id=1),
+        version INTEGER NOT NULL CHECK(version>0),
+        settings_json TEXT NOT NULL CHECK(json_valid(settings_json)),
+        updated_at TEXT NOT NULL,
+        updated_by TEXT NOT NULL REFERENCES club_accounts(id)
+      )`).run();
+      return query.first();
+    }
+  };
+  const current=await readSettings();
+  if(request.method==='GET')return json(toPublic(current));
   const body=await bodyJson(request,1500000);
   const invalid=message=>{throw new HttpError(400,message,'invalid_campaign_settings');};
   if(!body||Object.keys(body).sort().join(',')!=='settings,version'||!Number.isInteger(body.version)||body.version<0||body.version>2147483645)invalid('Reload the saved campaign settings.');
