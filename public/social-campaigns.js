@@ -1,4 +1,5 @@
 import {CAMPAIGN_LAYERS,defaultCampaignSettings,generateCampaignYear} from './social-campaign-engine.js';
+import {PUBLISHING_DESTINATIONS,placementSources} from './social-placements.js';
 
 const endpoint='/api/committee/social-campaign-settings';
 const choices={
@@ -36,8 +37,16 @@ export function setupAnnualCampaigns({mount,api,esc,isActive,onUse}){
       options.map(([id,label])=>'<label><input type="checkbox" data-annual-audience="'+field+'" value="'+id+'"'+
         checked(settings.layers[selectedLayer].audience[field].includes(id))+'>'+esc(label)+'</label>').join('')+
       '</fieldset>').join('');
+    const delivery=(mode,title)=>'<fieldset class="annual-destinations"><legend>'+title+'</legend>'+
+      PUBLISHING_DESTINATIONS.map(platform=>'<label><input type="checkbox" data-annual-destination="'+mode+'" value="'+platform.id+'"'+
+        checked(settings.delivery[mode].includes(platform.id))+'>'+esc(platform.label)+
+        (platform.status==='proposed'?' (proposed)':'')+'</label>').join('')+'</fieldset>';
     return '<div class="annual-settings"><div class="annual-limits">'+limits+
       '<label>Video share target <input type="number" data-annual-video min="0" max="100" step="1" value="'+settings.videoShare+'"><small>% of posts</small></label></div>'+
+      '<div class="annual-delivery"><h3>Publishing placements and advertising</h3>'+delivery('organic','Organic destinations')+
+      '<label><input type="checkbox" data-annual-paid-planning'+checked(settings.delivery.paidPlanning)+'> Include paid-ad creative suggestions (approval required)</label>'+
+      delivery('paid','Paid creative destinations')+
+      '<p class="annual-small">Paid presets are only production briefs. Budgets, accounts, targeting permission, review and launch must be agreed separately. Straddie Noticeboard is a proposed outlet, not a connected advertising service.</p></div>'+
       '<div class="annual-pattern-table"><table><thead><tr><th>Pattern layer</th><th>Generate</th><th>Show</th><th>Per week</th></tr></thead><tbody>'+rows+'</tbody></table></div>'+
       '<div class="annual-audience"><label>Audience for <select data-annual-select-layer>'+
       CAMPAIGN_LAYERS.map(layer=>'<option value="'+layer.id+'"'+(selectedLayer===layer.id?' selected':'')+'>'+esc(layer.label)+'</option>').join('')+
@@ -57,12 +66,13 @@ export function setupAnnualCampaigns({mount,api,esc,isActive,onUse}){
     const current=visible.filter(p=>p.date.startsWith(selectedMonth));
     const days=new Map(plan.days.map(day=>[day.date,day]));
     const nsw=plan.days.filter(day=>day.nswHoliday&&!day.holiday).length;
+    const paidIdeas=plan.posts.filter(p=>p.creativeVariants.some(v=>v.distribution==='paid')).length;
     return '<div class="annual-preview">'+
       '<div class="annual-month-choose"><label>Year begins <input type="month" data-annual-start min="2026-01" max="2028-02" value="'+startMonth+'"></label>'+
       '<label>View month <select data-annual-month>'+months.map(m=>'<option value="'+m+'"'+(selectedMonth===m?' selected':'')+'>'+monthName(m)+'</option>').join('')+'</select></label></div>'+
       '<div class="annual-stats"><strong>'+plan.totals.posts+' suggestions</strong><strong>'+plan.totals.videos+' videos ('+
         Math.round(100*plan.totals.videos/Math.max(1,plan.totals.posts))+'%)</strong><strong>'+plan.totals.combined+
-        ' composite posts</strong><span>'+nsw+' NSW-only visitor days</span><span>'+plan.totals.omitted+' ideas over daily limits</span></div>'+
+        ' composite posts</strong><span>'+nsw+' NSW-only visitor days</span><span>'+plan.totals.omitted+' ideas over daily limits</span><span>'+paidIdeas+' ideas with ad creative suggestions (unapproved)</span></div>'+
       '<div class="annual-month-grid">'+months.map(m=>'<button type="button" data-annual-go="'+m+'" aria-pressed="'+(selectedMonth===m)+'">'+monthName(m)+
         '<span>'+visible.filter(p=>p.date.startsWith(m)).length+' visible suggestions</span></button>').join('')+'</div>'+
       '<h3>'+monthName(selectedMonth)+' · '+current.length+' visible suggestions</h3>'+
@@ -73,10 +83,16 @@ export function setupAnnualCampaigns({mount,api,esc,isActive,onUse}){
           esc(p.suggestedTime)+' AEST'+(region?' · '+esc(region):'')+'</small>'+
           '<p>'+esc(p.brief)+'</p><p><strong>Audience:</strong> '+esc(audienceText(p.audience))+
           ' · <strong>CTA:</strong> '+esc(p.cta)+'</p>'+
-          (p.storyboard.length?'<p><strong>30-second video:</strong> '+esc(p.storyboard.join(' | '))+'</p>':'')+'</div>'+
+          (p.storyboard.length?'<p><strong>30-second video:</strong> '+esc(p.storyboard.join(' | '))+'</p>':'')+
+          '<details class="annual-placement-detail"><summary>'+p.creativeVariants.length+' placement-specific creative exports</summary><ul>'+
+          p.creativeVariants.map(v=>'<li><strong>'+esc(v.platform)+' · '+esc(v.placement)+'</strong> · '+esc(v.asset)+
+            ' · '+esc(v.size)+' · '+esc(v.ratio)+' · '+(v.distribution==='paid'?'Paid ad template / unapproved':'Organic')+
+            (v.provisional?' · PROPOSED ONLY':'')+'<small>'+esc(v.note)+'</small></li>').join('')+
+          '</ul></details></div>'+
           '<button type="button" class="button outline small" data-annual-use="'+esc(p.id)+'">Use as draft</button></li>';
       }).join('')+'</ol>':'<p>No suggestions in the visible layers for this month.</p>')+
       '<p class="annual-small">Suggestions only: no draft or post is saved until you choose Use as draft and save it in the existing planner. Verify weather and tides shortly before publishing, and confirm all event, raffle, fundraising, species and licensing details.</p>'+
+      '<p class="annual-small">Placement references: <a href="'+esc(placementSources.meta)+'" target="_blank" rel="noopener noreferrer">Meta Ads Guide</a> · <a href="'+esc(placementSources.youtube)+'" target="_blank" rel="noopener noreferrer">Google Ads</a> · <a href="'+esc(placementSources.tiktok)+'" target="_blank" rel="noopener noreferrer">TikTok Ads</a> · <a href="'+esc(placementSources.noticeboard)+'" target="_blank" rel="noopener noreferrer">Noticeboard pilot</a>.</p>'+
       '<p class="annual-small">Official holidays: <a href="https://education.qld.gov.au/about-us/calendar/future-dates" target="_blank" rel="noopener noreferrer">Queensland</a> · <a href="https://education.nsw.gov.au/schooling/calendars/future-and-past-nsw-term-and-vacation-dates" target="_blank" rel="noopener noreferrer">NSW (Eastern/Western)</a>.</p></div>';
   }
   function markup(){return '<section class="annual-root" data-annual-root aria-label="12-month social pattern planner"><details class="annual-planner" open>'+
@@ -120,6 +136,11 @@ export function setupAnnualCampaigns({mount,api,esc,isActive,onUse}){
     else if(e.hasAttribute('data-annual-frequency'))settings.layers[e.dataset.annualFrequency].weekly=Math.max(0,Math.min(7,Number(e.value)||0));
     else if(e.hasAttribute('data-annual-limit'))settings.limits[e.dataset.annualLimit]=Math.max(0,Math.min(12,Number(e.value)||0));
     else if(e.hasAttribute('data-annual-video'))settings.videoShare=Math.max(0,Math.min(100,Number(e.value)||0));
+    else if(e.hasAttribute('data-annual-paid-planning'))settings.delivery.paidPlanning=e.checked;
+    else if(e.hasAttribute('data-annual-destination')){
+      const mode=e.dataset.annualDestination,ids=settings.delivery[mode];
+      settings.delivery[mode]=e.checked?[...new Set([...ids,e.value])]:ids.filter(id=>id!==e.value);
+    }
     else if(e.hasAttribute('data-annual-select-layer'))selectedLayer=e.value;
     else if(e.hasAttribute('data-annual-audience'))updateAudience(e.dataset.annualAudience,e.value,e.checked);
     else if(e.hasAttribute('data-annual-start') && /^20\d{2}-(0[1-9]|1[0-2])$/.test(e.value))startMonth=e.value;
@@ -134,7 +155,7 @@ export function setupAnnualCampaigns({mount,api,esc,isActive,onUse}){
     if(b.hasAttribute('data-annual-go')){selectedMonth=b.dataset.annualGo;draw();return;}
     if(b.hasAttribute('data-annual-use')){
       const post=lastPreview?.posts.find(p=>p.id===b.dataset.annualUse);if(!post)return;
-      onUse({title:post.title,body:post.brief+'\n\nSuggested format: '+post.format+' ('+post.size+'). '+post.cta+'.',channels:post.channels,plannedDate:post.date});
+      onUse({title:post.title,body:post.brief+'\n\nSuggested format: '+post.format+' ('+post.size+'). '+post.cta+'. Review creative exports in the annual planner before publication.',channels:post.channels,plannedDate:post.date});
     }
   });
   return {markup,open,reset(){loaded=false;busy=false;settings=defaultCampaignSettings();saved=JSON.stringify(settings);version=0;notice='';lastPreview=null;}};
