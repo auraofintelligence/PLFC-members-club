@@ -44,3 +44,9 @@
 .annual-placement-detail ul{list-style:none;margin:.5rem 0;padding:0}
 .annual-placement-detail li{display:block;border-top:1px solid var(--line);padding:.5rem 0;font-size:.88rem}
 .annual-placement-detail small{display:block;color:var(--muted);margin:.15rem 0}
+
+.annual-master-library{padding:.6rem .85rem;border:1px solid var(--line);border-radius:.5rem;margin:1rem 0}
+.annual-master-library summary{cursor:pointer;color:var(--teal);font-weight:750}
+.annual-master-library p{font-size:.87rem}
+.annual-master-library ul{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:.5rem;margin:.65rem 0 0;padding:0;list-style:none}
+.annual-master-library li{font-size:.87rem;padding:.45rem;background:var(--mint);border-radius:.3rem}
