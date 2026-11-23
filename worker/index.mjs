@@ -20,6 +20,7 @@ import {operatingAuthority} from './operating-authority.mjs';
 import {runMeetingReminders,meetingRemindersEndpoint} from './meeting-reminders.mjs';
 import {agmJobs} from './agm-jobs.mjs';
 import {socialPlannerEndpoint} from './social-planner.mjs';
+import {socialCampaignSettingsEndpoint} from './social-campaign-settings.mjs';
 import {socialBrainstormEndpoint} from './social-brainstorm.mjs';
 import {fundraisingEventsEndpoint} from './fundraising-events.mjs';
 import {memberCalendarEndpoint} from './member-calendar.mjs';
@@ -313,7 +314,8 @@ async function serveClub(request, env) {
     if (path === '/api/committee/news' || path === '/api/member/news') return await newslettersEndpoint(path,request,env,await getIdentity(request,env),helpers);
     if (path === '/api/member/lifecycle' || path === '/api/committee/lifecycle') return await lifecycleEndpoint(path,request,env,await getIdentity(request,env),helpers);
     if (path === '/constitution.pdf') return await handleLibrary(request,env,null);
-    if (path === '/api/committee/social-planner') return await socialPlannerEndpoint(request,env,await getIdentity(request,env),helpers);
+    if (path === '/api/committee/social-campaign-settings') return await socialCampaignSettingsEndpoint(request,env,await getIdentity(request,env),helpers);
+     if (path === '/api/committee/social-planner') return await socialPlannerEndpoint(request,env,await getIdentity(request,env),helpers);
     if (path === '/api/committee/social-brainstorm') return await socialBrainstormEndpoint(request,env,await getIdentity(request,env),helpers);
     if (path === '/api/committee/events') return await fundraisingEventsEndpoint(request,env,await getIdentity(request,env),helpers);
     if (path==='/api/member/honours'||path==='/api/committee/honours'||path.startsWith('/api/committee/honours/'))return await honoursEndpoint(request,env,await getIdentity(request,env),helpers);

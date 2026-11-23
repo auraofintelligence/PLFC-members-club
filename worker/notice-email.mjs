@@ -5,6 +5,8 @@ const defaultOrigin = 'https://plfc-clubhouse.auraofintelligence.workers.dev';
 
 const clubGmail = 'pointlookoutfc@gmail.com';
 function transport(env) {
+  // Preview environments and explicitly disabled outbound mode can never send club email.
+  if (env.ENVIRONMENT === 'preview' || env.OUTBOUND_ENABLED === 'false') return '';
   const gmail = [env.NOTICE_GMAIL_CLIENT_ID,env.NOTICE_GMAIL_CLIENT_SECRET,env.NOTICE_GMAIL_REFRESH_TOKEN].every(value=>value?.trim());
   const resend = Boolean(env.RESEND_API_KEY?.trim() && env.NOTICE_EMAIL_FROM?.trim());
   if (env.NOTICE_EMAIL_PROVIDER) {

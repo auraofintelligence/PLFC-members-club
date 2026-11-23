@@ -7,6 +7,11 @@ import {handleRequest} from '../worker/index.mjs';
 import {todoTiming} from '../public/officer-todos.js';
 
 const endpoint='/api/committee/todos',origin='https://club.example';
+// The removed, unheld hotel meeting must not be reseeded as a real club event.
+// These tests construct their own fictional meeting register entry.
+async function fictionalCatchup(db){
+  await db.prepare("INSERT INTO meeting_register(id,title,date,time,location,created_by,created_at,agenda_kind) VALUES('test-informal-catchup','Fictional committee catch-up','2026-11-22','10:00','Example venue','test','2026-11-20','informal')").run();
+}
 
 test('officer work lists label deadlines from the Queensland day and distinguish event dates',()=>{
   const today='2026-12-29';
@@ -139,7 +144,7 @@ test('officer print lists omit empty owner accounts and preserve owner work and 
 
 test('name mapping applies to the individual confirmed action; a paper return updates its source without changing any decision',async t=>{
   const {db,send,view,submit,register}=await fixture(t);await register('president');
-  const meeting='hotel-meeting-2026-11-22',jobs=[{id:'venue',owner:'Pat',text:'Check visit time',dueDate:'2026-11-30',done:false},{id:'another',owner:'Pat',text:'Different work',dueDate:'2026-12-01',done:false}];
+  await fictionalCatchup(db);const meeting='test-informal-catchup',jobs=[{id:'venue',owner:'Pat',text:'Check visit time',dueDate:'2026-11-30',done:false},{id:'another',owner:'Pat',text:'Different work',dueDate:'2026-12-01',done:false}];
   await db.prepare("INSERT INTO meeting_notes(id,notes,actions_json,decisions_json,status,version,updated_at,updated_by,last_mutation_id) VALUES(?,'Private original',?,'[]','approved',1,'2026','secretary','m')")
     .bind(meeting,JSON.stringify(jobs)).run();
   const unknown=(await view('secretary')).tasks.find(t=>t.id==='venue');
@@ -157,9 +162,9 @@ test('name mapping applies to the individual confirmed action; a paper return up
   assert.deepEqual((await(await send('president',null,'/api/meetings')).json()).openJobs.map(t=>t.id),['another']);
 });
 
-test('Sunday’s informal catch-up only contributes finalised follow-ups to office lists and the register',async t=>{
-  const {db,send,view,register,submit}=await fixture(t),meetingId='hotel-meeting-2026-11-22';
-  await register('president');await register('vicepresident');
+test('a fictional informal catch-up only contributes finalised follow-ups to office lists and the register',async t=>{
+  const {db,send,view,register,submit}=await fixture(t),meetingId='test-informal-catchup';
+  await fictionalCatchup(db);await register('president');await register('vicepresident');
   const officers=['secretary','assistantsecretary','president','vicepresident','treasurer','owner'];
   const snapshot=async()=>{
     const response=await send('secretary',null,'/api/meetings');assert.equal(response.status,200);
