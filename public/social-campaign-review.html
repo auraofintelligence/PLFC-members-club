@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en-AU">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <meta name="color-scheme" content="light">
+  <title>PLFC annual campaign planner | Isolated visual review</title>
+  <link rel="icon" href="/assets/plfc-logo.png">
+  <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="/social-planner.css">
+  <link rel="stylesheet" href="/social-campaigns.css">
+  <style>
+    .review-header{background:var(--deep);color:#fff;padding:1.5rem max(1rem,calc((100% - 1150px)/2))}
+    .review-header h1{font-size:clamp(1.8rem,5vw,2.8rem);margin:.25rem 0}
+    .review-header p{max-width:75ch}
+    .review-flag{display:inline-block;border:1px solid #a8d9b9;border-radius:.3rem;padding:.15rem .55rem;text-transform:uppercase;letter-spacing:.12em;font-weight:700;font-size:.72rem}
+    .review-main{max-width:1150px;padding:1.5rem max(1rem,3vw);margin:0 auto}
+    #social-planner-desk{max-width:none}
+    .review-notice{padding:1rem 1.25rem;border-left:4px solid var(--teal);border-radius:.3rem;background:var(--mint);margin-bottom:1.3rem}
+    .review-notice p{margin-top:.35rem}
+    .review-footer{padding:1rem;max-width:1150px;margin:auto;font-size:.85rem;color:var(--muted)}
+    .review-dialog{border:1px solid var(--line);border-radius:.75rem;padding:1.5rem;max-width:min(650px,calc(100vw - 2rem));width:100%;box-shadow:0 25px 100px #092f3455}
+    .review-dialog::backdrop{background:#092f3477}
+    .review-dialog pre{white-space:pre-wrap;overflow-wrap:anywhere;background:var(--mint);padding:.8rem;border-radius:.3rem;max-height:45vh;overflow:auto;font:500 .85rem/1.6 monospace}
+    .review-actions{display:flex;flex-wrap:wrap;gap:.7rem;margin-top:1rem}
+  </style>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to planner</a>
+  <header class="review-header">
+    <span class="review-flag">Development review · fictional suggestions</span>
+    <h1>PLFC annual social campaign planner</h1>
+    <p>Try pattern switches, posting density, audience targeting, NSW and Queensland school holidays, video ratios, platform exports and paid-ad creative suggestions.</p>
+  </header>
+  <main class="review-main" id="main">
+    <div class="review-notice">
+      <strong>This is a safe visual rehearsal, not the live committee area.</strong>
+      <p>It runs the same calendar generator and settings controls as the draft planner, but uses temporary browser memory only. No member details, club database, social accounts, ads or real money are accessed. Refresh to reset.</p>
+      <p><a class="text-link" href="https://github.com/auraofintelligence/PLFC-members-club/pull/1" target="_blank" rel="noopener noreferrer">Review the source branch on GitHub</a></p>
+    </div>
+    <div id="social-planner-desk"><p role="status">Preparing the annual planner…</p></div>
+  </main>
+  <dialog class="review-dialog" id="trial-draft">
+    <h2>Draft-only post preview</h2>
+    <p>Nothing has been saved or sent. This is the content that would be passed into the private committee editor after review.</p>
+    <pre id="trial-draft-body"></pre>
+    <div class="review-actions">
+      <button class="button" type="button" id="trial-draft-copy">Copy draft</button>
+      <button class="button outline" type="button" id="trial-draft-close">Close</button>
+    </div>
+  </dialog>
+  <footer class="review-footer">PLFC · Point Lookout Fishing Club · Development preview for committee review only. Holiday dates and media formats must be rechecked before actual publication.</footer>
+  <script type="module">
+    import {setupAnnualCampaigns} from './social-campaigns.js';
+    import {defaultCampaignSettings} from './social-campaign-engine.js';
+
+    const mount=document.querySelector('#social-planner-desk');
+    const dialog=document.querySelector('#trial-draft'),draftBody=document.querySelector('#trial-draft-body');
+    const esc=value=>String(value??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+    let version=0,settings=null;
+    const api=async(path,options={})=>{
+      if(path!=='/api/committee/social-campaign-settings')throw new Error('This review does not contact club APIs.');
+      if(options.method==='POST'){
+        const value=JSON.parse(options.body);
+        if(value.version!==version)throw Object.assign(new Error('Your trial settings changed; please refresh.'),{status:409});
+        settings=structuredClone(value.settings);version++;
+        return {version,settings:structuredClone(settings),updatedAt:null,updatedBy:'trial'};
+      }
+      return {version,settings:settings?structuredClone(settings):null,updatedAt:null,updatedBy:null};
+    };
+    let draftText='';
+    const planner=setupAnnualCampaigns({
+      mount,api,esc,isActive:()=>true,reviewOnly:true,
+      onUse(draft){
+        draftText=JSON.stringify(draft,null,2);
+        draftBody.textContent=draftText;
+        dialog.showModal();
+      }
+    });
+    mount.innerHTML=planner.markup();
+    void planner.open();
+    document.querySelector('#trial-draft-close').addEventListener('click',()=>dialog.close());
+    document.querySelector('#trial-draft-copy').addEventListener('click',async()=>{
+      try{await navigator.clipboard.writeText(draftText);document.querySelector('#trial-draft-copy').textContent='Copied';}
+      catch{document.querySelector('#trial-draft-copy').textContent='Select the text to copy';}
+    });
+  </script>
+</body>
+</html>
