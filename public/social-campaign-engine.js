@@ -1,4 +1,5 @@
 import {creativeVariantsFor} from './social-placements.js';
+import {calendarDaySignals} from './social-holiday-calendar.js';
 export const CAMPAIGN_LAYERS = [
   {id:'fish',label:'Fish species and seasonal guides',frequency:3,priority:5,topics:['Species spotlight: identification and habitat','Check the seasonal fishing guide before a trip','Species handling and release demonstration','Compare two common local species'],cta:'Open the fishing guide'},
   {id:'bait',label:'Bait, rigs and tackle',frequency:3,priority:5,topics:['Which bait suits this fishing method?','Show a simple rig step by step','Packing a tackle kit for a day trip','How to look after bait on a warm day'],cta:'Explore the bait and rig guide'},
@@ -66,7 +67,11 @@ export const defaultCampaignSettings = () => ({
     season_close:{enabled:true,leadDays:[28,14,7,1]}
   },
   milestones:[],
-  videoShare:67, postingTime:'auto', limits:{weekday:2,friday:3,weekend:4,holiday:5},
+  videoShare:67, postingTime:'auto', limits:{
+    weekdayMin:1,weekday:4,fridayMin:1,friday:3,weekendMin:1,weekend:4,
+    longWeekendMin:2,longWeekend:5,publicHolidayMin:2,publicHoliday:6,
+    holidayMin:1,holiday:5
+  },
   delivery:{
     organic:['youtube','facebook','instagram','tiktok','noticeboard'],
     paid:['youtube','facebook','instagram','tiktok','noticeboard'],
@@ -83,10 +88,42 @@ export const scopeSettingsFor=(settings,scope,key)=>scope==='day'?
   settings.dayOverrides?.[key]||settingsForDate({...settings,dayOverrides:{}},key):
   scope==='week'?(settings.weekOverrides?.[key]||monthSettingsFor(settings,key)):
   monthSettingsFor(settings,key);
-export const copyMonthSettings=settings=>structuredClone({
-  videoShare:settings.videoShare,postingTime:settings.postingTime||'auto',limits:settings.limits,delivery:settings.delivery,layers:settings.layers
+export const POSTING_DAY_TYPES=Object.freeze([
+  {id:'weekday',label:'Weekday (Mon–Thu)',icon:'☀️'},
+  {id:'friday',label:'Friday',icon:'✨'},
+  {id:'weekend',label:'Weekend (Sat–Sun)',icon:'🏖️'},
+  {id:'longWeekend',label:'Long weekend',icon:'🧳'},
+  {id:'publicHoliday',label:'Public holiday',icon:'🎉'},
+  {id:'holiday',label:'QLD school holidays',icon:'🎒'}
+]);
+export const DEFAULT_DAILY_LIMITS=Object.freeze({
+  weekdayMin:1,weekday:4,fridayMin:1,friday:3,weekendMin:1,weekend:4,
+  longWeekendMin:2,longWeekend:5,publicHolidayMin:2,publicHoliday:6,
+  holidayMin:1,holiday:5
 });
-const capFor = (day,limits) => inHoliday(day)?limits.holiday:weekday(day)===5?limits.friday:[0,6].includes(weekday(day))?limits.weekend:limits.weekday;
+export function normaliseDailyLimits(existing={}){
+  const output={...DEFAULT_DAILY_LIMITS};
+  const legacy=Object.keys(existing).sort().join(',')==='friday,holiday,weekday,weekend';
+  for(const {id} of POSTING_DAY_TYPES){
+    const max=existing[id],min=existing[id+'Min'];
+    if(Number.isInteger(max))output[id]=Math.max(1,Math.min(12,id==='weekday'&&legacy&&max===2?4:max));
+    if(Number.isInteger(min))output[id+'Min']=Math.max(1,Math.min(12,min));
+    output[id]=Math.max(output[id],output[id+'Min']);
+  }
+  return output;
+}
+export function dayPostingBounds(day,limits){
+  const signals=calendarDaySignals(day);
+  const category=signals.publicHoliday?'publicHoliday':
+    signals.longWeekend?'longWeekend':inHoliday(day)?'holiday':
+    signals.weekday===5?'friday':[0,6].includes(signals.weekday)?'weekend':'weekday';
+  const current=normaliseDailyLimits(limits);
+  return {category,min:current[category+'Min'],max:current[category],...signals};
+}
+export const copyMonthSettings=settings=>structuredClone({
+  videoShare:settings.videoShare,postingTime:settings.postingTime||'auto',
+  limits:normaliseDailyLimits(settings.limits),delivery:settings.delivery,layers:settings.layers
+});
 function basePost(layer,day,weekKey,index){
   const topic=layer.id==='weather'?
     layer.topics[weekday(day)-4]:layer.topics[numberHash(layer.id+weekKey+day+index)%layer.topics.length];
@@ -231,32 +268,38 @@ export function generateCampaignYear(startMonth,settings=defaultCampaignSettings
   insertTimingSignals(settings,postsByDay);
   const dayCards=[],posts=[];
   for(const [day,candidates] of postsByDay){
-    candidates.sort((a,b)=>b.priority-a.priority||numberHash(a.id)-numberHash(b.id));
     const effective=settingsForDate(settings,day);
-    // The minimum is one genuine editorial suggestion a day, even when sparse
-    // weekly patterns or a historical zero-valued cap would leave a gap.
-    if(!candidates.length){
-      const eligible=CAMPAIGN_LAYERS.filter(layer=>effective.layers[layer.id]?.enabled&&
-        (!layer.holidayOnly||(layer.id==='nswHolidays'?inNSWHoliday(day):inHoliday(day)))&&
-        (layer.id!=='weather'||[4,5,6].includes(weekday(day))));
-      if(eligible.length){
-        const evergreen=eligible.sort((a,b)=>numberHash('daily-'+day+a.id)-numberHash('daily-'+day+b.id))[0];
-        const post=basePost(evergreen,day,'daily-'+day,0);
-        post.audience=effective.layers[evergreen.id].audience;
+    const bounds=dayPostingBounds(day,effective.limits);
+    const eligible=CAMPAIGN_LAYERS.filter(layer=>effective.layers[layer.id]?.enabled&&
+      effective.layers[layer.id]?.weekly>0&&
+      (!layer.holidayOnly||(layer.id==='nswHolidays'?inNSWHoliday(day):inHoliday(day)))&&
+      (layer.id!=='weather'||[4,5,6].includes(weekday(day))));
+    // Every day must reach its configured minimum. Use different enabled topics
+    // before repeating a layer, and never fabricate official conditions or club events.
+    for(let i=candidates.length;i<bounds.min;i++){
+      const present=new Set(candidates.flatMap(post=>post.layerIds));
+      const pool=eligible.filter(layer=>!present.has(layer.id));
+      const options=pool.length?pool:eligible;
+      const picked=options.sort((a,b)=>numberHash(day+'-'+i+'-'+a.id)-numberHash(day+'-'+i+'-'+b.id))[0];
+      if(picked){
+        const post=basePost(picked,day,'minimum-'+day,i);
+        post.id='minimum-'+picked.id+'-'+day+'-'+i;
+        post.priority=1;post.audience=effective.layers[picked.id].audience;
         candidates.push(post);
       }else{
-        // When all categories are switched off, preserve the daily plan by
-        // inviting the editor to select a topic rather than inventing content.
-        candidates.push({id:'daily-'+day,date:day,layerIds:['daily'],
-          title:'Choose a fresh PLFC post for today',
-          brief:'Pick a fishing, club or community topic, add verified facts and a useful image or video. This is an editable planning placeholder.',
+        candidates.push({id:'daily-'+day+'-'+i,date:day,layerIds:['daily'],
+          title:'Choose PLFC story '+(i+1)+' for today',
+          brief:'Write a genuine fishing, club or community idea using confirmed information. This is an editable planning placeholder.',
           cta:'Visit the club website',audience:{membership:['all'],gender:['all'],place:['all']},
           priority:0,composite:false,sections:['One relevant daily club update'],status:'suggestion'});
       }
     }
     candidates.sort((a,b)=>b.priority-a.priority||numberHash(a.id)-numberHash(b.id));
-    const {posts:chosen,omitted}=combine(candidates,Math.max(1,capFor(day,effective.limits)));
-    dayCards.push({date:day,holiday:inHoliday(day),nswHoliday:inNSWHoliday(day),nswWesternOnly:inNSWWesternExtension(day),omitted,count:chosen.length});
+    const {posts:chosen,omitted}=combine(candidates,bounds.max);
+    dayCards.push({date:day,holiday:inHoliday(day),nswHoliday:inNSWHoliday(day),nswWesternOnly:inNSWWesternExtension(day),
+      publicHoliday:bounds.publicHoliday,publicHolidayName:bounds.publicHolidayName,
+      partialPublicHoliday:bounds.partialPublicHoliday,longWeekend:bounds.longWeekend,
+      postingCategory:bounds.category,minimum:bounds.min,maximum:bounds.max,omitted,count:chosen.length});
     posts.push(...chosen);
   }
   const composites=posts.filter(p=>p.composite);

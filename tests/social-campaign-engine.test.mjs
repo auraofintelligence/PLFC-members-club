@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {CAMPAIGN_LAYERS,defaultCampaignSettings,generateCampaignYear,holidayInfluences} from '../public/social-campaign-engine.js';
+import {CAMPAIGN_LAYERS,defaultCampaignSettings,generateCampaignYear,holidayInfluences,dayPostingBounds} from '../public/social-campaign-engine.js';
 import {validateCampaignSettings} from '../worker/social-campaign-settings.mjs';
 
 const defaults=()=>defaultCampaignSettings();
@@ -12,8 +12,9 @@ test('12-month preview is deterministic, respects daily limits and targets two-t
   assert.equal(a.days.length,365);
   assert.ok(a.posts.length>500);
   for(const day of a.days){
-    const limit=day.holiday?settings.limits.holiday:weekday(day.date)===5?settings.limits.friday:[0,6].includes(weekday(day.date))?settings.limits.weekend:settings.limits.weekday;
-    assert.ok(day.count<=limit,day.date);
+    const {min,max}=dayPostingBounds(day.date,settings.limits);
+    assert.ok(day.count>=min,day.date+' falls below minimum '+min);
+    assert.ok(day.count<=max,day.date+' exceeds maximum '+max);
   }
   assert.ok(Math.abs(a.totals.videos/a.totals.posts-.67)<.005);
   assert.ok(a.totals.combined>0);

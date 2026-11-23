@@ -1,4 +1,4 @@
-import {CAMPAIGN_LAYERS,defaultCampaignSettings,generateCampaignYear,monthSettingsFor,copyMonthSettings,weekStart,settingsForDate,scopeSettingsFor} from './social-campaign-engine.js?v=20261123-timing-reports';
+import {CAMPAIGN_LAYERS,POSTING_DAY_TYPES,normaliseDailyLimits,defaultCampaignSettings,generateCampaignYear,monthSettingsFor,copyMonthSettings,weekStart,settingsForDate,scopeSettingsFor} from './social-campaign-engine.js?v=20261123-min-max';
 import {PUBLISHING_DESTINATIONS,placementSources,CREATIVE_SPEC_VERSION,MASTER_ASSET_PRESETS} from './social-placements.js?v=20261123-formats';
 import {renderDestinationChoices,renderAssetGuide} from './social-format-guide.js?v=20261123-formats';
 import {LAYER_ICONS,renderMonthCalendar,renderCalendarDialog,postLabel,postBrief,postTime,isMinuteTime,brisbaneToday} from './social-visual-ui.js?v=20261123-main-studio';
@@ -26,9 +26,11 @@ export function setupAnnualCampaigns({mount,api,esc,isActive,onUse,reviewOnly=fa
     const config=value&&typeof value==='object'?value:defaultCampaignSettings();
     config.monthOverrides??={};config.weekOverrides??={};config.dayOverrides??={};
     config.postingTime??='auto';config.timingSignals??=defaultCampaignSettings().timingSignals;
-    config.milestones??=[];
+    config.milestones??=[];config.limits=normaliseDailyLimits(config.limits);
     for(const bucket of ['monthOverrides','weekOverrides','dayOverrides'])
-      for(const scoped of Object.values(config[bucket]))scoped.postingTime??='auto';
+      for(const scoped of Object.values(config[bucket])){
+        scoped.postingTime??='auto';scoped.limits=normaliseDailyLimits(scoped.limits);
+      }
     return config;
   };
   const browserDraft=()=>{
@@ -100,9 +102,15 @@ export function setupAnnualCampaigns({mount,api,esc,isActive,onUse,reviewOnly=fa
   };
   const root=()=>mount.querySelector('[data-annual-root]');
   const changed=()=>JSON.stringify(settings)!==saved;
-  const labels={
-    weekday:'Weekday maximum',friday:'Friday maximum',weekend:'Weekend maximum',holiday:'QLD holiday maximum'
+  const limitChange=(limits,key,value)=>{
+    const name=key.endsWith('Min')?key.slice(0,-3):key;
+    if(!POSTING_DAY_TYPES.some(day=>day.id===name))return;
+    const next=Math.max(1,Math.min(12,Number(value)||1));
+    limits[key]=next;
+    if(key.endsWith('Min')&&limits[name]<next)limits[name]=next;
+    if(!key.endsWith('Min')&&limits[name+'Min']>next)limits[name+'Min']=next;
   };
+  const dayTypeNames=POSTING_DAY_TYPES;
   function controls(){
     const rows=CAMPAIGN_LAYERS.map(layer=>{
       const p=settings.layers[layer.id];
@@ -111,8 +119,10 @@ export function setupAnnualCampaigns({mount,api,esc,isActive,onUse,reviewOnly=fa
         '<td><input type="checkbox" data-annual-visible="'+layer.id+'" aria-label="Show '+esc(layer.label)+'"'+checked(p.visible)+'></td>'+
         '<td><input type="number" data-annual-frequency="'+layer.id+'" aria-label="Weekly frequency for '+esc(layer.label)+'" min="0" max="7" step="1" value="'+p.weekly+'"></td></tr>';
     }).join('');
-    const limits=Object.entries(labels).map(([id,name])=>'<label>'+name+
-      '<input type="number" data-annual-limit="'+id+'" min="0" max="12" step="1" value="'+settings.limits[id]+'"><small>posts / day</small></label>').join('');
+    const limits=dayTypeNames.map(({id,label,icon})=>
+      '<fieldset class="annual-annual-limit-pair"><legend>'+icon+' '+esc(label)+'</legend>'+
+      '<label>Minimum <input type="number" data-annual-limit="'+id+'Min" min="1" max="12" step="1" value="'+settings.limits[id+'Min']+'"></label>'+
+      '<label>Maximum <input type="number" data-annual-limit="'+id+'" min="1" max="12" step="1" value="'+settings.limits[id]+'"></label></fieldset>').join('');
     const audience=Object.entries(choices).map(([field,options])=>
       '<fieldset><legend>'+{membership:'Member classes',gender:'Gender (voluntary)',place:'Location / visitors'}[field]+'</legend>'+
       options.map(([id,label])=>'<label><input type="checkbox" data-annual-audience="'+field+'" value="'+id+'"'+
@@ -146,7 +156,12 @@ export function setupAnnualCampaigns({mount,api,esc,isActive,onUse,reviewOnly=fa
       '<output data-range-output="'+attr+'">'+value+unit+'</output></span>'+
       '<input type="range" min="'+(attr==='video'?0:1)+'" max="'+max+'" step="1" '+(attr==='video'?'data-month-video': 'data-month-limit="'+attr+'"')+
       ' value="'+value+'" aria-label="'+esc(label)+'"></label>';
-    const limits=Object.entries(labels).map(([id,label])=>range(label,{weekday:'☀️',friday:'✨',weekend:'🏖️',holiday:'🧳'}[id],id,batch.limits[id],12));
+    const limits=dayTypeNames.map(({id,label,icon})=>
+      '<fieldset class="annual-limit-pair"><legend>'+icon+' '+esc(label)+'</legend>'+
+      '<div class="annual-limit-range-grid">'+
+      range('Minimum','🔽',id+'Min',batch.limits[id+'Min'],12)+
+      range('Maximum','🔼',id,batch.limits[id],12)+'</div>'+
+      '<small>'+batch.limits[id+'Min']+'–'+batch.limits[id]+' suggested posts per day</small></fieldset>').join('');
     const layers=CAMPAIGN_LAYERS.map(layer=>{
       const row=batch.layers[layer.id];
       return '<article class="annual-topic-card"><div class="annual-topic-top"><span class="annual-topic-icon" aria-hidden="true">'+(LAYER_ICONS[layer.id]||'📌')+'</span>'+
@@ -173,7 +188,13 @@ export function setupAnnualCampaigns({mount,api,esc,isActive,onUse,reviewOnly=fa
       '<input type="time" step="60" data-scope-time value="'+(batch.postingTime==='auto'?'':esc(batch.postingTime))+'"></label>'+
       '<button type="button" data-scope-auto class="button outline small">Use suggested times</button>'+
       '<span>Choose any hour and minute. Further posts are staggered; individual times can be edited in each post.</span></div>'+
-      '<div class="annual-slider-grid">'+range('Video share','🎬','video',batch.videoShare,100,'%')+limits.join('')+'</div>'+
+      '<div class="annual-slider-grid">'+range('Video share','🎬','video',batch.videoShare,100,'%')+'</div>'+
+      '<div class="annual-day-limits"><div class="annual-day-limits-head"><strong>📆 Posting frequency by day type</strong>'+
+      '<p>Choose the minimum and maximum for each kind of day. Each date follows one set of limits, even when holidays overlap.</p></div>'+
+      '<div class="annual-day-limit-grid">'+limits+'</div>'+
+      '<p class="annual-small">Priority: public holiday → long weekend → QLD school holidays → Friday → weekend → ordinary weekday. '+
+      'Dates: <a href="https://www.qld.gov.au/recreation/travel/holidays/public" target="_blank" rel="noopener noreferrer">QLD public holidays</a> and '+
+      '<a href="https://www.qld.gov.au/recreation/travel/holidays/show" target="_blank" rel="noopener noreferrer">local show holidays</a>. Unannounced Redland show holidays are not assumed.</p></div>'+
       '<details class="annual-batch-layer-options"><summary><span>🐟 Topics, frequency and audiences</span><small>16 adjustable categories</small></summary>'+
       '<div class="annual-topic-grid">'+layers+'</div>'+
       '<div class="annual-audience"><label>Audience settings for <select data-month-select-layer>'+
@@ -233,7 +254,8 @@ export function setupAnnualCampaigns({mount,api,esc,isActive,onUse,reviewOnly=fa
       renderMonthCalendar({month:selectedMonth,days:plan.days,posts:current,esc,metricsForPost})+
       '<div class="annual-calendar-legend"><span class="annual-legend-today">● Today</span>'+
       '<span class="annual-legend-past">◐ Past</span><span class="annual-legend-future">○ Future</span>'+
-      '<span><i class="qld"></i> QLD holidays</span><span><i class="nsw"></i> NSW holidays</span></div></section>'+
+      '<span class="annual-legend-holiday">🎉 Public holiday</span><span class="annual-legend-long">🧳 Long weekend</span>'+
+      '<span><i class="qld"></i> QLD school holidays</span><span><i class="nsw"></i> NSW school holidays</span></div></section>'+
       '<div class="annual-schedule-export"><span>🕒 Every day starts with a suggested post. Click a date to edit, add or remove ideas.</span>'+
       (Object.values(postEdits).some(e=>e.hidden)?'<button type="button" class="button outline small" data-calendar-restore>Restore removed suggestions</button>':'')+
       '<div class="annual-schedule-actions"><button type="button" class="button outline small" data-calendar-export>⬇ Export monthly schedule CSV</button>'+
@@ -425,7 +447,7 @@ export function setupAnnualCampaigns({mount,api,esc,isActive,onUse,reviewOnly=fa
     if(batch){
       const current=currentBatch();
       if(e.hasAttribute('data-month-video'))current.videoShare=Math.max(0,Math.min(100,Number(e.value)||0));
-      else if(e.hasAttribute('data-month-limit'))current.limits[e.dataset.monthLimit]=Math.max(0,Math.min(12,Number(e.value)||0));
+      else if(e.hasAttribute('data-month-limit'))limitChange(current.limits,e.dataset.monthLimit,e.value);
       else if(e.hasAttribute('data-month-enabled'))current.layers[e.dataset.monthEnabled].enabled=e.checked;
       else if(e.hasAttribute('data-month-visible'))current.layers[e.dataset.monthVisible].visible=e.checked;
       else if(e.hasAttribute('data-month-weekly'))current.layers[e.dataset.monthWeekly].weekly=Math.max(0,Math.min(7,Number(e.value)||0));
@@ -472,7 +494,7 @@ export function setupAnnualCampaigns({mount,api,esc,isActive,onUse,reviewOnly=fa
     if(e.hasAttribute('data-annual-enabled'))settings.layers[e.dataset.annualEnabled].enabled=e.checked;
     else if(e.hasAttribute('data-annual-visible'))settings.layers[e.dataset.annualVisible].visible=e.checked;
     else if(e.hasAttribute('data-annual-frequency'))settings.layers[e.dataset.annualFrequency].weekly=Math.max(0,Math.min(7,Number(e.value)||0));
-    else if(e.hasAttribute('data-annual-limit'))settings.limits[e.dataset.annualLimit]=Math.max(0,Math.min(12,Number(e.value)||0));
+    else if(e.hasAttribute('data-annual-limit'))limitChange(settings.limits,e.dataset.annualLimit,e.value);
     else if(e.hasAttribute('data-annual-video'))settings.videoShare=Math.max(0,Math.min(100,Number(e.value)||0));
     else if(e.hasAttribute('data-annual-paid-planning'))settings.delivery.paidPlanning=e.checked;
     else if(e.hasAttribute('data-annual-destination')){
