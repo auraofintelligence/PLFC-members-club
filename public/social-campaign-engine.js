@@ -56,6 +56,7 @@ export const holidayInfluences = day => ({qld:inHoliday(day),nswEastern:inNSWEas
 const dayBeforeHoliday = day => QLD_SCHOOL_HOLIDAYS.some(([a])=>iso(dayMs(a)-MS)===day);
 const dayBeforeNSW = day => NSW_SCHOOL_HOLIDAYS_EASTERN.some(([a])=>iso(dayMs(a)-MS)===day);
 export const defaultCampaignSettings = () => ({
+  monthOverrides:{},
   videoShare:67, limits:{weekday:2,friday:3,weekend:4,holiday:5},
   delivery:{
     organic:['youtube','facebook','instagram','tiktok','noticeboard'],
@@ -64,6 +65,10 @@ export const defaultCampaignSettings = () => ({
   },
   layers:Object.fromEntries(CAMPAIGN_LAYERS.map(layer=>[layer.id,{enabled:true,visible:true,weekly:layer.frequency,
     audience:{membership:['all'],gender:['all'],place:layer.id==='nswHolidays'?['tourist','regional']:['all']}}]))
+});
+export const monthSettingsFor=(settings,month)=>settings.monthOverrides?.[month.slice(0,7)]||settings;
+export const copyMonthSettings=settings=>structuredClone({
+  videoShare:settings.videoShare,limits:settings.limits,delivery:settings.delivery,layers:settings.layers
 });
 const capFor = (day,limits) => inHoliday(day)?limits.holiday:weekday(day)===5?limits.friday:[0,6].includes(weekday(day))?limits.weekend:limits.weekday;
 function basePost(layer,day,weekKey,index){
@@ -76,6 +81,17 @@ function basePost(layer,day,weekKey,index){
     audience:null,priority:layer.priority,composite:false,sections:[topic],status:'suggestion'};
 }
 function assignWeek(days,settings,postsByDay){
+  // A week can straddle two months with different committee-approved layer patterns.
+  // Group by the effective configuration, with a proportional weekly frequency for split weeks.
+  const groups=[];
+  for(const day of days){
+    const selected=monthSettingsFor(settings,day);
+    if(!groups.length || groups.at(-1).settings!==selected)groups.push({settings:selected,days:[]});
+    groups.at(-1).days.push(day);
+  }
+  for(const group of groups) assignSegment(group.days,group.settings,postsByDay);
+}
+function assignSegment(days,settings,postsByDay){
   const key=days[0].slice(0,7)+'-'+days[0];
   for(const layer of CAMPAIGN_LAYERS){
     const preference=settings.layers[layer.id];
@@ -86,7 +102,8 @@ function assignWeek(days,settings,postsByDay){
     const boost=isQLDWeek && ['fish','bait','safety','camping','community','membership'].includes(layer.id)?1:
       !isQLDWeek && isNSWWeek && layer.id==='camping'?1:0;
     const westernOnly=layer.id==='nswHolidays' && eligible.every(day=>!inNSWEasternHoliday(day));
-    const frequency=Math.min(eligible.length,westernOnly?Math.min(preference.weekly,1):preference.weekly+boost);
+    const weekly=days.length>=7?preference.weekly:Math.ceil(preference.weekly*days.length/7);
+    const frequency=Math.min(eligible.length,westernOnly?Math.min(weekly,1):weekly+boost);
     eligible.sort((a,b)=>{
       const weight=day=>(layer.id==='nswHolidays' && inNSWHoliday(day) && !inHoliday(day)?70:0)+
         (inHoliday(day)?45:0)+([5,6,0].includes(weekday(day))?20:0)+(weekday(day)===5?10:0);
@@ -130,35 +147,43 @@ export function generateCampaignYear(startMonth,settings=defaultCampaignSettings
   for(const day of days){if(week.length && weekday(day)===1){assignWeek(week,settings,postsByDay);week=[];}week.push(day);}
   if(week.length)assignWeek(week,settings,postsByDay);
   for(const day of days.filter(dayBeforeHoliday)){
-    if(!settings.layers.holidays?.enabled)continue;
+    const monthSettings=monthSettingsFor(settings,day);
+    if(!monthSettings.layers.holidays?.enabled)continue;
     postsByDay.get(day).push({id:'holiday-eve-'+day,date:day,layerIds:['holidays'],title:'School holidays begin tomorrow: welcome and trip checklist',
       brief:'Confirm Queensland state school holiday dates and local conditions before publishing.',cta:'Explore the family fishing guide',
-      audience:settings.layers.holidays.audience,priority:11,sections:['Holiday countdown'],composite:false,status:'suggestion'});
+      audience:monthSettings.layers.holidays.audience,priority:11,sections:['Holiday countdown'],composite:false,status:'suggestion'});
   }
   for(const day of days.filter(dayBeforeNSW)){
-    if(!settings.layers.nswHolidays?.enabled)continue;
+    const monthSettings=monthSettingsFor(settings,day);
+    if(!monthSettings.layers.nswHolidays?.enabled)continue;
     postsByDay.get(day).push({id:'nsw-holiday-eve-'+day,date:day,layerIds:['nswHolidays'],title:'NSW school break starts tomorrow: Straddie visitor welcome',
       brief:'Verify NSW term dates and any current ferry, weather and fishing information before publishing.',cta:'Explore the visitor fishing guide',
-      audience:settings.layers.nswHolidays.audience,priority:9,sections:['NSW holiday lead-in'],composite:false,status:'suggestion'});
+      audience:monthSettings.layers.nswHolidays.audience,priority:9,sections:['NSW holiday lead-in'],composite:false,status:'suggestion'});
   }
   const dayCards=[],posts=[];
   for(const [day,candidates] of postsByDay){
     candidates.sort((a,b)=>b.priority-a.priority||numberHash(a.id)-numberHash(b.id));
-    const {posts:chosen,omitted}=combine(candidates,capFor(day,settings.limits));
+    const {posts:chosen,omitted}=combine(candidates,capFor(day,monthSettingsFor(settings,day).limits));
     dayCards.push({date:day,holiday:inHoliday(day),nswHoliday:inNSWHoliday(day),nswWesternOnly:inNSWWesternExtension(day),omitted,count:chosen.length});
     posts.push(...chosen);
   }
-  const targetVideo=Math.round(posts.length*settings.videoShare/100);
   const composites=posts.filter(p=>p.composite);
-  const other=posts.filter(p=>!p.composite).sort((a,b)=>numberHash('video-'+a.id)-numberHash('video-'+b.id));
-  const videoIds=new Set([...composites,...other.slice(0,Math.max(0,targetVideo-composites.length))].map(p=>p.id));
+  const videoIds=new Set();
+  // Monthly ratios are independent. Composites take precedence, then evenly-seeded candidates.
+  for(const month of [...new Set(posts.map(p=>p.date.slice(0,7)))]){
+    const current=posts.filter(p=>p.date.startsWith(month));
+    const count=Math.round(current.length*monthSettingsFor(settings,month).videoShare/100);
+    const composite=current.filter(p=>p.composite),other=current.filter(p=>!p.composite)
+      .sort((a,b)=>numberHash('video-'+a.id)-numberHash('video-'+b.id));
+    for(const p of [...composite,...other.slice(0,Math.max(0,count-composite.length))])videoIds.add(p.id);
+  }
   for(const p of posts){
     p.format=videoIds.has(p.id)?'30-second vertical video':['image','carousel','link'][numberHash('format-'+p.id)%3];
     p.aspectRatio=p.format.startsWith('30-second')?'9:16':p.format==='link'?'1.91:1':'4:5';
     p.size=p.format.startsWith('30-second')?'1080×1920':p.format==='link'?'1200×630':'1080×1350';
     p.durationSeconds=p.format.startsWith('30-second')?30:null;
     p.suggestedTime=[0,6].includes(weekday(p.date))?'08:00':weekday(p.date)===5?'17:00':'18:00';
-    p.creativeVariants=creativeVariantsFor(p,settings.delivery);
+    p.creativeVariants=creativeVariantsFor(p,monthSettingsFor(settings,p.date).delivery);
     p.destinations=[...new Set(p.creativeVariants.filter(v=>v.distribution==='organic').map(v=>v.platform))];
     // The existing social post editor supports only the four connected club channels.
     // The Noticeboard is a separate, unconnected pilot and is never sent there.
