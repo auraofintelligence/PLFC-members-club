@@ -212,7 +212,8 @@ export function setupAnnualCampaigns({mount,api,esc,isActive,onUse,reviewOnly=fa
       '<span><i class="qld"></i> QLD holidays</span><span><i class="nsw"></i> NSW holidays</span></div></section>'+
       '<div class="annual-schedule-export"><span>🕒 Every day starts with a suggested post. Click a date to edit, add or remove ideas.</span>'+
       (Object.values(postEdits).some(e=>e.hidden)?'<button type="button" class="button outline small" data-calendar-restore>Restore removed suggestions</button>':'')+
-      '<button type="button" class="button outline small" data-calendar-export>⬇ Export this month’s schedule CSV</button></div>'+
+      '<div class="annual-schedule-actions"><button type="button" class="button outline small" data-calendar-export>⬇ Export monthly schedule CSV</button>'+
+      '<button type="button" class="button outline small" data-calendar-copy-creation>📋 Copy monthly creation brief</button></div></div>'+
       monthControls()+
       '<details class="annual-year-overview"><summary>🗓️ Browse all 12 months <small>'+plan.totals.posts+' planned suggestions</small></summary>'+
       '<div class="annual-month-grid">'+months.map(m=>'<button type="button" data-annual-go="'+m+'" aria-pressed="'+(selectedMonth===m)+'">'+
@@ -295,6 +296,27 @@ export function setupAnnualCampaigns({mount,api,esc,isActive,onUse,reviewOnly=fa
     let list=id==='all'?['all']:on?[...existing.filter(v=>v!=='all'),id]:existing.filter(v=>v!==id);
     if(!list.length)list=['all'];
     settings.layers[selectedLayer].audience[field]=[...new Set(list)];
+  }
+  async function copyMonthlyCreationBrief(){
+    if(!lastPreview)return;
+    const current=lastPreview.posts.filter(p=>p.date.startsWith(selectedMonth)&&!getEdit(p.id).hidden);
+    const brief=[
+      'PLFC Social Studio · '+monthName(selectedMonth)+' content preparation brief',
+      'Prepared for PLFC editorial review. This is NOT approval to publish.',
+      'An agreed content creator, including a proposed Ready SET Co-op service, may prepare draft graphics, videos, captions and posting plans.',
+      'PLFC keeps the right to edit, add, remove or reject all material before deciding whether to approve it.',
+      ...current.map(post=>
+        post.date+' '+postTime(post,getEdit(post.id))+' AEST · '+postLabel(post,getEdit(post.id))+
+        '\n'+postBrief(post,getEdit(post.id))+
+        '\nFormats: '+post.format+' · Platforms: '+post.channels.join(', '))
+    ].join('\n\n');
+    try{
+      await navigator.clipboard.writeText(brief);
+      notice='Copied '+current.length+' planned ideas. Share the brief only if the club chooses an external creator.';
+      const output=root()?.querySelector('[data-annual-notice]');if(output)output.textContent=notice;
+    }catch{
+      notice='Could not access the clipboard. Use the monthly CSV export instead.';
+    }
   }
   function exportSchedule(){
     if(!lastPreview)return;
@@ -516,6 +538,7 @@ export function setupAnnualCampaigns({mount,api,esc,isActive,onUse,reviewOnly=fa
       }return;
     }
     if(b.hasAttribute('data-calendar-export')){exportSchedule();return;}
+    if(b.hasAttribute('data-calendar-copy-creation')){void copyMonthlyCreationBrief();return;}
     if(b.hasAttribute('data-calendar-restore')){
       for(const record of Object.values(postEdits))delete record.hidden;
       persistEdits();notice='Restored removed calendar suggestions.';draw();return;
