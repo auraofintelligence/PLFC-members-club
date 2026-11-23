@@ -1,6 +1,8 @@
 import {CAMPAIGN_LAYERS,defaultCampaignSettings,generateCampaignYear,monthSettingsFor,copyMonthSettings,weekStart,settingsForDate,scopeSettingsFor} from './social-campaign-engine.js';
 import {PUBLISHING_DESTINATIONS,placementSources,CREATIVE_SPEC_VERSION,MASTER_ASSET_PRESETS} from './social-placements.js';
 import {LAYER_ICONS,renderMonthCalendar,renderCalendarDialog,postLabel,postBrief,postTime,isMinuteTime,brisbaneToday} from './social-visual-ui.js';
+import {renderTimingPanel,renderAnalyticsPanel} from './social-insights-ui.js';
+import {parseDelimited,suggestedMapping,metricFromRow,linkMetrics,latestMetrics,summarizeMetrics,planMetricsCSV} from './social-performance.js';
 
 const endpoint='/api/committee/social-campaign-settings';
 const choices={
@@ -21,6 +23,12 @@ export function setupAnnualCampaigns({mount,api,esc,isActive,onUse,reviewOnly=fa
   let lastPreview=null,monthDraft=null,batchMonth='',batchDirty=false;
   let planningScope='month',focusDay=brisbaneToday();
   let modalDay=null,modalView='day',modalPostId=null,topicFilter='all',visiblePosts=[],postEdits={};
+  let metrics=[],pendingReport=null,metricsPlatform='facebook',metricsNotice='';
+  const metricsKey=()=> 'plfc-social-performance-v1:'+(reviewOnly?'review':'committee');
+  const importMetrics=()=>{try{const data=JSON.parse(localStorage.getItem(metricsKey())||'[]');metrics=Array.isArray(data)?data.slice(0,15000):[];}catch{metrics=[];}};
+  const storeMetrics=()=>{try{localStorage.setItem(metricsKey(),JSON.stringify(metrics));return true;}catch{return false;}};
+  const linkedMetrics=()=>linkMetrics(metrics,lastPreview?.posts||[],postEdits);
+  const metricsForPost=id=>latestMetrics(linkedMetrics()).filter(m=>m.matchedPostId===id);
   const editKey=()=> 'plfc-social-post-edits-v1:'+startMonth+':'+(reviewOnly?'review':'committee');
   function loadEdits(){
     try{
@@ -208,11 +216,21 @@ export function setupAnnualCampaigns({mount,api,esc,isActive,onUse,reviewOnly=fa
 
   function markup(){
     const visual=preview();
+    const performanceRows=linkedMetrics();
+    const current=visiblePosts.filter(p=>p.date.startsWith(selectedMonth));
+    const analytics=renderAnalyticsPanel({
+      summary:summarizeMetrics(performanceRows,current),
+      unlinked:performanceRows.filter(m=>!m.matchedPostId),
+      recordCount:metrics.length,headers:pendingReport?.headers||[],
+      mapping:pendingReport?.mapping||{},platform:metricsPlatform,filename:pendingReport?.filename||'',
+      notice:metricsNotice,posts:current,esc
+    });
+    const signals=renderTimingPanel(settings,esc);
     const popup=renderCalendarDialog({day:modalDay,view:modalView,postId:modalPostId,
       posts:visiblePosts,plan:lastPreview,esc,getEdit,reviewOnly});
     return '<section class="annual-root" data-annual-root aria-label="12-month social workbench">'+
       '<details class="annual-planner" open><summary><strong>📅 Social media workbench</strong> · 12-month plan</summary>'+
-      visual+
+      visual+(loaded?signals+analytics:'')+
       (loaded?'<details class="annual-default-settings"><summary>⚙️ Global annual defaults</summary>'+controls()+'</details>':'')+
       '</details><p class="annual-small" data-annual-notice role="status" aria-live="polite">'+esc(notice)+'</p>'+
       popup+'</section>';
@@ -239,7 +257,10 @@ export function setupAnnualCampaigns({mount,api,esc,isActive,onUse,reviewOnly=fa
     busy=true;
     try{const row=await api(endpoint,{cache:'no-store'});
       if(!isActive())return;
-      version=row.version;settings=row.settings||defaultCampaignSettings();settings.monthOverrides??={};settings.weekOverrides??={};settings.dayOverrides??={};settings.postingTime??='auto';saved=JSON.stringify(settings);loaded=true;monthDraft=null;batchMonth='';loadEdits();
+      version=row.version;settings=row.settings||defaultCampaignSettings();settings.monthOverrides??={};settings.weekOverrides??={};settings.dayOverrides??={};
+      settings.postingTime??='auto';settings.timingSignals??=defaultCampaignSettings().timingSignals;
+      settings.milestones??=[];saved=JSON.stringify(settings);loaded=true;monthDraft=null;batchMonth='';
+      loadEdits();importMetrics();
       notice=reviewOnly?'Temporary preview settings loaded. No database or live club data is connected.':row.updatedAt?'Loaded saved settings from '+row.updatedAt.slice(0,10)+'.':'Default settings loaded; not yet shared.';
     }catch(e){notice='Could not load settings: '+e.message;}finally{busy=false;draw();}
   }
@@ -248,7 +269,9 @@ export function setupAnnualCampaigns({mount,api,esc,isActive,onUse,reviewOnly=fa
     busy=true;notice='Saving committee settings…';draw();
     try{const row=await api(endpoint,{method:'POST',body:JSON.stringify({version,settings})});
       if(!isActive())return;
-      version=row.version;settings=row.settings;settings.monthOverrides??={};settings.weekOverrides??={};settings.dayOverrides??={};saved=JSON.stringify(settings);
+      version=row.version;settings=row.settings;settings.monthOverrides??={};settings.weekOverrides??={};
+      settings.dayOverrides??={};settings.timingSignals??=defaultCampaignSettings().timingSignals;
+      settings.milestones??=[];saved=JSON.stringify(settings);
       notice=reviewOnly?'Trial settings updated in this browser tab only; refreshing will reset them. No posts were published.':'Shared settings saved. No posts were published.';
     }catch(e){notice=e.status===409?'Someone else edited these settings. Reload the saved version before retrying.':e.message;}finally{busy=false;draw();}
   }
