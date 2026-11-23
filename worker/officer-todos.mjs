@@ -37,7 +37,7 @@ async function deskData(db,identity,today,rights,filter) {
       SELECT l.*,row_number() OVER(PARTITION BY office ORDER BY recorded_at DESC,mutation DESC) AS rank
       FROM officer_todo_log l WHERE action='complete' AND (? OR office=?)) WHERE rank<=20 ORDER BY recorded_at DESC`).bind(+canAssign,viewerOffice),
     db.prepare('SELECT * FROM ('+eventOpenOfficerJobs+') WHERE ? OR ownerId=?').bind(+canAssign,identity.id),
-    db.prepare("SELECT 1 AS done FROM officer_todo_log WHERE action='complete' AND source='monthly-standard' AND task_id=? LIMIT 1").bind(recurringId)
+    db.prepare("SELECT 1 AS done FROM officer_todo_log WHERE action='complete' AND source='manual' AND task_id=? LIMIT 1").bind(recurringId)
   ]);
   const directory=new Map(Object.entries(seats).map(([key,label])=>[key,{key,label}]));
   const byId=new Map();
@@ -125,8 +125,8 @@ export async function officerTodosEndpoint(request,env,identity,helpers) {
     const result=await db.batch([
       db.prepare(`INSERT INTO officer_todo_log
         (mutation,action,source,task_id,meeting_id,office,title,base_version,paper,recorded_by,recorder_name,recorded_at)
-        SELECT ?,'complete','monthly-standard',?,'','secretary',?,0,?,?,?,?
-        WHERE NOT EXISTS(SELECT 1 FROM officer_todo_log WHERE action='complete' AND source='monthly-standard' AND task_id=?)`)
+        SELECT ?,'complete','manual',?,'','secretary',?,0,?,?,?,?
+        WHERE NOT EXISTS(SELECT 1 FROM officer_todo_log WHERE action='complete' AND source='manual' AND task_id=?)`)
         .bind(logId,id,task.title,+paper,identity.id,identity.name||identity.id,stamp,id),
       db.prepare('INSERT INTO audit_log SELECT ?,?,?,?,?,? WHERE EXISTS(SELECT 1 FROM officer_todo_log WHERE mutation=?)')
         .bind(crypto.randomUUID(),identity.id,identity.accountRole||identity.role,
