@@ -1,4 +1,5 @@
 import {socialChannels} from './social-channels.js';
+import {setupAnnualCampaigns} from './social-campaigns.js';
 import {setupBrainstorm, starterBrowser, chosenStarter, updateStarterCard, practiceGuide, contributorName} from './social-brainstorm.js?v=20261121-club-funding';
 
 const endpoint = '/api/committee/social-planner';
@@ -19,6 +20,7 @@ export function setupSocialPlanner({api, esc}) {
   const active = () => session?.authenticated && session.role === 'committee' && location.hash === '#committee/social';
   const find = selector => mount.querySelector(selector);
   const dirty = () => draft && JSON.stringify(draft) !== initial;
+  const annual=setupAnnualCampaigns({mount,api,esc,isActive:active,onUse(idea){fromBrain=false;editStarter(idea);}});
   const brain = setupBrainstorm({mount, api, esc, active,
     back() {render(); load(desk.month);},
     openPlan(id) {fromBrain = true; render(); load(desk.month, id);},
@@ -28,6 +30,7 @@ export function setupSocialPlanner({api, esc}) {
   function reset() {
     request?.abort();
     brain.close();
+    annual.reset();
     fromBrain = false;
     request = desk = draft = initial = null;
     mount.removeAttribute('aria-busy');
@@ -52,7 +55,7 @@ export function setupSocialPlanner({api, esc}) {
     const dated = desk.plans.filter(p => p.plannedDate);
     const undated = desk.plans.filter(p => !p.plannedDate);
     return '<header class="social-heading"><div><h1>Social media planner</h1><p>Plan the club’s posts together. When a post is ready, an officer shares it on the club’s social account.</p></div><div class="social-tools"><button type="button" class="button" data-social-new>Plan a post</button><button type="button" class="button outline" data-social-brainstorm>Brainstorm together</button></div></header>' +
-      starterBrowser(esc) +
+      starterBrowser(esc) + annual.markup() +
       '<form class="social-month" data-social-month-form><label>Planning month<input type="month" data-social-month name="month" value="' + esc(desk.month) + '" required></label><button class="button outline small" type="submit">Show month</button></form>' +
       '<section class="social-plan-group"><h2>' + esc(formatMonth.format(localDate(desk.month + '-01'))) + '</h2>' +
       (dated.length ? '<ul class="social-plan-list">' + dated.map(row).join('') + '</ul>' : '<p>No posts are planned for this month.</p>') + '</section>' +
@@ -88,6 +91,7 @@ export function setupSocialPlanner({api, esc}) {
   }
   function render() {
     mount.innerHTML = (draft ? editor() : list()) + '<p class="social-notice" data-social-notice role="status" aria-live="polite"></p><button type="button" class="button outline small" data-social-reload hidden>Open saved version</button>';
+    if(!draft)void annual.open();
   }
   function readForm() {
     const form = find('[data-social-editor]');
@@ -112,6 +116,7 @@ export function setupSocialPlanner({api, esc}) {
     const form = find('[data-social-editor]');
     form.elements.title.value = starter.title;
     form.elements.body.value = starter.body;
+    if(starter.plannedDate)form.elements.plannedDate.value=starter.plannedDate;
     for (const input of form.querySelectorAll('[name="channel"]')) input.checked = starter.channels.includes(input.value);
     readForm(); updateChannels();
     announce(starter.body.includes('[') ? 'Replace the words in square brackets with confirmed club details, then save your idea.' : 'This idea is yours to edit. Choose Save plan to keep it.');
