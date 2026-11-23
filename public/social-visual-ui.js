@@ -11,7 +11,14 @@ export const layerIcon=layer=>LAYER_ICONS[layer]||'📌';
 export const postLabel=(post,edit)=>edit?.title?.trim()||post.title;
 export const postBrief=(post,edit)=>edit?.brief?.trim()||post.brief;
 const isVideo=post=>post.durationSeconds>0;
-export function renderMonthCalendar({month,days,posts,esc}){
+export const brisbaneToday=()=>{
+  const parts=new Intl.DateTimeFormat('en-AU',{timeZone:'Australia/Brisbane',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());
+  const value=k=>parts.find(part=>part.type===k)?.value||'';
+  return value('year')+'-'+value('month')+'-'+value('day');
+};
+export const postTime=(post,edit)=>edit?.time||post.suggestedTime||'18:00';
+export const isMinuteTime=value=>typeof value==='string'&&/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(value);
+export function renderMonthCalendar({month,days,posts,esc,today=brisbaneToday()}){
   const [year,m]=month.split('-').map(Number);
   const count=new Date(Date.UTC(year,m,0)).getUTCDate();
   const first=(new Date(Date.UTC(year,m-1,1)).getUTCDay()+6)%7;
@@ -24,21 +31,37 @@ export function renderMonthCalendar({month,days,posts,esc}){
   let html='<div class="annual-calendar-weekdays" aria-hidden="true">'+
     ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(x=>'<span>'+x+'</span>').join('')+'</div>'+
     '<div class="annual-calendar-days" aria-label="'+esc('Post calendar for '+month)+'">';
-  for(let pad=0;pad<first;pad++)html+='<span class="annual-calendar-pad" aria-hidden="true"></span>';
-  for(let day=1;day<=count;day++){
-    const date=month+'-'+String(day).padStart(2,'0'),data=cards.get(date),items=byDate.get(date)||[];
-    const qld=Boolean(data?.holiday),nsw=Boolean(data?.nswHoliday);
-    const icons=[...new Set(items.map(post=>layerIcon(post.layerIds[0])))].slice(0,3);
-    const tooltip=formatDate(date)+'; '+items.length+' post suggestion'+(items.length===1?'':'s')+
-      (qld?'; Queensland school holidays':'')+(nsw?'; NSW school holidays':'');
-    html+='<button type="button" class="annual-calendar-day'+(items.length?' has-posts':'')+
-      (qld?' qld':'')+(nsw?' nsw':'')+'" data-calendar-day="'+date+'"'+(data?'':' disabled')+
-      ' aria-label="'+esc(tooltip)+'" title="'+esc(tooltip)+'">'+
-      '<span class="annual-calendar-day-top"><strong>'+day+'</strong>'+
-      (items.length?'<b class="annual-calendar-count">'+items.length+'</b>':'')+'</span>'+
-      '<span class="annual-calendar-icons" aria-hidden="true">'+icons.map(x=>'<span>'+x+'</span>').join('')+'</span>'+
-      '<span class="annual-calendar-dots">'+(qld?'<i class="qld" title="Queensland school holidays"></i>':'')+
-      (nsw?'<i class="nsw" title="NSW school holidays"></i>':'')+'</span></button>';
+  const totalCells=Math.ceil((first+count)/7)*7;
+  let weekCount=0,weekDays=0;
+  for(let pos=0;pos<totalCells;pos++){
+    const index=pos-first+1;
+    if(index<1||index>count){
+      html+='<span class="annual-calendar-pad" aria-hidden="true"></span>';
+    }else{
+      const date=month+'-'+String(index).padStart(2,'0'),data=cards.get(date),items=byDate.get(date)||[];
+      weekCount+=items.length;weekDays++;
+      const qld=Boolean(data?.holiday),nsw=Boolean(data?.nswHoliday);
+      const temporal=date===today?'today':date<today?'past':'future';
+      const icons=[...new Set(items.map(post=>layerIcon(post.layerIds[0])))].slice(0,3);
+      const tooltip=formatDate(date)+'; '+items.length+' planned '+(items.length===1?'post':'posts')+
+        '; '+temporal+(qld?'; Queensland school holidays':'')+(nsw?'; NSW school holidays':'');
+      html+='<button type="button" class="annual-calendar-day '+temporal+(items.length?' has-posts':'')+
+        (qld?' qld':'')+(nsw?' nsw':'')+'" data-calendar-day="'+date+'"'+(date===today?' aria-current="date"':'')+
+        ' aria-label="'+esc(tooltip)+'" title="'+esc(tooltip)+'">'+
+        '<span class="annual-calendar-day-top"><strong>'+index+'</strong>'+
+        (items.length?'<b class="annual-calendar-count">'+items.length+'</b>':'')+'</span>'+
+        '<span class="annual-calendar-icons" aria-hidden="true">'+icons.map(x=>'<span>'+x+'</span>').join('')+'</span>'+
+        '<span class="annual-calendar-dots">'+(qld?'<i class="qld" title="Queensland school holidays"></i>':'')+
+        (nsw?'<i class="nsw" title="NSW school holidays"></i>':'')+'</span>'+
+        (temporal==='today'?'<small class="annual-today-label">TODAY</small>':'')+'</button>';
+    }
+    if(pos%7===6){
+      const weekIndex=Math.floor(pos/7)+1;
+      html+='<div class="annual-calendar-week-total" role="note"><span>Week '+weekIndex+'</span>'+
+        '<strong>'+weekCount+' '+(weekCount===1?'post':'posts')+'</strong>'+
+        '<span>'+weekDays+' days shown</span></div>';
+      weekCount=0;weekDays=0;
+    }
   }
   return html+'</div>';
 }
