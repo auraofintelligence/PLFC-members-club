@@ -42,14 +42,20 @@ export function renderMonthCalendar({month,days,posts,esc,today=brisbaneToday(),
       const date=month+'-'+String(index).padStart(2,'0'),data=cards.get(date),items=byDate.get(date)||[];
       weekCount+=items.length;weekDays++;
       const qld=Boolean(data?.holiday),nsw=Boolean(data?.nswHoliday);
+      const publicHoliday=Boolean(data?.publicHoliday),longWeekend=Boolean(data?.longWeekend);
       const temporal=date===today?'today':date<today?'past':'future';
       const icons=[...new Set(items.map(post=>layerIcon(post.layerIds[0])))].slice(0,3);
       const views=items.reduce((total,post)=>total+metricsForPost(post.id).reduce((n,item)=>n+(item.views??0),0),0);
       const hasLead=items.some(post=>Boolean(post.timingSignal));
       const tooltip=formatDate(date)+'; '+items.length+' planned '+(items.length===1?'post':'posts')+
-        '; '+temporal+(qld?'; Queensland school holidays':'')+(nsw?'; NSW school holidays':'');
+        '; '+temporal+(qld?'; Queensland school holidays':'')+(nsw?'; NSW school holidays':'')+
+        (data?.publicHolidayName?'; '+data.publicHolidayName:'')+
+        (longWeekend?'; long weekend':'')+
+        (data?.partialPublicHoliday?'; '+data.partialPublicHoliday:'')+
+        (data?.minimum?'; '+data.minimum+' to '+data.maximum+' suggested posts per day':'');
       html+='<button type="button" class="annual-calendar-day '+temporal+(items.length?' has-posts':'')+
-        (qld?' qld':'')+(nsw?' nsw':'')+'" data-calendar-day="'+date+'"'+(date===today?' aria-current="date"':'')+
+        (qld?' qld':'')+(nsw?' nsw':'')+(publicHoliday?' public-holiday':'')+
+        (longWeekend?' long-weekend':'')+'" data-calendar-day="'+date+'"'+(date===today?' aria-current="date"':'')+
         ' aria-label="'+esc(tooltip)+'" title="'+esc(tooltip)+'">'+
         '<span class="annual-calendar-day-top"><strong>'+index+'</strong>'+
         (items.length?'<b class="annual-calendar-count">'+items.length+'</b>':'')+'</span>'+
@@ -57,6 +63,9 @@ export function renderMonthCalendar({month,days,posts,esc,today=brisbaneToday(),
         '<span class="annual-calendar-dots">'+(qld?'<i class="qld" title="Queensland school holidays"></i>':'')+
         (nsw?'<i class="nsw" title="NSW school holidays"></i>':'')+'</span>'+
         (temporal==='today'?'<small class="annual-today-label">TODAY</small>':'')+
+        (publicHoliday?'<small class="annual-calendar-holiday">🎉 Public holiday</small>':
+          longWeekend?'<small class="annual-calendar-holiday">🧳 Long weekend</small>':
+          data?.partialPublicHoliday?'<small class="annual-calendar-holiday">🌙 PH evening</small>':'')+
         (hasLead?'<small class="annual-calendar-signal">📣 Lead-in</small>':'')+
         (views?'<small class="annual-calendar-performance">📈 '+(views>=1000?(views/1000).toFixed(1)+'k':views)+' reported</small>':'')+
         '</button>';
@@ -87,7 +96,9 @@ export function renderCalendarDialog({day,view,postId,posts,plan,esc,getEdit,rev
   const formatted=formatDate(day),today=posts.filter(post=>post.date===day)
     .sort((a,b)=>postTime(a,getEdit(a.id)).localeCompare(postTime(b,getEdit(b.id))));
   const dayData=plan?.days?.find(x=>x.date===day);
-  const flags=[dayData?.holiday?'QLD school holidays':null,dayData?.nswHoliday?'NSW school holidays':null].filter(Boolean);
+  const flags=[dayData?.publicHolidayName||null,dayData?.longWeekend?'Long weekend':null,
+    dayData?.holiday?'QLD school holidays':null,dayData?.nswHoliday?'NSW school holidays':null,
+    dayData?.partialPublicHoliday||null].filter(Boolean);
   const headline='<header class="annual-dialog-header"><div><p class="annual-dialog-kicker">'+
     (flags.length?flags.map(esc).join(' · '):'Content calendar')+'</p>'+
     '<h2>'+esc(formatted)+'</h2></div><button type="button" class="annual-dialog-close" data-calendar-close aria-label="Close popup">✕</button></header>';
@@ -152,7 +163,9 @@ export function renderCalendarDialog({day,view,postId,posts,plan,esc,getEdit,rev
       '<button type="button" class="button outline" data-calendar-back>← All posts today</button></footer></dialog>';
   }
   return '<dialog class="annual-day-dialog" data-annual-day-dialog aria-label="Posts for '+esc(formatted)+'">'+headline+
-    '<p class="annual-dialog-lead">'+today.length+' post '+(today.length===1?'idea':'ideas')+' planned for this day. Select one to review or edit.</p>'+
+    '<p class="annual-dialog-lead">'+today.length+' post '+(today.length===1?'idea':'ideas')+' planned for this day. '+
+    (dayData?.minimum?'Posting target: '+dayData.minimum+'–'+dayData.maximum+' ideas. ':'')+
+    'Select one to review or edit.</p>'+
     hourlyGuide(today,getEdit,esc)+
     '<div class="annual-day-posts">'+(today.length?today.map(post=>{
       const edit=getEdit(post.id);
