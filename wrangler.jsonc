@@ -18,11 +18,6 @@
     "database_name": "plfc-clubhouse-showcase",
     "database_id": "38f916c7-4222-4d9d-a650-e9d1f5d6100b"
   }],
-  "previews": {
-    "vars": {"ENVIRONMENT": "preview", "OUTBOUND_ENABLED": "false", "SMS_ENABLED": "false"},
-    "ai": {"binding": "AI"},
-    "durable_objects": {"bindings": [{"name":"OFFICER_DEMOS","class_name":"OfficerDemoRoom"}]}
-  },
   "build": { "command": "node scripts/build.mjs" },
   "assets": {
     "directory": "./public",
