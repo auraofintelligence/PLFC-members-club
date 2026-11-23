@@ -1,6 +1,5 @@
 import {CAMPAIGN_LAYERS,defaultCampaignSettings,generateCampaignYear} from './social-campaign-engine.js';
 import {PUBLISHING_DESTINATIONS,placementSources,CREATIVE_SPEC_VERSION,MASTER_ASSET_PRESETS} from './social-placements.js';
-import {matchingPosts,renderCampaignCalendar,exportCampaignCSV,activeDay,WORKBENCH_STAGES} from './social-calendar-view.js';
 
 const endpoint='/api/committee/social-campaign-settings';
 const choices={
@@ -17,11 +16,7 @@ const csvDate=value=>value.slice(0,10);
 export function setupAnnualCampaigns({mount,api,esc,isActive,onUse,reviewOnly=false}){
   let settings=defaultCampaignSettings(),saved=JSON.stringify(settings),version=0,loaded=false,busy=false,notice='';
   let selectedLayer='nswHolidays',startMonth=new Date(Date.now()+36000000).toISOString().slice(0,7),selectedMonth=startMonth;
-  let lastPreview=null,selectedDate=startMonth+'-01',layerFilter='all',channelFilter='all',deliveryFilter='all',localEdits={};
-  const editStorageKey=()=> 'plfc-social-calendar-workbench-v2:'+startMonth;
-  const restoreLocal=()=>{try{const val=JSON.parse(localStorage.getItem(editStorageKey())||'{}');localEdits=val&&typeof val==='object'&&!Array.isArray(val)?val:{};}catch{localEdits={};}};
-  const persistLocal=()=>{try{localStorage.setItem(editStorageKey(),JSON.stringify(localEdits));return true;}catch{return false;}};
-  const editFor=id=>localEdits[id]||{};
+  let lastPreview=null;
   const root=()=>mount.querySelector('[data-annual-root]');
   const changed=()=>JSON.stringify(settings)!==saved;
   const labels={
@@ -62,91 +57,75 @@ export function setupAnnualCampaigns({mount,api,esc,isActive,onUse,reviewOnly=fa
       '<button type="button" class="button outline" data-annual-reload'+(busy?' disabled':'')+'>Reload saved settings</button></div></div>';
   }
   function preview(){
-    if(!loaded)return '<p>Loading calendar…</p>';
+    if(!loaded)return '<p>Loading committee campaign settings…</p>';
     let plan;try{plan=generateCampaignYear(startMonth,settings);}catch(e){return '<p role="alert">'+esc(e.message)+'</p>';}
     lastPreview=plan;
     const months=Array.from({length:12},(_,i)=>nextMonth(startMonth,i));
     if(!months.includes(selectedMonth))selectedMonth=months[0];
-    selectedDate=activeDay(selectedMonth,selectedDate);
-    const filter={layer:layerFilter,channel:channelFilter,delivery:deliveryFilter};
-    const visible=matchingPosts(plan.posts,settings,filter);
+    const visible=plan.posts.filter(p=>p.layerIds.some(id=>settings.layers[id]?.visible));
     const current=visible.filter(p=>p.date.startsWith(selectedMonth));
-    const todayPosts=current.filter(p=>p.date===selectedDate);
-    const nsw=plan.days.filter(d=>d.nswHoliday&&!d.holiday).length;
+    const days=new Map(plan.days.map(day=>[day.date,day]));
+    const nsw=plan.days.filter(day=>day.nswHoliday&&!day.holiday).length;
     const paidIdeas=plan.posts.filter(p=>p.creativeVariants.some(v=>v.distribution==='paid')).length;
-    const monthDay=new Intl.DateTimeFormat('en-AU',{timeZone:'UTC',weekday:'long',day:'numeric',month:'long',year:'numeric'}).format(new Date(selectedDate+'T00:00:00Z'));
-    const info=plan.days.find(d=>d.date===selectedDate);
-    const tags=[info?.holiday?'QLD school holiday':null,info?.nswHoliday?'NSW school holiday':null,info?.nswWesternOnly?'Western NSW extension':null].filter(Boolean);
-    const detail= todayPosts.length?todayPosts.map(p=>{
-      const local=editFor(p.id),variants=p.creativeVariants;
-      return '<article class="annual-work-item"><p class="annual-small">'+esc(p.suggestedTime)+' AEST · '+esc(p.layerIds.join(' + '))+
-        '</p><h4>'+esc(p.title)+'</h4><div class="annual-work-tags"><span>'+esc(p.format)+'</span><span>'+esc(p.size)+' ('+esc(p.aspectRatio)+')</span>'+
-        (variants.some(v=>v.distribution==='paid')?'<span class="ad">Paid creative candidate only</span>':'')+'</div>'+
-        '<p>'+esc(p.brief)+'</p><p class="annual-small"><strong>Audience:</strong> '+esc(audienceText(p.audience))+
-        ' · <strong>CTA:</strong> '+esc(p.cta)+'</p>'+
-        (p.storyboard.length?'<details><summary>30-second video storyboard</summary><p>'+esc(p.storyboard.join(' | '))+'</p></details>':'')+
-        '<details class="annual-placement-detail"><summary>'+variants.length+' channel-specific production exports</summary><ul>'+
-        variants.map(v=>'<li><strong>'+esc(v.platform)+' · '+esc(v.placement)+'</strong> · '+esc(v.asset)+' · '+esc(v.size)+' ('+esc(v.ratio)+')'+
-          (v.provisional?' · NOT YET CONNECTED':'')+(v.distribution==='paid'?' · PAID CREATIVE / NOT AUTHORISED':'')+
-          '<small>'+esc(v.fileFormats.join(', '))+(v.thumbnail?' · thumbnail '+v.thumbnail.width+' × '+v.thumbnail.height:'')+'</small>'+
-          '<small>'+esc(v.safeZone.label)+(v.safeZone.topPixels?' ('+v.safeZone.topPixels+'px top; '+v.safeZone.bottomPixels+'px bottom; '+v.safeZone.sidePixels+'px sides)':'')+'</small>'+
-          '<small>'+esc(v.checklist.join(' · '))+'</small><small>'+esc(v.approval)+'</small><small><a href="'+esc(v.sourceUrl)+'" target="_blank" rel="noopener noreferrer">Specifications</a></small></li>').join('')+
-        '</ul></details>'+
-        '<label>Working status (local only)<select data-annual-status="'+esc(p.id)+'">'+WORKBENCH_STAGES.map(t=>
-          '<option value="'+esc(t)+'"'+((local.status||'Idea')===t?' selected':'')+'>'+esc(t)+'</option>').join('')+'</select></label>'+
-        '<label>Production notes (local only)<textarea rows="3" maxlength="4000" data-annual-note="'+esc(p.id)+'" placeholder="Footage, imagery, voiceover, editor, links, reminders…">'+esc(local.note||'')+'</textarea></label>'+
-        '<button type="button" class="button outline small" data-annual-use="'+esc(p.id)+'">Open as draft</button></article>';
-    }).join(''):'<p class="annual-small">No posts match the current filters on this day. Change a filter or choose another date.</p>';
+    const masterLibrary='<details class="annual-master-library"><summary>Master asset production presets ('+MASTER_ASSET_PRESETS.length+')</summary>'+
+      '<p>Use high-quality masters and create independent crops or edits for each placement; never enlarge an existing low-resolution export.</p><ul>'+
+      MASTER_ASSET_PRESETS.map(a=>'<li><strong>'+esc(a.label)+'</strong> · '+a.width+' × '+a.height+' · '+esc(a.ratio)+'</li>').join('')+
+      '</ul></details>';
     return '<div class="annual-preview">'+
-      '<div class="annual-work-top"><h3>365-day social workbench</h3><p class="annual-small">Generated suggestions only · no automatic posts, ads, SMS or emails</p></div>'+
-      '<div class="annual-stats"><span><strong>'+plan.totals.posts+'</strong> suggestions</span>'+
-        '<span><strong>'+plan.totals.videos+'</strong> videos ('+Math.round(100*plan.totals.videos/Math.max(1,plan.totals.posts))+'%)</span>'+
-        '<span><strong>'+plan.totals.combined+'</strong> composite videos</span>'+
-        '<span><strong>'+nsw+'</strong> NSW-only visitor days</span>'+
-        '<span><strong>'+paidIdeas+'</strong> paid creative candidates</span></div>'+
-      '<div class="annual-work-filters">'+
-        '<label>Planning year starts<input type="month" data-annual-start min="2026-01" max="2028-02" value="'+startMonth+'"></label>'+
-        '<label>Month<select data-annual-month>'+months.map(m=>'<option value="'+m+'"'+(selectedMonth===m?' selected':'')+'>'+monthName(m)+'</option>').join('')+'</select></label>'+
-        '<label>Pattern<select data-annual-filter="layer"><option value="all">All visible layers</option>'+CAMPAIGN_LAYERS.map(l=>
-          '<option value="'+l.id+'"'+(layerFilter===l.id?' selected':'')+'>'+esc(l.label)+'</option>').join('')+'</select></label>'+
-        '<label>Destination<select data-annual-filter="channel"><option value="all">All destinations</option>'+PUBLISHING_DESTINATIONS.map(p=>
-          '<option value="'+p.id+'"'+(channelFilter===p.id?' selected':'')+'>'+esc(p.label)+'</option>').join('')+'</select></label>'+
-        '<label>Placement<select data-annual-filter="delivery">'+[['all','Organic + ad ideas'],['organic','Organic available'],['paid','Paid creative candidates']].map(([v,n])=>
-          '<option value="'+v+'"'+(deliveryFilter===v?' selected':'')+'>'+esc(n)+'</option>').join('')+'</select></label>'+
-        '<button type="button" class="button small" data-annual-export>Export 365-day CSV</button>'+
-        '<button type="button" class="button outline small" data-annual-reset-edits>Clear local notes</button>'+
-      '</div>'+
-      '<div class="annual-cal-legend"><span><i class="qld"></i> QLD school holidays</span><span><i class="nsw"></i> NSW school holidays</span><span><i class="weekend"></i> Fri–Sun peak</span></div>'+
-      '<div class="annual-work-layout"><section class="annual-calendar-panel"><div class="annual-cal-heading"><h3>'+monthName(selectedMonth)+'</h3><span class="annual-small">'+current.length+' matching suggestions</span></div>'+
-      renderCampaignCalendar({month:selectedMonth,dayCards:plan.days,posts:current,selectedDate,esc})+'</section>'+
-      '<aside class="annual-detail-panel"><h3>'+esc(monthDay)+'</h3><p class="annual-small">'+tags.map(esc).join(' · ')+
-        (tags.length?' · ':'')+todayPosts.length+' matching posts</p>'+detail+'</aside></div>'+
+      '<p class="annual-small">Placement spec version <strong>'+esc(CREATIVE_SPEC_VERSION.id)+'</strong> · reviewed '+esc(CREATIVE_SPEC_VERSION.reviewedOn)+'. Working exports, not upload minimums. Verify again before advertising.</p>'+
+      masterLibrary+
+      '<div class="annual-month-choose"><label>Year begins <input type="month" data-annual-start min="2026-01" max="2028-02" value="'+startMonth+'"></label>'+
+      '<label>View month <select data-annual-month>'+months.map(m=>'<option value="'+m+'"'+(selectedMonth===m?' selected':'')+'>'+monthName(m)+'</option>').join('')+'</select></label></div>'+
+      '<div class="annual-stats"><strong>'+plan.totals.posts+' suggestions</strong><strong>'+plan.totals.videos+' videos ('+
+        Math.round(100*plan.totals.videos/Math.max(1,plan.totals.posts))+'%)</strong><strong>'+plan.totals.combined+
+        ' composite posts</strong><span>'+nsw+' NSW-only visitor days</span><span>'+plan.totals.omitted+' ideas over daily limits</span><span>'+paidIdeas+' ideas with ad creative suggestions (unapproved)</span></div>'+
       '<div class="annual-month-grid">'+months.map(m=>'<button type="button" data-annual-go="'+m+'" aria-pressed="'+(selectedMonth===m)+'">'+monthName(m)+
-        '<span>'+visible.filter(p=>p.date.startsWith(m)).length+' suggestions</span></button>').join('')+'</div>'+
-      '<details class="annual-master-library"><summary>Media production presets ('+MASTER_ASSET_PRESETS.length+') and sources</summary><ul>'+
-        MASTER_ASSET_PRESETS.map(a=>'<li><strong>'+esc(a.label)+'</strong> · '+a.width+' × '+a.height+' · '+esc(a.ratio)+'</li>').join('')+'</ul>'+
-        '<p>Spec '+esc(CREATIVE_SPEC_VERSION.id)+' · '+esc(CREATIVE_SPEC_VERSION.reviewedOn)+'. Production presets, not hard upload requirements.</p>'+
-        '<p>Sources: <a href="'+esc(placementSources.meta)+'" target="_blank" rel="noopener noreferrer">Meta</a> · <a href="'+esc(placementSources.googleAds)+'" target="_blank" rel="noopener noreferrer">Google Ads</a> · <a href="'+esc(placementSources.tiktok)+'" target="_blank" rel="noopener noreferrer">TikTok</a> · <a href="'+esc(placementSources.noticeboard)+'" target="_blank" rel="noopener noreferrer">Straddie Noticeboard proposal</a>.</p></details>'+
-      '<p class="annual-small">Weather forecast, rules, species, fundraising, events and ad specifications require current verification before publication. Content statuses and notes here are local browser drafts; select Open as draft for the existing committee planner. No SMS automation.</p>'+
-      '</div>';
+        '<span>'+visible.filter(p=>p.date.startsWith(m)).length+' visible suggestions</span></button>').join('')+'</div>'+
+      '<h3>'+monthName(selectedMonth)+' · '+current.length+' visible suggestions</h3>'+
+      (current.length?'<ol class="annual-post-list">'+current.map(p=>{
+        const d=days.get(p.date),region=d?.holiday&&d?.nswHoliday?'QLD + NSW school holidays':d?.holiday?'QLD school holidays':d?.nswWesternOnly?'Western NSW summer extension':d?.nswHoliday?'NSW school holidays':'';
+        return '<li><div><strong>'+esc(csvDate(p.date))+' · '+esc(p.title)+'</strong><small>'+
+          esc(p.layerIds.join(' + '))+' · '+esc(p.format)+' · '+esc(p.size)+' ('+esc(p.aspectRatio)+') · '+
+          esc(p.suggestedTime)+' AEST'+(region?' · '+esc(region):'')+'</small>'+
+          '<p>'+esc(p.brief)+'</p><p><strong>Audience:</strong> '+esc(audienceText(p.audience))+
+          ' · <strong>CTA:</strong> '+esc(p.cta)+'</p>'+
+          (p.storyboard.length?'<p><strong>30-second video:</strong> '+esc(p.storyboard.join(' | '))+'</p>':'')+
+          '<details class="annual-placement-detail"><summary>'+p.creativeVariants.length+' placement-specific creative exports</summary><ul>'+
+          p.creativeVariants.map(v=>'<li><strong>'+esc(v.platform)+' · '+esc(v.placement)+'</strong> · '+esc(v.asset)+
+            ' · '+esc(v.size)+' · '+esc(v.ratio)+' · '+(v.distribution==='paid'?'Paid ad template / unapproved':'Organic')+
+            (v.provisional?' · PROPOSED ONLY':'')+
+            '<small><strong>File:</strong> '+esc(v.fileFormats.join(', '))+
+            (v.maximumDurationSeconds?' · maximum documented duration '+v.maximumDurationSeconds+'s':'')+
+            (v.recommendedDurationSeconds?' · suggested edit '+v.recommendedDurationSeconds+'s':'')+'</small>'+
+            (v.thumbnail?'<small><strong>Thumbnail:</strong> '+esc(v.thumbnail.label)+' '+v.thumbnail.width+' × '+v.thumbnail.height+'</small>':'')+
+            '<small><strong>Safe zones:</strong> '+esc(v.safeZone.label)+
+            (v.safeZone.topPixels?' ('+v.safeZone.topPixels+'px top, '+v.safeZone.bottomPixels+'px bottom, '+v.safeZone.sidePixels+'px sides)':'')+'</small>'+
+            (v.carousel?'<small><strong>Carousel:</strong> '+v.carousel.min+'–'+v.carousel.max+' slides; '+(v.carousel.requiresMusic?'music required':'check music rules')+'</small>':'')+
+            '<small><strong>Checklist:</strong> '+esc(v.checklist.join(' · '))+'</small>'+
+            '<small><strong>Approval:</strong> '+esc(v.approval)+'</small>'+
+            '<small>'+esc(v.note)+' · <a href="'+esc(v.sourceUrl)+'" target="_blank" rel="noopener noreferrer">Specification reference</a></small></li>').join('')+
+          '</ul></details></div>'+
+          '<button type="button" class="button outline small" data-annual-use="'+esc(p.id)+'">Use as draft</button></li>';
+      }).join('')+'</ol>':'<p>No suggestions in the visible layers for this month.</p>')+
+      '<p class="annual-small">Suggestions only: no draft or post is saved until you choose Use as draft and save it in the existing planner. Verify weather and tides shortly before publishing, and confirm all event, raffle, fundraising, species and licensing details.</p>'+
+      '<p class="annual-small">Placement references: <a href="'+esc(placementSources.meta)+'" target="_blank" rel="noopener noreferrer">Meta Ads Guide</a> · <a href="'+esc(placementSources.googleAds)+'" target="_blank" rel="noopener noreferrer">Google Ads</a> · <a href="'+esc(placementSources.tiktok)+'" target="_blank" rel="noopener noreferrer">TikTok Ads</a> · <a href="'+esc(placementSources.noticeboard)+'" target="_blank" rel="noopener noreferrer">Noticeboard pilot</a>.</p>'+
+      '<p class="annual-small">Official holidays: <a href="https://education.qld.gov.au/about-us/calendar/future-dates" target="_blank" rel="noopener noreferrer">Queensland</a> · <a href="https://education.nsw.gov.au/schooling/calendars/future-and-past-nsw-term-and-vacation-dates" target="_blank" rel="noopener noreferrer">NSW (Eastern/Western)</a>.</p></div>';
   }
   function markup(){return '<section class="annual-root" data-annual-root aria-label="12-month social pattern planner"><details class="annual-planner" open>'+
       '<summary><strong>Annual pattern calendar</strong> · QLD + NSW holiday waves, 67% video-first</summary>'+
       '<p>Independent layer switches, frequency, audience and daily density. '+(reviewOnly?'This page is an isolated visual preview; it does not use member data, save to Cloudflare, or publish.':'Saving changes only the committee settings, never social accounts.')+'</p>'+
-      (loaded?'<details class="annual-config"><summary>Pattern layers, frequencies, audience and platform settings</summary>'+controls()+'</details>':'<p>Loading committee settings…</p>')+preview()+
+      (loaded?controls():'<p>Loading committee settings…</p>')+preview()+
       '</details><p class="annual-small" data-annual-notice role="status" aria-live="polite">'+esc(notice)+'</p></section>';}
   function draw(){const pane=root();if(!pane)return;const isOpen=pane.querySelector('details')?.open??true;
-    const configOpen=pane.querySelector('.annual-config')?.open??false;
     const replacement=document.createElement('div');replacement.innerHTML=markup();
     const next=replacement.firstElementChild;pane.replaceWith(next);next.querySelector('details').open=isOpen;
-    if(next.querySelector('.annual-config'))next.querySelector('.annual-config').open=configOpen;
   }
   async function open(){
     if(loaded||busy||!isActive())return;
     busy=true;
     try{const row=await api(endpoint,{cache:'no-store'});
       if(!isActive())return;
-      version=row.version;settings=row.settings||defaultCampaignSettings();saved=JSON.stringify(settings);loaded=true;restoreLocal();
+      version=row.version;settings=row.settings||defaultCampaignSettings();saved=JSON.stringify(settings);loaded=true;
       notice=reviewOnly?'Temporary preview settings loaded. No database or live club data is connected.':row.updatedAt?'Loaded saved settings from '+row.updatedAt.slice(0,10)+'.':'Default settings loaded; not yet shared.';
     }catch(e){notice='Could not load settings: '+e.message;}finally{busy=false;draw();}
   }
@@ -180,34 +159,16 @@ export function setupAnnualCampaigns({mount,api,esc,isActive,onUse,reviewOnly=fa
     }
     else if(e.hasAttribute('data-annual-select-layer'))selectedLayer=e.value;
     else if(e.hasAttribute('data-annual-audience'))updateAudience(e.dataset.annualAudience,e.value,e.checked);
-    else if(e.hasAttribute('data-annual-start') && /^20\d{2}-(0[1-9]|1[0-2])$/.test(e.value)){startMonth=e.value;selectedMonth=startMonth;selectedDate=startMonth+'-01';restoreLocal();}
-    else if(e.hasAttribute('data-annual-month')){selectedMonth=e.value;selectedDate=selectedMonth+'-01';}
-    else if(e.hasAttribute('data-annual-filter')){
-      if(e.dataset.annualFilter==='layer')layerFilter=e.value;
-      if(e.dataset.annualFilter==='channel')channelFilter=e.value;
-      if(e.dataset.annualFilter==='delivery')deliveryFilter=e.value;
-    }
-    else if(e.hasAttribute('data-annual-status')){localEdits[e.dataset.annualStatus]={...editFor(e.dataset.annualStatus),status:e.value};persistLocal();return;}
+    else if(e.hasAttribute('data-annual-start') && /^20\d{2}-(0[1-9]|1[0-2])$/.test(e.value))startMonth=e.value;
+    else if(e.hasAttribute('data-annual-month'))selectedMonth=e.value;
     notice=changed()?(reviewOnly?'Trial changes are unsaved. Keep them in this tab to try another layout.':'Unsaved changes. Select Save committee settings to share them.'):'Settings match the saved version.';
     draw();
-  });
-  mount.addEventListener('input',event=>{
-    const field=event.target;if(!field.hasAttribute('data-annual-note')||!field.closest('[data-annual-root]'))return;
-    localEdits[field.dataset.annualNote]={...editFor(field.dataset.annualNote),note:field.value};persistLocal();
   });
   mount.addEventListener('click',event=>{
     const b=event.target.closest('button');if(!b||!b.closest('[data-annual-root]')||!isActive())return;
     if(b.hasAttribute('data-annual-save')){void save();return;}
     if(b.hasAttribute('data-annual-reload')){if(changed()&&!window.confirm('Discard unsaved pattern changes?'))return;loaded=false;void open();return;}
-    if(b.hasAttribute('data-annual-go')){selectedMonth=b.dataset.annualGo;selectedDate=selectedMonth+'-01';draw();return;}
-    if(b.hasAttribute('data-annual-day')){selectedDate=b.dataset.annualDay;draw();return;}
-    if(b.hasAttribute('data-annual-reset-edits')){if(window.confirm('Clear locally saved statuses and notes for this planning year?')){localEdits={};persistLocal();draw();}return;}
-    if(b.hasAttribute('data-annual-export')){
-      if(!lastPreview)return;
-      const csv=exportCampaignCSV(lastPreview.posts,localEdits),url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
-      const link=document.createElement('a');link.href=url;link.download='PLFC-social-workbench-'+startMonth+'-365-days.csv';link.click();
-      setTimeout(()=>URL.revokeObjectURL(url),10000);return;
-    }
+    if(b.hasAttribute('data-annual-go')){selectedMonth=b.dataset.annualGo;draw();return;}
     if(b.hasAttribute('data-annual-use')){
       const post=lastPreview?.posts.find(p=>p.id===b.dataset.annualUse);if(!post)return;
       onUse({title:post.title,body:post.brief+'\n\nSuggested format: '+post.format+' ('+post.size+'). '+post.cta+'. Review creative exports in the annual planner before publication.',channels:post.channels,plannedDate:post.date});
