@@ -113,8 +113,8 @@
 .annual-calendar-day-top{display:flex;align-items:flex-start;justify-content:space-between;gap:.25rem}
 .annual-calendar-day-top strong{font:800 1.02rem/1 Manrope,sans-serif}
 .annual-calendar-count{background:var(--studio-teal);color:white;border-radius:7px;font-size:.68rem;font-weight:800;line-height:1.4;padding:.08rem .38rem;min-width:19px;text-align:center}
-.annual-calendar-icons{display:flex;gap:.08rem;align-items:center;justify-content:flex-start;white-space:nowrap;overflow:hidden;min-height:30px}
-.annual-calendar-icons span{font-size:clamp(.98rem,2vw,1.37rem);line-height:1.3}
+.annual-calendar-icons{display:flex;flex-wrap:wrap;gap:2px;align-items:flex-start;align-content:start;justify-content:flex-start;white-space:normal;overflow:visible;min-height:23px}
+.annual-calendar-icons span{display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;font-size:clamp(.95rem,1.75vw,1.2rem);line-height:1.2;min-width:18px;min-height:19px}
 .annual-calendar-dots{display:flex;gap:.2rem;align-items:center;min-height:5px}
 .annual-calendar-dots i,.annual-calendar-legend i{display:inline-block;width:8px;height:8px;border-radius:50%;background:#d6e2da}
 .annual-calendar-dots i.qld,.annual-calendar-legend i.qld{background:#eb9f43}
@@ -222,7 +222,7 @@
   .annual-calendar-day-top strong{font-size:.77rem}
   .annual-calendar-count{font-size:.58rem;border-radius:5px;padding:1px 3px;min-width:14px}
   .annual-calendar-icons span{font-size:.94rem}
-  .annual-calendar-icons span:nth-child(n+3){display:none}
+  .annual-calendar-icons{gap:1px;min-height:18px}
   .annual-calendar-legend{font-size:.73rem}
   .annual-batch{padding:.8rem}
   .annual-stat-card{padding:.7rem;min-height:82px}
@@ -593,3 +593,26 @@
 .annual-history-diffs li>div span{flex:0 0 50px;color:#708379}
 .annual-history-diffs li>div code{font:500 .74rem/1.5 ui-monospace,monospace;overflow-wrap:anywhere;white-space:pre-wrap}
 @media(max-width:640px){.annual-save-feedback{align-items:flex-start}.annual-history-body{padding:.65rem}.annual-history>summary{padding:.8rem}}
+
+
+/* Every scheduled post has its own icon, including repeated topic icons.
+   Let the row grow rather than clipping an officer's actual post list. */
+.annual-calendar-day{height:auto}
+.annual-calendar-date-flags{display:flex;flex-wrap:wrap;align-items:center;gap:3px;min-width:0}
+.annual-cal-notation{display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;
+  border-radius:4px;padding:1px 4px;font:850 .64rem/1.35 system-ui,sans-serif;
+  letter-spacing:.02em;border:1px solid transparent}
+.annual-cal-notation.ph{color:#784700;background:#ffe0a1;border-color:#d59c43}
+.annual-cal-notation.lw{color:#214e84;background:#d9e9fb;border-color:#9bbfe7}
+.annual-cal-notation.part{color:#754f1c;background:#f5ead6;border-color:#d9be92}
+.annual-calendar-holiday-name{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;
+  line-clamp:2;overflow:hidden;font-size:.58rem;font-weight:750;line-height:1.18;color:#835b21;
+  overflow-wrap:anywhere}
+.annual-legend-holiday,.annual-legend-long{display:inline-flex;align-items:center;gap:.3rem}
+.annual-legend-holiday .annual-cal-notation,.annual-legend-long .annual-cal-notation{
+  width:auto;height:auto;border-radius:4px}
+@media(max-width:640px){
+  .annual-calendar-icons span{font-size:.87rem;min-width:15px;min-height:17px}
+  .annual-cal-notation{font-size:.52rem;padding:1px 2px}
+  .annual-calendar-holiday-name{display:none}
+}
