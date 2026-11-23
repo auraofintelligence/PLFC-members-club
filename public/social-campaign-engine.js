@@ -5,6 +5,7 @@ export const CAMPAIGN_LAYERS = [
   {id:'safety',label:'Boat, water and wildlife safety',frequency:2,priority:9,topics:['Pre-departure boat safety checklist','How to check official marine warnings','Safe sharing of jetties and ramps','Discarded fishing line and wildlife rescue contacts'],cta:'Read the safety and care guides'},
   {id:'events',label:'Events and countdowns',frequency:3,priority:10,topics:['Ask about the next confirmed club event','Countdown or RSVP reminder, once dates are confirmed','Volunteer roles for the next club activity','Day-before event checklist'],cta:'Check confirmed club events'},
   {id:'holidays',label:'School-holiday and family activities',frequency:3,priority:9,holidayOnly:true,topics:['Welcome visiting families to Straddie','Family-friendly fishing etiquette','Holiday trip preparation and safety','Holiday weekend club invitation'],cta:'Explore the visitor guide'},
+  {id:'nswHolidays',label:'NSW visitor holiday wave',frequency:2,priority:8,holidayOnly:true,topics:['NSW families: a Straddie fishing welcome','NSW road-trip and ferry planning checklist','First-time NSW visitor: fishing rules and local etiquette','NSW holiday anglers: safe boating and coast care'],cta:'See the visitor fishing guide'},
   {id:'camping',label:'Camping, visitors and island etiquette',frequency:2,priority:5,topics:['What to pack for a coastal fishing day','Jetty etiquette for first-time visitors','Keep camping and fishing areas clean','Planning a safe return after sunset'],cta:'Explore the island guide'},
   {id:'competition',label:'Competitions and leaderboards',frequency:2,priority:7,topics:['How a brag-mat photo is checked','Share verified competition results','Celebrate a verified leaderboard milestone','Invite teams to the next confirmed meet'],cta:'See club competitions'},
   {id:'newsletter',label:'Newsletters and club updates',frequency:1,priority:5,topics:['Preview this month’s club newsletter','Invite members to contribute a story','Summarise three confirmed club updates'],cta:'Visit the newsletter desk'},
@@ -22,7 +23,24 @@ export const CAMPAIGN_LAYERS = [
 export const QLD_SCHOOL_HOLIDAYS = [
   ['2026-12-12','2027-01-26'],['2027-03-26','2027-04-11'],
   ['2027-06-26','2027-07-11'],['2027-09-18','2027-10-04'],
-  ['2027-12-11','2028-01-23']
+  ['2027-12-11','2028-01-23'],['2028-04-01','2028-04-17'],
+  ['2028-06-24','2028-07-09'],['2028-09-16','2028-10-02'],
+  ['2028-12-09','2029-01-21']
+];
+// NSW Department of Education: Eastern division dates lead the main visitor wave.
+// The Western division has an additional summer extension; it receives a lighter tail.
+// https://education.nsw.gov.au/schooling/calendars/2027
+// https://education.nsw.gov.au/schooling/calendars/future-and-past-nsw-term-and-vacation-dates
+export const NSW_SCHOOL_HOLIDAYS_EASTERN = [
+  ['2026-12-18','2027-01-27'],['2027-04-12','2027-04-23'],
+  ['2027-07-05','2027-07-16'],['2027-09-27','2027-10-08'],
+  ['2027-12-21','2028-01-28'],['2028-04-10','2028-04-21'],
+  ['2028-07-10','2028-07-21'],['2028-10-03','2028-10-13'],
+  ['2028-12-22','2029-01-25']
+];
+export const NSW_SCHOOL_HOLIDAYS_WESTERN_EXTENSIONS = [
+  ['2027-01-28','2027-02-03'],['2028-01-29','2028-02-04'],
+  ['2029-01-26','2029-02-02']
 ];
 const MS = 86400000;
 const dayMs = day => Date.parse(day+'T00:00:00Z');
@@ -30,15 +48,21 @@ const iso = ms => new Date(ms).toISOString().slice(0,10);
 const weekday = day => new Date(dayMs(day)).getUTCDay();
 const numberHash = value => {let h=2166136261; for(const c of value){h=Math.imul(h^c.charCodeAt(0),16777619);} return h>>>0;};
 const inHoliday = day => QLD_SCHOOL_HOLIDAYS.some(([a,b])=>day>=a && day<=b);
+const inNSWEasternHoliday = day => NSW_SCHOOL_HOLIDAYS_EASTERN.some(([a,b])=>day>=a && day<=b);
+const inNSWWesternExtension = day => NSW_SCHOOL_HOLIDAYS_WESTERN_EXTENSIONS.some(([a,b])=>day>=a && day<=b);
+const inNSWHoliday = day => inNSWEasternHoliday(day)||inNSWWesternExtension(day);
+export const holidayInfluences = day => ({qld:inHoliday(day),nswEastern:inNSWEasternHoliday(day),nswWestern:inNSWWesternExtension(day)});
 const dayBeforeHoliday = day => QLD_SCHOOL_HOLIDAYS.some(([a])=>iso(dayMs(a)-MS)===day);
+const dayBeforeNSW = day => NSW_SCHOOL_HOLIDAYS_EASTERN.some(([a])=>iso(dayMs(a)-MS)===day);
 export const defaultCampaignSettings = () => ({
   videoShare:67, limits:{weekday:2,friday:3,weekend:4,holiday:5},
   layers:Object.fromEntries(CAMPAIGN_LAYERS.map(layer=>[layer.id,{enabled:true,visible:true,weekly:layer.frequency,
-    audience:{membership:['all'],gender:['all'],place:['all']}}]))
+    audience:{membership:['all'],gender:['all'],place:layer.id==='nswHolidays'?['tourist','regional']:['all']}}]))
 });
 const capFor = (day,limits) => inHoliday(day)?limits.holiday:weekday(day)===5?limits.friday:[0,6].includes(weekday(day))?limits.weekend:limits.weekday;
 function basePost(layer,day,weekKey,index){
-  const topic=layer.topics[numberHash(layer.id+weekKey+day+index)%layer.topics.length];
+  const topic=layer.id==='weather'?
+    layer.topics[weekday(day)-4]:layer.topics[numberHash(layer.id+weekKey+day+index)%layer.topics.length];
   const weather=layer.id==='weather';
   const text=weather?'Use a freshly verified marine forecast, tides and official warnings. Do not publish predicted conditions from this advance schedule.':
     ['events','competition','raffles','fundraisers','wishes'].includes(layer.id)?'Verify the real club record, dates, permissions and current status before publishing.':'Check details against the current PLFC guide and any applicable official advice.';
@@ -50,13 +74,16 @@ function assignWeek(days,settings,postsByDay){
   for(const layer of CAMPAIGN_LAYERS){
     const preference=settings.layers[layer.id];
     if(!preference?.enabled || !preference.weekly) continue;
-    let eligible=days.filter(day=>!layer.holidayOnly||inHoliday(day));
+    let eligible=days.filter(day=>!layer.holidayOnly||(layer.id==='nswHolidays'?inNSWHoliday(day):inHoliday(day)));
     if(layer.id==='weather')eligible=eligible.filter(day=>[4,5,6].includes(weekday(day)));
-    const isHolidayWeek=days.some(inHoliday);
-    const boost=isHolidayWeek && ['fish','bait','safety','camping','community','membership'].includes(layer.id)?1:0;
-    const frequency=Math.min(eligible.length,preference.weekly+boost);
+    const isQLDWeek=days.some(inHoliday),isNSWWeek=days.some(inNSWHoliday);
+    const boost=isQLDWeek && ['fish','bait','safety','camping','community','membership'].includes(layer.id)?1:
+      !isQLDWeek && isNSWWeek && layer.id==='camping'?1:0;
+    const westernOnly=layer.id==='nswHolidays' && eligible.every(day=>!inNSWEasternHoliday(day));
+    const frequency=Math.min(eligible.length,westernOnly?Math.min(preference.weekly,1):preference.weekly+boost);
     eligible.sort((a,b)=>{
-      const weight=day=>(inHoliday(day)?45:0)+([5,6,0].includes(weekday(day))?20:0)+(weekday(day)===5?10:0);
+      const weight=day=>(layer.id==='nswHolidays' && inNSWHoliday(day) && !inHoliday(day)?70:0)+
+        (inHoliday(day)?45:0)+([5,6,0].includes(weekday(day))?20:0)+(weekday(day)===5?10:0);
       return weight(b)-weight(a) || numberHash(layer.id+key+a)%100-numberHash(layer.id+key+b)%100;
     });
     const chosen=layer.id==='weather' ? eligible.sort((a,b)=>weekday(a)-weekday(b)).slice(0,frequency) : eligible.slice(0,frequency);
@@ -95,11 +122,17 @@ export function generateCampaignYear(startMonth,settings=defaultCampaignSettings
       brief:'Confirm Queensland state school holiday dates and local conditions before publishing.',cta:'Explore the family fishing guide',
       audience:settings.layers.holidays.audience,priority:11,sections:['Holiday countdown'],composite:false,status:'suggestion'});
   }
+  for(const day of days.filter(dayBeforeNSW)){
+    if(!settings.layers.nswHolidays?.enabled)continue;
+    postsByDay.get(day).push({id:'nsw-holiday-eve-'+day,date:day,layerIds:['nswHolidays'],title:'NSW school break starts tomorrow: Straddie visitor welcome',
+      brief:'Verify NSW term dates and any current ferry, weather and fishing information before publishing.',cta:'Explore the visitor fishing guide',
+      audience:settings.layers.nswHolidays.audience,priority:9,sections:['NSW holiday lead-in'],composite:false,status:'suggestion'});
+  }
   const dayCards=[],posts=[];
   for(const [day,candidates] of postsByDay){
     candidates.sort((a,b)=>b.priority-a.priority||numberHash(a.id)-numberHash(b.id));
     const {posts:chosen,omitted}=combine(candidates,capFor(day,settings.limits));
-    dayCards.push({date:day,holiday:inHoliday(day),omitted,count:chosen.length});
+    dayCards.push({date:day,holiday:inHoliday(day),nswHoliday:inNSWHoliday(day),nswWesternOnly:inNSWWesternExtension(day),omitted,count:chosen.length});
     posts.push(...chosen);
   }
   const targetVideo=Math.round(posts.length*settings.videoShare/100);
