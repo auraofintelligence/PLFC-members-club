@@ -1,12 +1,14 @@
-import {CAMPAIGN_LAYERS,POSTING_DAY_TYPES,dayPostingBounds,normaliseDailyLimits,defaultCampaignSettings,generateCampaignYear,monthSettingsFor,copyMonthSettings,weekStart,settingsForDate,scopeSettingsFor} from './social-campaign-engine.js?v=20261124-itemised';
+import {CAMPAIGN_LAYERS,POSTING_DAY_TYPES,dayPostingBounds,normaliseDailyLimits,defaultCampaignSettings,generateCampaignYear,monthSettingsFor,copyMonthSettings,weekStart,settingsForDate,scopeSettingsFor} from './social-campaign-engine.js?v=20261123-annual-events';
 import {BUILTIN_DAY_PATTERNS,allDayPresets,patternFor,planFromPattern,planFromPosts,newDaySlot,validSlot} from './social-day-patterns.js?v=20261124-itemised';
-import {renderItemisedDay,renderWeekItemised,mondayOf,nextDay} from './social-day-ui.js?v=20261124-office-signatures';
+import {renderItemisedDay,renderWeekItemised,mondayOf,nextDay} from './social-day-ui.js?v=20261123-annual-events';
 import {renderSaveFeedback,renderCampaignHistory} from './social-save-history.js?v=20261123-history';
 import {PUBLISHING_DESTINATIONS,placementSources,CREATIVE_SPEC_VERSION,MASTER_ASSET_PRESETS} from './social-placements.js?v=20261123-formats';
 import {renderDestinationChoices,renderAssetGuide} from './social-format-guide.js?v=20261123-formats';
-import {LAYER_ICONS,renderMonthCalendar,renderCalendarDialog,postLabel,postBrief,postTime,isMinuteTime,brisbaneToday} from './social-visual-ui.js?v=20261123-all-icons-ph';
-import {renderTimingPanel,renderAnalyticsPanel} from './social-insights-ui.js?v=20261123-timing-reports';
+import {LAYER_ICONS,renderMonthCalendar,renderCalendarDialog,postLabel,postBrief,postTime,isMinuteTime,brisbaneToday} from './social-visual-ui.js?v=20261123-annual-events';
+import {renderTimingPanel,renderAnalyticsPanel} from './social-insights-ui.js?v=20261123-annual-events';
 import {parseDelimited,suggestedMapping,metricFromRow,linkMetrics,latestMetrics,summarizeMetrics,compareContentPatterns,planMetricsCSV} from './social-performance.js?v=20261123-timing-reports';
+import {parseAnnualCalendarCSV,clubEventCandidates,meetingCandidates,mergeEventCandidates,importCalendarAnchors,surpriseDayItem} from './social-event-import.js?v=20261123-annual-events';
+import {renderCalendarImportPanel} from './social-event-import-ui.js?v=20261123-annual-events';
 
 const endpoint='/api/committee/social-campaign-settings';
 const choices={
@@ -57,6 +59,7 @@ export function setupAnnualCampaigns({mount,api,esc,isActive,onUse,reviewOnly=fa
   let workingDayPlans=null,dayFormTouched=false;
   let modalDay=null,modalView='day',modalPostId=null,topicFilter='all',visiblePosts=[],postEdits={};
   let metrics=[],pendingReport=null,metricsPlatform='facebook',metricsNotice='',editingMilestone='';
+  let eventCandidates=[],eventSelected=new Set(),eventVerified=new Set(),eventImportNotice='',eventImportError='',eventLoading=false;
   const metricsKey=()=> 'plfc-social-performance-v1:'+(reviewOnly?'review':'committee');
   const importMetrics=()=>{try{const data=JSON.parse(localStorage.getItem(metricsKey())||'[]');metrics=Array.isArray(data)?data.slice(0,15000):[];}catch{metrics=[];}};
   const storeMetrics=()=>{try{localStorage.setItem(metricsKey(),JSON.stringify(metrics));return true;}catch{return false;}};
@@ -364,6 +367,8 @@ export function setupAnnualCampaigns({mount,api,esc,isActive,onUse,reviewOnly=fa
       mapping:pendingReport?.mapping||{},platform:metricsPlatform,filename:pendingReport?.filename||'',
       notice:metricsNotice,posts:current,esc
     });
+    const importedEvents=renderCalendarImportPanel({candidates:eventCandidates,selected:eventSelected,verified:eventVerified,
+      milestones:settings.milestones,loading:eventLoading,notice:eventImportNotice,error:eventImportError,reviewOnly,esc});
     const signals=renderTimingPanel(settings,esc,editingMilestone);
     const popup=renderCalendarDialog({day:modalDay,view:modalView,postId:modalPostId,
       posts:visiblePosts,plan:lastPreview,esc,getEdit,reviewOnly,metricsForPost});
@@ -373,7 +378,7 @@ export function setupAnnualCampaigns({mount,api,esc,isActive,onUse,reviewOnly=fa
       (loaded&&!sharedSettingsReady?'<div class="annual-storage-warning" role="alert"><strong>Shared settings are unavailable</strong>'+
         '<p>Your planning calendar still works. Changes here stay in this browser only and are not shared with PLFC officers.</p>'+
         '<button type="button" class="button outline small" data-annual-reconnect>Retry connection</button></div>':'')+
-      visual+(loaded?renderCampaignHistory({history:historyRows,loading:historyLoading,
+      visual+(loaded?importedEvents+renderCampaignHistory({history:historyRows,loading:historyLoading,
         error:historyError,reviewOnly,esc})+signals+analytics:'')+
       (loaded?'<details class="annual-default-settings"><summary>⚙️ Global annual defaults</summary>'+controls()+'</details>':'')+
       '</details><p class="annual-small" data-annual-notice role="status" aria-live="polite">'+esc(notice)+'</p>'+
@@ -383,7 +388,7 @@ export function setupAnnualCampaigns({mount,api,esc,isActive,onUse,reviewOnly=fa
     const pane=root();if(!pane)return;
     const states={};
     for(const cls of ['annual-planner','annual-month-bulk-options','annual-batch-layer-options','annual-batch-platform-options',
-      'annual-default-settings','annual-year-overview','annual-master-library','annual-history','annual-signals','annual-analytics']){
+      'annual-default-settings','annual-year-overview','annual-master-library','annual-history','annual-calendar-import','annual-signals','annual-analytics']){
       states[cls]=pane.querySelector('.'+cls)?.open??(cls==='annual-planner');
     }
     const temp=document.createElement('div');temp.innerHTML=markup();
@@ -540,6 +545,56 @@ export function setupAnnualCampaigns({mount,api,esc,isActive,onUse,reviewOnly=fa
     notice='Exported '+rows.length+' posts for '+monthName(selectedMonth)+'. Times use Brisbane AEST.';
   }
 
+  async function loadClubAnnualEvents(){
+    if(eventLoading||reviewOnly||!loaded)return;
+    eventLoading=true;eventImportError='';eventImportNotice='Reading the existing committee calendar…';draw();
+    const result=await Promise.allSettled([
+      api('/api/committee/events',{cache:'no-store'}),
+      api('/api/meetings',{cache:'no-store'})
+    ]);
+    if(!isActive())return;
+    eventLoading=false;
+    const items=[],problems=[];
+    if(result[0].status==='fulfilled')items.push(...clubEventCandidates(result[0].value.events,startMonth));
+    else problems.push('event run sheets: '+result[0].reason?.message);
+    if(result[1].status==='fulfilled')items.push(...meetingCandidates(result[1].value.meetings,startMonth));
+    else problems.push('meeting register: '+result[1].reason?.message);
+    if(items.length){
+      eventCandidates=mergeEventCandidates(eventCandidates,items);
+      const previous=new Map(settings.milestones.map(m=>[m.id,m]));
+      for(const item of items){
+        const old=previous.get(item.id);
+        if(!item.inactive||old)eventSelected.add(item.id);
+        if(!item.inactive&&old?.confirmed&&old.title===item.title&&old.date===item.date)
+          eventVerified.add(item.id);
+        else eventVerified.delete(item.id);
+      }
+      eventImportNotice='Found '+items.length+' dated records. Review the selection and verified-date boxes before importing.';
+    }else eventImportNotice='No dated committee events or meetings found in this 12-month window.';
+    eventImportError=problems.join('; ');draw();
+  }
+  mount.addEventListener('change',async event=>{
+    const file=event.target;
+    if(!file.hasAttribute('data-events-csv'))return;
+    const selected=file.files?.[0];if(!selected)return;
+    try{
+      if(selected.size>3_000_000)throw Error('Choose a CSV file smaller than 3 MB.');
+      const parsed=parseAnnualCalendarCSV(await selected.text(),startMonth);
+      eventCandidates=mergeEventCandidates(eventCandidates,parsed.candidates);
+      const existing=new Map(settings.milestones.map(m=>[m.id,m]));
+      for(const item of parsed.candidates){
+        eventSelected.add(item.id);
+        const previous=existing.get(item.id);
+        if(previous?.confirmed&&previous.title===item.title&&previous.date===item.date)eventVerified.add(item.id);
+        else eventVerified.delete(item.id);
+      }
+      eventImportError='';
+      eventImportNotice='Loaded '+parsed.candidates.length+' dated records from '+selected.name+
+        (parsed.invalidRows.length?'. Skipped rows '+parsed.invalidRows.slice(0,10).join(', ')+'.':'.')+
+        ' Review before importing. No event was assumed confirmed.';
+    }catch(e){eventImportError=e.message||String(e);}
+    draw();
+  });
   mount.addEventListener('change',async event=>{
     const file=event.target;
     if(!file.hasAttribute('data-metric-file'))return;
@@ -571,6 +626,19 @@ export function setupAnnualCampaigns({mount,api,esc,isActive,onUse,reviewOnly=fa
   mount.addEventListener('change',event=>{
     if(!isActive()||!loaded||!event.target.closest('[data-annual-root]'))return;
     const e=event.target;
+    if(e.hasAttribute('data-calendar-import-select')){
+      const id=e.dataset.calendarImportSelect;
+      if(e.checked)eventSelected.add(id);else eventSelected.delete(id);
+      return;
+    }
+    if(e.hasAttribute('data-calendar-import-verify')){
+      const id=e.dataset.calendarImportVerify;
+      const event=eventCandidates.find(item=>item.id===id);
+      if(e.checked&&!event?.inactive){eventVerified.add(id);eventSelected.add(id);}
+      else eventVerified.delete(id);
+      draw();
+      return;
+    }
     if(e.closest?.('[data-day-editor]')){dayFormTouched=true;return;}
     if(e.hasAttribute('data-day-pattern')||e.hasAttribute('data-week-pattern'))return;
     const batch=e.hasAttribute('data-month-video')||e.hasAttribute('data-month-limit')||
@@ -653,6 +721,34 @@ export function setupAnnualCampaigns({mount,api,esc,isActive,onUse,reviewOnly=fa
   });
   mount.addEventListener('click',event=>{
     const b=event.target.closest('button');if(!b||!b.closest('[data-annual-root]')||!isActive())return;
+    if(b.hasAttribute('data-events-fetch')){void loadClubAnnualEvents();return;}
+    if(b.hasAttribute('data-events-select-all')){
+      for(const item of eventCandidates)eventSelected.add(item.id);
+      eventImportNotice='Selected '+eventSelected.size+' events for review.';draw();return;
+    }
+    if(b.hasAttribute('data-events-select-none')){
+      eventSelected.clear();eventImportNotice='No events selected.';draw();return;
+    }
+    if(b.hasAttribute('data-events-template')){
+      const blob=new Blob(['title,date,type,id,notes\r\n'],{type:'text/csv;charset=utf-8'});
+      const url=URL.createObjectURL(blob),link=document.createElement('a');
+      link.href=url;link.download='plfc-annual-event-calendar-template.csv';link.click();
+      setTimeout(()=>URL.revokeObjectURL(url),5000);return;
+    }
+    if(b.hasAttribute('data-events-apply')){
+      if(!eventSelected.size){eventImportError='Select at least one planned event to import.';draw();return;}
+      try{
+        const chosen=eventCandidates.filter(item=>eventSelected.has(item.id));
+        const result=importCalendarAnchors(settings.milestones,chosen,[...eventSelected],[...eventVerified]);
+        settings.milestones=result.milestones;
+        eventImportError='';
+        eventImportNotice='Imported '+result.added+' new, '+result.updated+' updated events'+
+          (result.verificationReset?'; '+result.verificationReset+' changed dates need reconfirmation':'')+
+          '. These are draft ideas until PLFC approves individual posts.';
+        void save();
+      }catch(error){eventImportError=error.message;draw();}
+      return;
+    }
     if(b.hasAttribute('data-history-load')){void loadHistory();return;}
     if(b.hasAttribute('data-history-export')){void exportHistoryVersion(b.dataset.historyExport);return;}
     if(b.hasAttribute('data-signal-save')){void save();return;}
@@ -776,13 +872,17 @@ export function setupAnnualCampaigns({mount,api,esc,isActive,onUse,reviewOnly=fa
       if(applyDailyPattern(focusDay,id)){notice='Pattern applied. Review the individual posts, then Save day.';draw();}
       return;
     }
-    if(b.hasAttribute('data-day-add-item')){
+    if(b.hasAttribute('data-day-add-item')||b.hasAttribute('data-day-surprise')){
       if(dayFormTouched&&!captureDayEditor())return;
       const plan=dayPlanFor(focusDay);
       if(plan.items.length>=12){notice='The limit is 12 individual suggestions per day.';draw();return;}
       const ids=new Set(plan.items.map(x=>x.id));let n=1;while(ids.has('s'+n))n++;
-      draftPlans()[focusDay]={...plan,items:[...plan.items,newDaySlot(n)]};
-      notice='Added a new post item. Edit its details, then save the day.';draw();return;
+      const surprise=b.hasAttribute('data-day-surprise');
+      draftPlans()[focusDay]={...plan,items:[...plan.items,
+        surprise?surpriseDayItem(n):newDaySlot(n)]};
+      notice=surprise?'Added a spontaneous opportunity. Verify permissions and save the day before club approval.':
+        'Added a new post item. Edit its details, then save the day.';
+      draw();return;
     }
     if(b.hasAttribute('data-day-remove-item')){
       if(dayFormTouched&&!captureDayEditor())return;
@@ -947,7 +1047,9 @@ export function setupAnnualCampaigns({mount,api,esc,isActive,onUse,reviewOnly=fa
   mount.addEventListener('close',event=>{
     if(event.target.matches('[data-annual-day-dialog]')){modalDay=null;modalPostId=null;modalView='day';}
   },true);
-  return {markup,open,reset(){loaded=false;busy=false;sharedSettingsReady=true;saveState='idle';saveMessage='';
+  return {markup,open,reset(){loaded=false;busy=false;sharedSettingsReady=true;
+    eventCandidates=[];eventSelected.clear();eventVerified.clear();eventImportNotice='';eventImportError='';eventLoading=false;
+    saveState='idle';saveMessage='';
     latestSave=null;historyRows=null;historyError='';historyLoading=false;workingDayPlans=null;dayFormTouched=false;
     settings=defaultCampaignSettings();saved=JSON.stringify(settings);
     version=0;notice='';lastPreview=null;modalDay=null;modalPostId=null;modalView='day';planningScope='month';monthDraft=null;batchMonth='';}};

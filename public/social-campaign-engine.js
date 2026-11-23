@@ -186,17 +186,39 @@ function insertTimingSignals(settings,postsByDay){
   const events=[
     ...QLD_SCHOOL_HOLIDAYS.map(([date])=>({kind:'holidays',date,title:'Queensland school holidays'})),
     ...NSW_SCHOOL_HOLIDAYS_EASTERN.map(([date])=>({kind:'nswHolidays',date,title:'NSW school holidays'})),
-    ...(settings.milestones||[]).filter(e=>e.confirmed===true)
+    ...(settings.milestones||[]).filter(e=>e.confirmed===true||String(e.id||'').startsWith('m-import-'))
   ];
   for(const event of events){
     const rule=rules[event.kind];
     if(!rule?.enabled)continue;
+    const imported=String(event.id||'').startsWith('m-import-');
+    const tentative=imported&&!event.confirmed;
+    const layer=event.kind==='holidays'?'holidays':event.kind==='nswHolidays'?'nswHolidays':
+      event.kind==='meeting'?'events':event.kind.startsWith('season_')?'fish':'events';
+    if(tentative){
+      // A working committee calendar should inform private content preparation,
+      // but a tentative date must never become a public invitation by default.
+      const chosen=rule.leadDays.filter(n=>n>=7).sort((a,b)=>a-b)[0]||7;
+      const draftDate=iso(dayMs(event.date)-chosen*MS);
+      const config=settingsForDate(settings,draftDate);
+      if(postsByDay.has(draftDate)&&config.layers[layer]?.enabled){
+        postsByDay.get(draftDate).push({
+          id:'anchor-planning-'+event.id+'-'+event.date,
+          date:draftDate,layerIds:[layer],
+          title:'Tentative event planning: '+event.title,
+          brief:'Internal draft only. Ask the committee to confirm the event date, permissions and promotional wording before publishing any announcement. Keep room for unexpected opportunities.',
+          cta:'Confirm the committee event calendar',audience:config.layers[layer].audience,
+          priority:11,sections:['Provisional planning only'],composite:false,status:'suggestion',
+          timingSignal:{kind:event.kind,title:event.title,targetDate:event.date,leadDays:chosen,
+            tentative:true,phase:'planning',importedCalendar:true,sourceUrl:''}
+        });
+      }
+      continue;
+    }
     for(const leadDays of rule.leadDays){
       const date=iso(dayMs(event.date)-leadDays*MS);
       if(!postsByDay.has(date))continue;
       const selected=settingsForDate(settings,date);
-      const layer=event.kind==='holidays'?'holidays':event.kind==='nswHolidays'?'nswHolidays':
-        event.kind==='meeting'?'events':event.kind.startsWith('season_')?'fish':'events';
       if(!selected.layers[layer]?.enabled)continue;
       const topic=event.title||signalTitles[event.kind]||'Confirmed milestone';
       const label=leadDays>=7?Math.round(leadDays/7)+' weeks':leadDays+' days';
@@ -212,8 +234,27 @@ function insertTimingSignals(settings,postsByDay){
         cta:event.kind==='holidays'||event.kind==='nswHolidays'?'Explore Straddie visitor information':'Check confirmed club information',
         audience:selected.layers[layer].audience,priority:leadDays<=7?10:6,sections:[title],
         composite:false,status:'suggestion',
-        timingSignal:{kind:event.kind,title:topic,targetDate:event.date,leadDays,sourceUrl:event.sourceUrl||''}
+        timingSignal:{kind:event.kind,title:topic,targetDate:event.date,leadDays,
+          phase:'lead',importedCalendar:imported,tentative:false,sourceUrl:event.sourceUrl||''}
       });
+    }
+    if(imported&&['event','meeting'].includes(event.kind)){
+      for(const [offset,phase] of [[0,'day'],[1,'follow']]){
+        const postingDate=iso(dayMs(event.date)+offset*MS),config=settingsForDate(settings,postingDate);
+        if(!postsByDay.has(postingDate)||!config.layers[layer]?.enabled)continue;
+        const title=phase==='day'?'Event day: '+event.title:'After '+event.title+': prepare a careful recap';
+        const brief=phase==='day'?
+          'Prepare a day-of post using only the confirmed time, access, event details and permission from the club. Re-check immediately before posting.':
+          'Prepare a thank-you or recap only after verifying what actually happened, results, photographs and participant permission. Do not invent attendance, winners or outcomes.';
+        postsByDay.get(postingDate).push({
+          id:'anchor-'+phase+'-'+event.id+'-'+event.date,
+          date:postingDate,layerIds:[layer],title,brief,cta:'Check confirmed club event information',
+          audience:config.layers[layer].audience,priority:phase==='day'?13:7,
+          sections:[title],composite:false,status:'suggestion',
+          timingSignal:{kind:event.kind,title:event.title,targetDate:event.date,
+            phase,importedCalendar:true,tentative:false,leadDays:0,sourceUrl:event.sourceUrl||''}
+        });
+      }
     }
   }
 }
@@ -224,16 +265,21 @@ function combine(candidates,cap){
   const overflow=candidates.slice(cap);
   // A short roundup can carry two additional subjects, reducing posting pressure.
   if(overflow.length && selected.length){
-    const target=selected.find(p=>p.layerIds[0]!=='safety')||selected[0];
+    // Never put tentative calendar dates into a public-facing multi-topic roundup.
+    const target=selected.find(p=>!p.timingSignal&&p.layerIds[0]!=='safety')||
+      selected.find(p=>!p.timingSignal);
     // Do not silently mix targeted member, gender or visitor groups in one post.
     const additions=[];
     for(let i=0;i<overflow.length && additions.length<2;){
-      if(JSON.stringify(overflow[i].audience)===JSON.stringify(target.audience))additions.push(...overflow.splice(i,1));
+      if(target&&!overflow[i].timingSignal&&JSON.stringify(overflow[i].audience)===JSON.stringify(target.audience))
+        additions.push(...overflow.splice(i,1));
       else i++;
     }
-    target.layerIds.push(...additions.flatMap(p=>p.layerIds));
-    target.sections.push(...additions.map(p=>p.title));
-    if(additions.length){
+    if(target){
+      target.layerIds.push(...additions.flatMap(p=>p.layerIds));
+      target.sections.push(...additions.map(p=>p.title));
+    }
+    if(target&&additions.length){
       target.composite=true;
       target.title='30-second PLFC roundup: '+target.sections[0];
       target.brief+=' Include concise segments from the other sources; verify every claim.';
@@ -266,6 +312,14 @@ export function generateCampaignYear(startMonth,settings=defaultCampaignSettings
       audience:monthSettings.layers.nswHolidays.audience,priority:9,sections:['NSW holiday lead-in'],composite:false,status:'suggestion'});
   }
   insertTimingSignals(settings,postsByDay);
+  const anchorsByDay=new Map();
+  for(const milestone of settings.milestones||[]){
+    if(!milestone.confirmed&&!String(milestone.id||'').startsWith('m-import-'))continue;
+    if(!anchorsByDay.has(milestone.date))anchorsByDay.set(milestone.date,[]);
+    anchorsByDay.get(milestone.date).push({
+      id:milestone.id,title:milestone.title,kind:milestone.kind,confirmed:milestone.confirmed
+    });
+  }
   const dayCards=[],posts=[];
   for(const [day,candidates] of postsByDay){
     const effective=settingsForDate(settings,day);
@@ -295,6 +349,16 @@ export function generateCampaignYear(startMonth,settings=defaultCampaignSettings
       }
     }
     candidates.sort((a,b)=>b.priority-a.priority||numberHash(a.id)-numberHash(b.id));
+    // Keep an editorial slot for regular/whimsical content when several annual
+    // event reminders coincide. A curated day can intentionally override this.
+    if(bounds.max>1){
+      const anchors=candidates.filter(p=>p.timingSignal?.importedCalendar);
+      const other=candidates.filter(p=>!p.timingSignal?.importedCalendar);
+      if(anchors.length>=bounds.max&&other.length){
+        candidates.splice(0,candidates.length,...anchors.slice(0,bounds.max-1),
+          other[0],...anchors.slice(bounds.max-1),...other.slice(1));
+      }
+    }
     const dayPlan=settings.dayPlans?.[day];
     // A curated day replaces generated suggestions, not the other way around.
     // The club retains full control even when a monthly pattern is later changed.
@@ -312,6 +376,7 @@ export function generateCampaignYear(startMonth,settings=defaultCampaignSettings
       publicHoliday:bounds.publicHoliday,publicHolidayName:bounds.publicHolidayName,
       partialPublicHoliday:bounds.partialPublicHoliday,longWeekend:bounds.longWeekend,
       postingCategory:bounds.category,minimum:bounds.min,maximum:bounds.max,
+      eventAnchors:anchorsByDay.get(day)||[],
       manualPlan:manual,signature:manual?(dayPlan.signature||null):null,omitted,count:chosen.length});
     posts.push(...chosen);
   }
