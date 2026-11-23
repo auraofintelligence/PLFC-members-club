@@ -57,7 +57,7 @@ export const holidayInfluences = day => ({qld:inHoliday(day),nswEastern:inNSWEas
 const dayBeforeHoliday = day => QLD_SCHOOL_HOLIDAYS.some(([a])=>iso(dayMs(a)-MS)===day);
 const dayBeforeNSW = day => NSW_SCHOOL_HOLIDAYS_EASTERN.some(([a])=>iso(dayMs(a)-MS)===day);
 export const defaultCampaignSettings = () => ({
-  monthOverrides:{},weekOverrides:{},dayOverrides:{},
+  monthOverrides:{},weekOverrides:{},dayOverrides:{},dayPlans:{},dayArchetypes:{},
   timingSignals:{
     holidays:{enabled:true,leadDays:[84,56,42,28,14,7]},
     nswHolidays:{enabled:true,leadDays:[84,42,14,7]},
@@ -295,18 +295,31 @@ export function generateCampaignYear(startMonth,settings=defaultCampaignSettings
       }
     }
     candidates.sort((a,b)=>b.priority-a.priority||numberHash(a.id)-numberHash(b.id));
-    const {posts:chosen,omitted}=combine(candidates,bounds.max);
+    const dayPlan=settings.dayPlans?.[day];
+    // A curated day replaces generated suggestions, not the other way around.
+    // The club retains full control even when a monthly pattern is later changed.
+    const manual=Array.isArray(dayPlan?.items)&&dayPlan.items.length>0;
+    const result=manual?{omitted:0,posts:dayPlan.items.map((slot,index)=>{
+      const layer=CAMPAIGN_LAYERS.find(item=>item.id===slot.layerId)||CAMPAIGN_LAYERS.find(item=>item.id==='community');
+      return {id:'curated-'+day+'-'+slot.id,date:day,layerIds:[layer.id],
+        title:slot.title,brief:slot.brief,cta:layer.cta,
+        audience:effective.layers[layer.id].audience,priority:20,composite:false,
+        sections:[slot.title],status:'suggestion',curated:true,
+        requestedFormat:slot.format,requestedTime:slot.time};
+    })}:combine(candidates,bounds.max);
+    const {posts:chosen,omitted}=result;
     dayCards.push({date:day,holiday:inHoliday(day),nswHoliday:inNSWHoliday(day),nswWesternOnly:inNSWWesternExtension(day),
       publicHoliday:bounds.publicHoliday,publicHolidayName:bounds.publicHolidayName,
       partialPublicHoliday:bounds.partialPublicHoliday,longWeekend:bounds.longWeekend,
-      postingCategory:bounds.category,minimum:bounds.min,maximum:bounds.max,omitted,count:chosen.length});
+      postingCategory:bounds.category,minimum:bounds.min,maximum:bounds.max,
+      manualPlan:manual,signature:manual?(dayPlan.signature||null):null,omitted,count:chosen.length});
     posts.push(...chosen);
   }
   const composites=posts.filter(p=>p.composite);
   const videoIds=new Set();
   // Monthly ratios are independent. Composites take precedence, then evenly-seeded candidates.
   for(const month of [...new Set(posts.map(p=>p.date.slice(0,7)))]){
-    const current=posts.filter(p=>p.date.startsWith(month));
+    const current=posts.filter(p=>p.date.startsWith(month)&&!p.curated);
     const groups=new Map();
     for(const post of current){
       const effective=settingsForDate(settings,post.date);
@@ -321,7 +334,8 @@ export function generateCampaignYear(startMonth,settings=defaultCampaignSettings
     }
   }
   for(const p of posts){
-    p.format=videoIds.has(p.id)?'30-second vertical video':['image','carousel','link'][numberHash('format-'+p.id)%3];
+    p.format=p.curated?(p.requestedFormat==='video'?'30-second vertical video':p.requestedFormat):
+      videoIds.has(p.id)?'30-second vertical video':['image','carousel','link'][numberHash('format-'+p.id)%3];
     p.aspectRatio=p.format.startsWith('30-second')?'9:16':p.format==='link'?'1.91:1':'4:5';
     p.size=p.format.startsWith('30-second')?'1080×1920':p.format==='link'?'1200×630':'1080×1350';
     p.durationSeconds=p.format.startsWith('30-second')?30:null;
@@ -332,7 +346,8 @@ export function generateCampaignYear(startMonth,settings=defaultCampaignSettings
     const minute=Number(start.slice(0,2))*60+Number(start.slice(3))+index*105;
     // Same-day scheduling only; individual posts can later be moved to any minute.
     const minuteWithinDay=Math.min(1439,minute);
-    p.suggestedTime=String(Math.floor(minuteWithinDay/60)).padStart(2,'0')+':'+String(minuteWithinDay%60).padStart(2,'0');
+    p.suggestedTime=p.curated?p.requestedTime:
+      String(Math.floor(minuteWithinDay/60)).padStart(2,'0')+':'+String(minuteWithinDay%60).padStart(2,'0');
     p.creativeVariants=creativeVariantsFor(p,settingsForDate(settings,p.date).delivery);
     p.destinations=[...new Set(p.creativeVariants.filter(v=>v.distribution==='organic').map(v=>v.platform))];
     // The existing social post editor supports only the four connected club channels.

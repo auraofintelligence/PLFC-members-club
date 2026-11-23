@@ -3,6 +3,39 @@ const memberships=['all','adult','cadet','junior','social','casual','lifetime','
 const genders=['all','women','men','self-described'];
 const places=['all','local','tourist','regional'];
 const destinations=['facebook','instagram','youtube','tiktok','noticeboard'];
+
+const officerTitles={
+  president:'President',vicepresident:'Vice President',secretary:'Secretary',
+  assistantsecretary:'Assistant Secretary',treasurer:'Treasurer'
+};
+export const officeSignature=(identity,now)=>{
+  const by=String(identity?.name||'Committee officer').trim().slice(0,100)||'Committee officer';
+  const key=by.toLowerCase().replace(/[\s-]+/g,'');
+  const office=officerTitles[key]||(identity?.administrator?'Webmaster':'Committee member');
+  return {by,office,at:now};
+};
+export function stampDayPlanSignatures(next,previous,identity,now){
+  const author=officeSignature(identity,now);
+  const before=previous?.dayPlans||{};
+  for(const [date,plan] of Object.entries(next.dayPlans||{})){
+    const prior=before[date],oldSignature=prior?.signature;
+    const oldContent=prior&&JSON.stringify({patternId:prior.patternId,items:prior.items});
+    const newContent=JSON.stringify({patternId:plan.patternId,items:plan.items});
+    if(prior&&oldContent===newContent){
+      if(oldSignature)plan.signature=oldSignature;
+      else delete plan.signature;
+      continue;
+    }
+    plan.signature={
+      preparedBy:oldSignature?.preparedBy||author.by,
+      preparedOffice:oldSignature?.preparedOffice||author.office,
+      preparedAt:oldSignature?.preparedAt||author.at,
+      editedBy:author.by,editedOffice:author.office,editedAt:author.at
+    };
+  }
+  return next;
+}
+
 const validDestinations=values=>Array.isArray(values)&&values.length<=destinations.length&&new Set(values).size===values.length&&values.every(id=>destinations.includes(id));
 function validAudience(values,allowed){
   return Array.isArray(values) && values.length>=1 && values.length<=allowed.length &&
@@ -12,7 +45,7 @@ function validAudience(values,allowed){
 export function validateCampaignSettings(value,fail){
   const bad=()=>fail('Check the campaign pattern settings and audience choices.');
   if(!value || typeof value!=='object'||Array.isArray(value)||
-    Object.keys(value).sort().join(',')!=='dayOverrides,delivery,layers,limits,milestones,monthOverrides,postingTime,timingSignals,videoShare,weekOverrides')bad();
+    Object.keys(value).sort().join(',')!=='dayArchetypes,dayOverrides,dayPlans,delivery,layers,limits,milestones,monthOverrides,postingTime,timingSignals,videoShare,weekOverrides')bad();
   if(!Number.isInteger(value.videoShare)||value.videoShare<0||value.videoShare>100)bad();
   if(value.postingTime!=='auto' && (typeof value.postingTime!=='string'||!/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(value.postingTime)))bad();
   if(!value.delivery||Object.keys(value.delivery).sort().join(',')!=='organic,paid,paidPlanning'||
@@ -78,6 +111,47 @@ export function validateCampaignSettings(value,fail){
   const validMonth=s=>/^20\d\d-(0[1-9]|1[0-2])$/.test(s);
   const validDay=s=>/^20\d\d-(0[1-9]|1[0-2])-([0-2]\d|3[01])$/.test(s)&&
     !Number.isNaN(Date.parse(s+'T00:00:00Z'))&&new Date(s+'T00:00:00Z').toISOString().slice(0,10)===s;
+  const dayKinds=['weekday','friday','weekend','longWeekend','publicHoliday','holiday'];
+  const validSlot=slot=>slot&&typeof slot==='object'&&!Array.isArray(slot)&&
+    Object.keys(slot).sort().join(',')==='brief,format,id,layerId,time,title'&&
+    typeof slot.id==='string'&&/^[-a-zA-Z0-9_]{1,50}$/.test(slot.id)&&
+    ids.includes(slot.layerId)&&['video','image','carousel','link'].includes(slot.format)&&
+    typeof slot.time==='string'&&/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(slot.time)&&
+    typeof slot.title==='string'&&slot.title.trim().length>0&&slot.title.length<=180&&
+    typeof slot.brief==='string'&&slot.brief.length<=4000;
+  const validateSlots=items=>{
+    if(!Array.isArray(items)||items.length<1||items.length>12||
+      items.some(slot=>!validSlot(slot))||
+      new Set(items.map(slot=>slot.id)).size!==items.length)bad();
+  };
+  if(!value.dayPlans||typeof value.dayPlans!=='object'||Array.isArray(value.dayPlans)||
+    Object.keys(value.dayPlans).length>366)bad();
+  for(const [date,plan] of Object.entries(value.dayPlans)){
+    if(!validDay(date)||!plan||typeof plan!=='object'||Array.isArray(plan)||
+      !['items,patternId','items,patternId,signature'].includes(Object.keys(plan).sort().join(','))||
+      typeof plan.patternId!=='string'||plan.patternId.length>80)bad();
+    if(plan.signature){
+      const record=plan.signature;
+      if(!record||typeof record!=='object'||Array.isArray(record)||
+        Object.keys(record).sort().join(',')!=='editedAt,editedBy,editedOffice,preparedAt,preparedBy,preparedOffice'||
+        ['preparedBy','preparedOffice','editedBy','editedOffice'].some(key=>typeof record[key]!=='string'||!record[key].trim()||record[key].length>100)||
+        ['preparedAt','editedAt'].some(key=>typeof record[key]!=='string'||!/^20\d\d-\d\d-\d\dT\d\d:\d\d:\d\d/.test(record[key])||Number.isNaN(Date.parse(record[key]))))bad();
+    }
+    validateSlots(plan.items);
+  }
+  if(!value.dayArchetypes||typeof value.dayArchetypes!=='object'||Array.isArray(value.dayArchetypes)||
+    Object.keys(value.dayArchetypes).some(kind=>!dayKinds.includes(kind)))bad();
+  for(const items of Object.values(value.dayArchetypes)){
+    if(!Array.isArray(items)||items.length>8||
+      new Set(items.map(item=>item?.id)).size!==items.length)bad();
+    for(const item of items){
+      if(!item||typeof item!=='object'||Array.isArray(item)||
+        Object.keys(item).sort().join(',')!=='id,items,name'||
+        typeof item.id!=='string'||!/^custom-[a-zA-Z0-9-]{6,56}$/.test(item.id)||
+        typeof item.name!=='string'||!item.name.trim()||item.name.length>75)bad();
+      validateSlots(item.items);
+    }
+  }
   const overrides=[
     ['monthOverrides',24,validMonth],
     ['weekOverrides',80,key=>validDay(key)&&new Date(key+'T00:00:00Z').getUTCDay()===1],
@@ -90,7 +164,8 @@ export function validateCampaignSettings(value,fail){
       if(!valid(key)||!config||typeof config!=='object'||Array.isArray(config)||
         Object.keys(config).sort().join(',')!=='delivery,layers,limits,postingTime,videoShare')bad();
       const validated=validateCampaignSettings({...config,monthOverrides:{},weekOverrides:{},dayOverrides:{},
-        timingSignals:value.timingSignals,milestones:value.milestones},fail);
+        timingSignals:value.timingSignals,milestones:value.milestones,
+        dayPlans:{},dayArchetypes:{}},fail);
       config.limits=validated.limits;
     }
   }
@@ -128,6 +203,10 @@ export async function socialCampaignSettingsEndpoint(request,env,identity,{json,
   if(!body||Object.keys(body).sort().join(',')!=='settings,version'||!Number.isInteger(body.version)||body.version<0||body.version>2147483645)invalid('Reload the saved campaign settings.');
   const settings=validateCampaignSettings(body.settings,invalid);
   const now=new Date().toISOString();
+  // Derive day signatures exclusively from the authenticated officer and the
+  // previous database record. Never trust identities supplied by the browser.
+  const previous=current?JSON.parse(current.settings):null;
+  stampDayPlanSignatures(settings,previous,identity,now);
   const write=body.version===0?
     db.prepare('INSERT INTO committee_social_campaign_settings(id,version,settings_json,updated_at,updated_by) VALUES(1,1,?,?,?) ON CONFLICT(id) DO NOTHING')
       .bind(JSON.stringify(settings),now,identity.id):
