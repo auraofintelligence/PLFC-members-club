@@ -252,7 +252,8 @@ export function setupAnnualCampaigns({mount,api,esc,isActive,onUse,reviewOnly=fa
       renderMonthCalendar({month:selectedMonth,days:plan.days,posts:current,esc,metricsForPost})+
       '<div class="annual-calendar-legend"><span class="annual-legend-today">● Today</span>'+
       '<span class="annual-legend-past">◐ Past</span><span class="annual-legend-future">○ Future</span>'+
-      '<span><i class="qld"></i> QLD holidays</span><span><i class="nsw"></i> NSW holidays</span></div></section>'+
+      '<span class="annual-legend-holiday">🎉 Public holiday</span><span class="annual-legend-long">🧳 Long weekend</span>'+
+      '<span><i class="qld"></i> QLD school holidays</span><span><i class="nsw"></i> NSW school holidays</span></div></section>'+
       '<div class="annual-schedule-export"><span>🕒 Every day starts with a suggested post. Click a date to edit, add or remove ideas.</span>'+
       (Object.values(postEdits).some(e=>e.hidden)?'<button type="button" class="button outline small" data-calendar-restore>Restore removed suggestions</button>':'')+
       '<div class="annual-schedule-actions"><button type="button" class="button outline small" data-calendar-export>⬇ Export monthly schedule CSV</button>'+
