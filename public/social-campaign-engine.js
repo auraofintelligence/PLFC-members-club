@@ -97,12 +97,19 @@ function combine(candidates,cap){
   // A short roundup can carry two additional subjects, reducing posting pressure.
   if(overflow.length && selected.length){
     const target=selected.find(p=>p.layerIds[0]!=='safety')||selected[0];
-    const additions=overflow.splice(0,Math.min(2,overflow.length));
+    // Do not silently mix targeted member, gender or visitor groups in one post.
+    const additions=[];
+    for(let i=0;i<overflow.length && additions.length<2;){
+      if(JSON.stringify(overflow[i].audience)===JSON.stringify(target.audience))additions.push(...overflow.splice(i,1));
+      else i++;
+    }
     target.layerIds.push(...additions.flatMap(p=>p.layerIds));
     target.sections.push(...additions.map(p=>p.title));
-    target.composite=true;
-    target.title='30-second PLFC roundup: '+target.sections[0];
-    target.brief+=' Include concise segments from the other sources; verify every claim.';
+    if(additions.length){
+      target.composite=true;
+      target.title='30-second PLFC roundup: '+target.sections[0];
+      target.brief+=' Include concise segments from the other sources; verify every claim.';
+    }
   }
   return {posts:selected,omitted:overflow.length};
 }
