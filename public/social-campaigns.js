@@ -255,6 +255,9 @@ export function setupAnnualCampaigns({mount,api,esc,isActive,onUse,reviewOnly=fa
       (batchDirty?' · unsaved changes':'')+'</span></header>'+
       '<div class="annual-scope-toolbar"><div class="annual-scope-buttons" aria-label="Choose planning period">'+scopes+'</div>'+
       '<label>Day to plan <input type="date" data-scope-day value="'+focusDay+'" min="'+startMonth+'-01" max="'+new Date(Date.UTC(Number(startMonth.slice(0,4))+1,Number(startMonth.slice(5))-1,0)).toISOString().slice(0,10)+'"></label></div>'+
+      '<details class="annual-month-bulk-options"><summary><span>🎛️ Pattern sliders and bulk options</span>'+
+      '<small>Video share, posting ranges, topics and platforms · Open to adjust</small></summary>'+
+      '<div class="annual-month-bulk-body">'+
       '<div class="annual-time-default"><label>🕒 First post time (Brisbane AEST)'+
       '<input type="time" step="60" data-scope-time value="'+(batch.postingTime==='auto'?'':esc(batch.postingTime))+'"></label>'+
       '<button type="button" data-scope-auto class="button outline small">Use suggested times</button>'+
@@ -278,7 +281,8 @@ export function setupAnnualCampaigns({mount,api,esc,isActive,onUse,reviewOnly=fa
       '<div class="annual-actions"><button type="button" class="button" data-month-apply'+(busy?' disabled':'')+'>✓ Save '+esc(scopeLabel())+(sharedSettingsReady?'':' in this browser')+'</button>'+
       '<button type="button" class="button outline" data-month-copy-next'+(busy?' disabled':'')+'>Copy to next '+planningScope+'</button>'+
       '<button type="button" class="button outline" data-month-reset'+(busy?' disabled':'')+'>Reset '+planningScope+'</button></div>'+
-      '<p class="annual-small">Monthly changes update suggested content only. Existing posts are not overwritten.</p></section>';
+      '<p class="annual-small">Monthly patterns are suggestions. Saved individual day plans and approved club posts are not overwritten.</p>'+
+      '</div></details></section>';
   }
 
   function preview(){
@@ -368,7 +372,7 @@ export function setupAnnualCampaigns({mount,api,esc,isActive,onUse,reviewOnly=fa
   function draw(){
     const pane=root();if(!pane)return;
     const states={};
-    for(const cls of ['annual-planner','annual-batch-layer-options','annual-batch-platform-options',
+    for(const cls of ['annual-planner','annual-month-bulk-options','annual-batch-layer-options','annual-batch-platform-options',
       'annual-default-settings','annual-year-overview','annual-master-library','annual-signals','annual-analytics']){
       states[cls]=pane.querySelector('.'+cls)?.open??(cls==='annual-planner');
     }
