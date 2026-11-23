@@ -28,7 +28,15 @@ export function setupAnnualCampaigns({mount,api,esc,isActive,onUse,reviewOnly=fa
   const importMetrics=()=>{try{const data=JSON.parse(localStorage.getItem(metricsKey())||'[]');metrics=Array.isArray(data)?data.slice(0,15000):[];}catch{metrics=[];}};
   const storeMetrics=()=>{try{localStorage.setItem(metricsKey(),JSON.stringify(metrics));return true;}catch{return false;}};
   const linkedMetrics=()=>linkMetrics(metrics,lastPreview?.posts||[],postEdits);
-  const metricsForPost=id=>latestMetrics(linkedMetrics()).filter(m=>m.matchedPostId===id);
+  let metricLookup=new Map();
+  const metricsForPost=id=>metricLookup.get(id)||[];
+  const prepareMetricLookup=()=>{
+    metricLookup=new Map();
+    for(const metric of latestMetrics(linkedMetrics())){
+      if(!metricLookup.has(metric.matchedPostId))metricLookup.set(metric.matchedPostId,[]);
+      metricLookup.get(metric.matchedPostId).push(metric);
+    }
+  };
   const editKey=()=> 'plfc-social-post-edits-v1:'+startMonth+':'+(reviewOnly?'review':'committee');
   function loadEdits(){
     try{
@@ -166,6 +174,7 @@ export function setupAnnualCampaigns({mount,api,esc,isActive,onUse,reviewOnly=fa
     const scoped=previewSettings();
     let plan;try{plan=generateCampaignYear(startMonth,scoped);}catch(e){return '<p role="alert">'+esc(e.message)+'</p>';}
     lastPreview=plan;
+    prepareMetricLookup();
     const allVisible=plan.posts.filter(p=>p.layerIds.includes('daily')||p.layerIds.some(id=>settingsForDate(scoped,p.date).layers[id]?.visible));
     visiblePosts=topicFilter==='all'?allVisible:allVisible.filter(p=>p.layerIds.includes(topicFilter));
     const current=visiblePosts.filter(p=>p.date.startsWith(selectedMonth));
