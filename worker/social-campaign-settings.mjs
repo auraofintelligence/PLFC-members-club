@@ -3,6 +3,39 @@ const memberships=['all','adult','cadet','junior','social','casual','lifetime','
 const genders=['all','women','men','self-described'];
 const places=['all','local','tourist','regional'];
 const destinations=['facebook','instagram','youtube','tiktok','noticeboard'];
+
+const officerTitles={
+  president:'President',vicepresident:'Vice President',secretary:'Secretary',
+  assistantsecretary:'Assistant Secretary',treasurer:'Treasurer'
+};
+export const officeSignature=(identity,now)=>{
+  const by=String(identity?.name||'Committee officer').trim().slice(0,100)||'Committee officer';
+  const key=by.toLowerCase().replace(/[\s-]+/g,'');
+  const office=officerTitles[key]||(identity?.administrator?'Webmaster':'Committee member');
+  return {by,office,at:now};
+};
+export function stampDayPlanSignatures(next,previous,identity,now){
+  const author=officeSignature(identity,now);
+  const before=previous?.dayPlans||{};
+  for(const [date,plan] of Object.entries(next.dayPlans||{})){
+    const prior=before[date],oldSignature=prior?.signature;
+    const oldContent=prior&&JSON.stringify({patternId:prior.patternId,items:prior.items});
+    const newContent=JSON.stringify({patternId:plan.patternId,items:plan.items});
+    if(prior&&oldContent===newContent){
+      if(oldSignature)plan.signature=oldSignature;
+      else delete plan.signature;
+      continue;
+    }
+    plan.signature={
+      preparedBy:oldSignature?.preparedBy||author.by,
+      preparedOffice:oldSignature?.preparedOffice||author.office,
+      preparedAt:oldSignature?.preparedAt||author.at,
+      editedBy:author.by,editedOffice:author.office,editedAt:author.at
+    };
+  }
+  return next;
+}
+
 const validDestinations=values=>Array.isArray(values)&&values.length<=destinations.length&&new Set(values).size===values.length&&values.every(id=>destinations.includes(id));
 function validAudience(values,allowed){
   return Array.isArray(values) && values.length>=1 && values.length<=allowed.length &&
@@ -95,8 +128,15 @@ export function validateCampaignSettings(value,fail){
     Object.keys(value.dayPlans).length>366)bad();
   for(const [date,plan] of Object.entries(value.dayPlans)){
     if(!validDay(date)||!plan||typeof plan!=='object'||Array.isArray(plan)||
-      Object.keys(plan).sort().join(',')!=='items,patternId'||
+      !['items,patternId','items,patternId,signature'].includes(Object.keys(plan).sort().join(','))||
       typeof plan.patternId!=='string'||plan.patternId.length>80)bad();
+    if(plan.signature){
+      const record=plan.signature;
+      if(!record||typeof record!=='object'||Array.isArray(record)||
+        Object.keys(record).sort().join(',')!=='editedAt,editedBy,editedOffice,preparedAt,preparedBy,preparedOffice'||
+        ['preparedBy','preparedOffice','editedBy','editedOffice'].some(key=>typeof record[key]!=='string'||!record[key].trim()||record[key].length>100)||
+        ['preparedAt','editedAt'].some(key=>typeof record[key]!=='string'||!/^20\d\d-\d\d-\d\dT\d\d:\d\d:\d\d/.test(record[key])||Number.isNaN(Date.parse(record[key]))))bad();
+    }
     validateSlots(plan.items);
   }
   if(!value.dayArchetypes||typeof value.dayArchetypes!=='object'||Array.isArray(value.dayArchetypes)||
@@ -163,6 +203,10 @@ export async function socialCampaignSettingsEndpoint(request,env,identity,{json,
   if(!body||Object.keys(body).sort().join(',')!=='settings,version'||!Number.isInteger(body.version)||body.version<0||body.version>2147483645)invalid('Reload the saved campaign settings.');
   const settings=validateCampaignSettings(body.settings,invalid);
   const now=new Date().toISOString();
+  // Derive day signatures exclusively from the authenticated officer and the
+  // previous database record. Never trust identities supplied by the browser.
+  const previous=current?JSON.parse(current.settings):null;
+  stampDayPlanSignatures(settings,previous,identity,now);
   const write=body.version===0?
     db.prepare('INSERT INTO committee_social_campaign_settings(id,version,settings_json,updated_at,updated_by) VALUES(1,1,?,?,?) ON CONFLICT(id) DO NOTHING')
       .bind(JSON.stringify(settings),now,identity.id):
