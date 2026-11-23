@@ -1,3 +1,4 @@
+import {renderDaySignature,signatureOfficer} from './social-day-signatures.js?v=20261124-office-signatures';
 // Pure, CSP-safe views for the PLFC social workbench. No account or publishing actions.
 export const LAYER_ICONS=Object.freeze({
   fish:'🐟',bait:'🪝',weather:'🌤️',safety:'🛟',events:'📅',holidays:'🏖️',
@@ -48,6 +49,7 @@ export function renderMonthCalendar({month,days,posts,esc,today=brisbaneToday(),
       const views=items.reduce((total,post)=>total+metricsForPost(post.id).reduce((n,item)=>n+(item.views??0),0),0);
       const hasLead=items.some(post=>Boolean(post.timingSignal));
       const tooltip=formatDate(date)+'; '+items.length+' planned '+(items.length===1?'post':'posts')+
+        (data?.signature?'; prepared by '+signatureOfficer(data.signature):'')+
         '; '+temporal+(qld?'; Queensland school holidays':'')+(nsw?'; NSW school holidays':'')+
         (data?.publicHolidayName?'; '+data.publicHolidayName:'')+
         (longWeekend?'; long weekend':'')+
@@ -67,6 +69,8 @@ export function renderMonthCalendar({month,days,posts,esc,today=brisbaneToday(),
           longWeekend?'<small class="annual-calendar-holiday">🧳 Long weekend</small>':
           data?.partialPublicHoliday?'<small class="annual-calendar-holiday">🌙 PH evening</small>':'')+
         (hasLead?'<small class="annual-calendar-signal">📣 Lead-in</small>':'')+
+        (data?.signature?'<small class="annual-calendar-signed">'+
+          renderDaySignature(data.signature,esc,true)+'</small>':'')+
         (views?'<small class="annual-calendar-performance">📈 '+(views>=1000?(views/1000).toFixed(1)+'k':views)+' reported</small>':'')+
         '</button>';
     }
@@ -101,7 +105,8 @@ export function renderCalendarDialog({day,view,postId,posts,plan,esc,getEdit,rev
     dayData?.partialPublicHoliday||null].filter(Boolean);
   const headline='<header class="annual-dialog-header"><div><p class="annual-dialog-kicker">'+
     (flags.length?flags.map(esc).join(' · '):'Content calendar')+'</p>'+
-    '<h2>'+esc(formatted)+'</h2></div><button type="button" class="annual-dialog-close" data-calendar-close aria-label="Close popup">✕</button></header>';
+    '<h2>'+esc(formatted)+'</h2></div><button type="button" class="annual-dialog-close" data-calendar-close aria-label="Close popup">✕</button></header>'+
+    (dayData?.signature?renderDaySignature(dayData.signature,esc):'');
   const post=today.find(x=>x.id===postId),edit=post?getEdit(post.id):null;
   if(view==='edit'&&post){
     const title=postLabel(post,edit),brief=postBrief(post,edit),time=postTime(post,edit);
