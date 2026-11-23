@@ -20,8 +20,10 @@ test('club annual event run sheets and meetings import dates, never implying the
     {id:'undated',title:'Undated planning sheet',date:'',status:'open'}
   ];
   const events=clubEventCandidates(source,'2026-11');
-  assert.equal(events.length,1);
+  assert.equal(events.length,2);
   assert.equal(events[0].kind,'event');
+  assert.equal(events[1].inactive,true);
+  assert.match(events[1].status,/Closed run sheet/);
   assert.match(events[0].origin,/run sheet/);
   assert.equal(events[0].status,'Planning run sheet');
   const meetings=meetingCandidates([{id:'meeting-2027',date:'2027-03-04',title:'PLFC quarterly meeting',status:'draft'}],'2026-11');
@@ -34,6 +36,20 @@ test('club annual event run sheets and meetings import dates, never implying the
   assert.ok(result.milestones.every(m=>!m.confirmed),'Event records alone never prove public promotional approval');
   const cfg=defaultCampaignSettings();cfg.milestones=result.milestones;
   validateCampaignSettings(cfg,invalid);
+});
+
+test('closing a source event cancels previously granted promotional verification on reimport',()=>{
+  const id='event-close-123',open=clubEventCandidates([
+    {id,title:'Proposed club fundraiser',date:'2027-03-06',status:'open'}
+  ],'2026-11')[0];
+  const saved=importCalendarAnchors([],[open],[open.id],[open.id]).milestones;
+  const closed=clubEventCandidates([
+    {id,title:'Proposed club fundraiser',date:'2027-03-06',status:'closed'}
+  ],'2026-11')[0];
+  const updated=importCalendarAnchors(saved,[closed],[closed.id],[closed.id]);
+  assert.equal(updated.verificationReset,1);
+  assert.equal(updated.milestones[0].confirmed,false);
+  assert.equal(updated.milestones[0].date,'2027-03-06');
 });
 
 test('annual calendar CSV parses ordinary event and fishing season records, skipping invalid dates',()=>{
