@@ -192,7 +192,9 @@ export function setupAnnualCampaigns({mount,api,esc,isActive,onUse,reviewOnly=fa
       '<div class="annual-day-limits"><div class="annual-day-limits-head"><strong>📆 Posting frequency by day type</strong>'+
       '<p>Choose the minimum and maximum for each kind of day. Each date follows one set of limits, even when holidays overlap.</p></div>'+
       '<div class="annual-day-limit-grid">'+limits+'</div>'+
-      '<p class="annual-small">Priority: public holiday → long weekend → QLD school holidays → Friday → weekend → ordinary weekday. Redland show holidays are included when officially announced.</p></div>'+
+      '<p class="annual-small">Priority: public holiday → long weekend → QLD school holidays → Friday → weekend → ordinary weekday. '+
+      'Dates: <a href="https://www.qld.gov.au/recreation/travel/holidays/public" target="_blank" rel="noopener noreferrer">QLD public holidays</a> and '+
+      '<a href="https://www.qld.gov.au/recreation/travel/holidays/show" target="_blank" rel="noopener noreferrer">local show holidays</a>. Unannounced Redland show holidays are not assumed.</p></div>'+
       '<details class="annual-batch-layer-options"><summary><span>🐟 Topics, frequency and audiences</span><small>16 adjustable categories</small></summary>'+
       '<div class="annual-topic-grid">'+layers+'</div>'+
       '<div class="annual-audience"><label>Audience settings for <select data-month-select-layer>'+
