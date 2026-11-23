@@ -1,7 +1,7 @@
 import {setupClubAccess} from './club-access.js?v=20261123-showcase';
 import {setupFinniusMotion} from './finnius-motion.js';
 import {setupSocialLinks} from './social-channels.js';
-import {setupSocialPlanner} from './social-planner.js?v=20261123-timing-reports';
+import {setupSocialPlanner} from './social-planner.js?v=20261123-main-studio';
 import {setupFundraisingEvents} from './fundraising-events.js?v=20261121-angler';
 import {setupMemberRoom} from './member-room.js?v=20261121-angler';
 import {setupMemberCalendar} from './member-calendar.js';
@@ -30,7 +30,7 @@ import {setupPriceNotices} from './price-notices.js?v=20261121-club-funding';
 import {setupShop} from './shop.js?v=20261121-club-funding';
 import {setupWildlifeHelp} from './wildlife-help.js';
 import {setupMeetingWorkflow} from './meeting-workflow.js?v=20261121-club-funding';
-import {setupOfficerTodos} from './officer-todos.js?v=20261121-club-funding';
+import {setupOfficerTodos} from './officer-todos.js?v=20261123-monthly-social';
 import {setupGrantRegister} from './grant-register.js?v=20261121-practical-wishes';
 import {mountGrantPage,scrollToGrantSection} from './grant-page.js';
 import {setupNoticeEmailProfile} from './notice-email-profile.js';
