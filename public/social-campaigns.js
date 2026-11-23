@@ -177,7 +177,8 @@ export function setupAnnualCampaigns({mount,api,esc,isActive,onUse,reviewOnly=fa
         const date=nextDay(monday,i),inside=dates.some(d=>d.date===date);
         const type=currentDayKind(date);
         const plan=inside?dayPlanFor(date):{items:[]};
-        return {date,type,items:plan.items,patternId:plan.patternId||'',curated:Boolean(draftPlans()[date]),inside};
+        return {date,type,items:plan.items,patternId:plan.patternId||'',
+          signature:plan.signature||null,curated:Boolean(draftPlans()[date]),inside};
       })
     });
   }
@@ -201,13 +202,16 @@ export function setupAnnualCampaigns({mount,api,esc,isActive,onUse,reviewOnly=fa
       const status=root()?.querySelector('[data-annual-notice]');if(status)status.textContent=notice;
       return false;
     }
-    draftPlans()[focusDay]={patternId:existing.patternId||'',items};
+    draftPlans()[focusDay]={patternId:existing.patternId||'',items,
+      ...(existing.signature?{signature:existing.signature}:{})};
     dayFormTouched=false;return true;
   }
   function applyDailyPattern(date,id){
     const type=currentDayKind(date),pattern=patternFor(type,id,settings.dayArchetypes);
     if(!pattern)return false;
-    draftPlans()[date]=planFromPattern(pattern);
+    const previous=draftPlans()[date];
+    draftPlans()[date]={...planFromPattern(pattern),
+      ...(previous?.signature?{signature:previous.signature}:{})};
     dayFormTouched=false;
     return true;
   }
